@@ -1,0 +1,27 @@
+name: promptlings
+version: 0.1.0
+description: Opinionated, model-agnostic agent prompts for AI coding assistants
+author: dfinson
+license: Apache-2.0
+
+agents:
+  - name: the-nitcracker
+    output: agents/code-review/the-nitcracker.agent.md
+    sources:
+      - overlays/the-nitcracker/frontmatter.md
+      - overlays/the-nitcracker/intro.md
+      - overlays/the-nitcracker/findings-pipeline.md
+      - shared/pipeline.md
+      - overlays/the-nitcracker/snark-voice.md
+      - shared/standards.md
+      - overlays/the-nitcracker/output-format.md
+
+  - name: pr-walkthrough
+    output: agents/code-review/pr-walkthrough.agent.md
+    sources:
+      - overlays/pr-walkthrough/frontmatter.md
+      - overlays/pr-walkthrough/intro.md
+      - shared/pipeline.md
+      - overlays/pr-walkthrough/voice.md
+      - shared/standards.md
+      - overlays/pr-walkthrough/output-format.md
