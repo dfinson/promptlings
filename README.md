@@ -21,24 +21,31 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 
 ## Installation
 
-Pick the agents you want and copy them to your tool's agent directory.
+### One-liner (recommended)
 
-### GitHub Copilot CLI
-
-```bash
-# User-wide
-cp agents/code-review/*.agent.md ~/.copilot/agents/
-
-# Per-project
-cp agents/code-review/*.agent.md .github/agents/
-```
-
-### Claude Code
+**Linux / macOS:**
 
 ```bash
-mkdir -p .claude/commands
-cp agents/code-review/*.agent.md .claude/commands/
+curl -sL https://raw.githubusercontent.com/dfinson/promptlings/main/install.sh | bash
 ```
+
+**Windows (PowerShell):**
+
+```powershell
+irm https://raw.githubusercontent.com/dfinson/promptlings/main/install.ps1 | iex
+```
+
+The installer auto-detects your tool (Copilot CLI or Claude Code) and downloads the agents to the right directory.
+
+### Manual
+
+Copy the agents you want to your tool's agent directory:
+
+| Tool | Directory |
+| --- | --- |
+| GitHub Copilot CLI (user-wide) | `~/.copilot/agents/` |
+| GitHub Copilot CLI (per-project) | `.github/agents/` |
+| Claude Code | `~/.claude/commands/` |
 
 ### Other Frameworks
 
