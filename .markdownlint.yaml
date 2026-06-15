@@ -7,6 +7,9 @@ MD013: false
 # Allow both dash and asterisk list styles (partials use different conventions)
 MD004: false
 
+# Allow heading level jumps (partials are concatenated; h4 after h2 is expected)
+MD001: false
+
 # Allow multiple headings with same content (common in templates)
 MD024: false
 
@@ -18,3 +21,13 @@ MD033: false
 
 # Don't require blank lines around lists in all contexts
 MD032: false
+
+# Allow emphasis used as heading (bold section labels are intentional)
+MD036: false
+
+# Allow fenced code blocks without language specified (template examples)
+MD040: false
+
+# Don't require first line to be a top-level heading (partials are fragments)
+MD041: false
+
