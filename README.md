@@ -2,7 +2,7 @@
 
 Opinionated, model-agnostic agent prompts for AI coding assistants.
 
-Each promptling is a self-contained `.agent.md` file — a structured system prompt that works with any LLM-powered coding tool (GitHub Copilot CLI, Claude Code, or any agent framework that accepts markdown instructions).
+Each promptling is a self-contained `.agent.md` file: a structured system prompt that works with any LLM-powered coding tool (GitHub Copilot CLI, Claude Code, or any agent framework that accepts markdown instructions).
 
 ## Agents
 
@@ -10,8 +10,8 @@ Each promptling is a self-contained `.agent.md` file — a structured system pro
 
 | Agent | Description |
 |-------|-------------|
-| [the-nitcracker](review/the-nitcracker.agent.md) | Full PR review — inline comments, design forks, implicit bets, and a narrative writeup. High signal-to-noise ratio tuned for senior engineers. |
-| [pr-walkthrough](review/pr-walkthrough.agent.md) | Narrative-driven PR orientation — walks a reviewer through the diff architecture before they open it. Surfaces judgment calls without rendering judgment. |
+| [the-nitcracker](review/the-nitcracker.agent.md) | Full PR review: inline comments, design forks, implicit bets, and a narrative writeup. High signal-to-noise ratio tuned for senior engineers. |
+| [pr-walkthrough](review/pr-walkthrough.agent.md) | Narrative-driven PR orientation that walks a reviewer through the diff architecture before they open it. Surfaces judgment calls without rendering judgment. |
 
 ## Installation
 
@@ -48,6 +48,7 @@ These are plain markdown files with YAML frontmatter. Parse the `name` and `desc
 - **Narrative over checklist.** The reviewer needs a mental model, not a bullet list.
 - **Model-agnostic.** No vendor lock-in. If it can follow instructions, it can run these.
 - **Opinionated.** These agents have a point of view. Fork them if yours differs.
+- **No em dashes.** Ever. Use colons, commas, parentheses, or restructure the sentence.
 
 ## Contributing
 
@@ -55,4 +56,4 @@ PRs welcome. The bar for inclusion is: "would I actually use this agent every da
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Apache 2.0. See [LICENSE](LICENSE).
