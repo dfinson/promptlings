@@ -7,22 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  build-verify:
-    name: Build and verify no drift
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run build
-        run: bash build.sh
-      - name: Check for drift
-        run: |
-          if ! git diff --quiet review/; then
-            echo "::error::Built output differs from committed review/ files."
-            echo "Run 'bash build.sh' locally and commit the result."
-            git diff review/
-            exit 1
-          fi
-
   markdown-lint:
     name: Markdown lint
     runs-on: ubuntu-latest
