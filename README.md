@@ -10,8 +10,8 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 
 | Agent | Description |
 |-------|-------------|
-| [pr-walkthrough](review/pr-walkthrough.agent.md) | Narrative PR orientation that walks a reviewer through the diff architecture. Surfaces judgment calls without rendering judgment. |
-| [the-nitcracker](review/the-nitcracker.agent.md) | Same thing, but with a sense of humor and a roast up front. |
+| [pr-walkthrough](agents/code-review/pr-walkthrough.agent.md) | Narrative PR orientation that walks a reviewer through the diff architecture. Surfaces judgment calls without rendering judgment. |
+| [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | Same thing, but with a sense of humor and a roast up front. |
 
 ## Installation
 
@@ -20,13 +20,13 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 Copy agent files to your user agents directory:
 
 ```bash
-cp review/*.agent.md ~/.copilot/agents/
+cp agents/code-review/*.agent.md ~/.copilot/agents/
 ```
 
 Or for a specific project:
 
 ```bash
-cp review/*.agent.md .github/agents/
+cp agents/code-review/*.agent.md .github/agents/
 ```
 
 ### Claude Code
@@ -35,7 +35,7 @@ Copy agent files to your commands directory:
 
 ```bash
 mkdir -p .claude/commands
-cp review/*.agent.md .claude/commands/
+cp agents/code-review/*.agent.md .claude/commands/
 ```
 
 ### Other Frameworks

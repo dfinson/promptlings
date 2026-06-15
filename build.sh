@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR="$SCRIPT_DIR/src"
-OUT_DIR="$SCRIPT_DIR/review"
+OUT_DIR="$SCRIPT_DIR/agents/code-review"
 
 mkdir -p "$OUT_DIR"
 
