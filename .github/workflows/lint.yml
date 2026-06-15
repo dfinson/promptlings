@@ -1,0 +1,38 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  no-code:
+    name: No code files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reject code files
+        run: |
+          # Only markdown, LICENSE, and dotfiles/config are allowed
+          allowed_pattern='^\./(\.|LICENSE|README|CONTRIBUTING|CHANGELOG|.*\.md$)'
+          violations=$(find . -type f \
+            -not -path './.git/*' \
+            -not -path './.github/*' \
+            | grep -Ev "$allowed_pattern" || true)
+          if [ -n "$violations" ]; then
+            echo "::error::Code or non-markdown files detected:"
+            echo "$violations"
+            echo ""
+            echo "This repo only contains markdown agent prompts. No code allowed."
+            exit 1
+          fi
+
+  markdown-lint:
+    name: Markdown lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DavidAnson/markdownlint-cli2-action@v19
+        with:
+          globs: "**/*.md"
