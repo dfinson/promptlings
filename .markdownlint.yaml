@@ -28,6 +28,12 @@ MD036: false
 # Allow fenced code blocks without language specified (template examples)
 MD040: false
 
-# Don't require first line to be a top-level heading (partials are fragments)
+# Allow trailing spaces (agent prompts use them for formatting)
+MD009: false
+
+# Allow blank lines inside blockquotes (used in agent output templates)
+MD028: false
+
+# Don't require first line to be a top-level heading (agents have frontmatter)
 MD041: false
 
