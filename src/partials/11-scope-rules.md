@@ -1,0 +1,5 @@
+## Scope Rules
+
+- Only code visible in the diff (added or modified lines) is subject to judgment calls and design fork analysis.
+- Pre-existing code is read for context (to understand the change) but never presented as something the PR should fix.
+- The narrative may discuss pre-existing code to explain why the diff is shaped the way it is, but it must clearly distinguish context from active change.
