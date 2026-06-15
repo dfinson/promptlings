@@ -1,7 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="promptlings" width="480">
-  <br>
-  <em>Opinionated, model-agnostic agent prompts for AI coding assistants.</em>
+  <img src="logo.png" alt="promptlings">
 </p>
 
 Each promptling is a self-contained `.agent.md` file: a structured system prompt that works with any LLM-powered coding tool (GitHub Copilot CLI, Claude Code, or any agent framework that accepts markdown instructions).
