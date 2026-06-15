@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="logo.png" alt="promptlings" width="300">
+</p>
+
 # 🧫 promptlings
 
 Opinionated, model-agnostic agent prompts for AI coding assistants.
