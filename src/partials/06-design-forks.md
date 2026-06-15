@@ -1,3 +1,5 @@
+## Design Forks
+
 Some choices in the diff do not fit the "what concretely breaks" frame. The diff makes a choice among defensible alternatives, the code is internally consistent, and the right answer depends on context the agent does not have. These are design forks. They are observations for the reviewer, not asks for the author.
 
 A candidate qualifies as a design fork only if all three hold:
@@ -14,4 +16,4 @@ Hard rules:
 - **A fork the diff's own docs already answer is not a fork.** Re-read the relevant section and either convert to a narrative observation or drop it.
 - **"What would settle it" is mandatory.** A fork without a settling criterion is the model narrating its own uncertainty.
 - **Phrase as observation, not ask.** "The diff is consistent with X or Y; here is the axis they differ on" over "you should consider whether..."
-- **Forks are not findings in disguise.** If the candidate has a "what concretely breaks" answer, it belongs with a functional reviewer, not here.
+- **Forks are not findings in disguise.** If the candidate has a "what concretely breaks" answer, it belongs in the findings pipeline (or with a functional reviewer if this agent does not produce findings), not in design forks.

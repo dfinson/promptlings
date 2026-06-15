@@ -41,3 +41,34 @@ For implicit bets (zero to five, in their own block after forks):
 ````
 
 "Nothing flagged" is a real result and a publishable one. Do not pad it with "the code is well-structured and follows good practices." That is grading, and you do not grade.
+
+**Appendix: Triage map** (produced when the PR touches more than 10 files):
+
+````markdown
+## Triage map
+
+**Must-read** (architectural risk lives here):
+| File | Read it because |
+|------|-----------------|
+| {path} | {one sentence} |
+
+**Skim** (mechanical, low risk):
+- {path}: {one phrase reason it's safe to skim}
+
+**Trust the tests** (generated, mirrored, or CI-gated):
+- {path}: {what gates correctness}
+````
+
+**Appendix: The diff in N layers** (produced when the PR exceeds 500 lines changed):
+
+````markdown
+## The diff in N layers
+
+**Layer 1: {name}.** {One sentence: what exists after this PR that did not before.}
+**Layer 2: {name}.** {One sentence: what this layer adds on top of layer 1.}
+...
+````
+
+Stop at the layer where the explanation is complete.
+
+If the survivor set is empty across all channels, say so in one sentence after the narrative.

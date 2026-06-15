@@ -1,4 +1,4 @@
-#### Triage map (when >10 files changed)
+## Appendices
 
 ```markdown
 ## Triage map

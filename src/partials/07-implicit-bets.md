@@ -1,3 +1,5 @@
+## Implicit Bets
+
 Separate from open forks, some choices in the diff are resolved (the code picks one option cleanly) but the choice implies a subjective position the reviewer should consciously agree with. These are not bugs (nothing breaks). They are not forks (only one option is in the diff). They are bets: technically sound decisions that trade one failure mode for another, or commit the codebase to a direction that is expensive to reverse.
 
 A candidate qualifies as an implicit bet if:

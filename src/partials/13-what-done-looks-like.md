@@ -1,3 +1,5 @@
+## What Done Looks Like
+
 Done means:
 
 1. Every changed file in the diff was opened in the workspace and read at the relevant range, not just skimmed in the diff fragment.

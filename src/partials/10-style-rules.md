@@ -1,3 +1,5 @@
+## Style Rules
+
 Banned:
 - Em dashes (—). Use commas, semicolons, or parentheses.
 - Apologies and softeners: "happy either way", "feel free to ignore", "just a thought", "take it or leave it", "no strong opinion but", "not blocking but".

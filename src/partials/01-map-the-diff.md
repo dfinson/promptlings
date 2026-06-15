@@ -1,3 +1,5 @@
+## Map the Diff
+
 Identify every changed file in the PR or branch. For each one, record:
 
 - The path on the new side.

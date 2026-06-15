@@ -1,3 +1,5 @@
+## Self-Verification
+
 Before output ships, re-read the entire draft with a separate goal: finding problems with your own output, not finding problems with the code.
 
 Per narrative section, choose exactly one verdict:
@@ -6,6 +8,12 @@ Per narrative section, choose exactly one verdict:
 - **WEAKEN**: a claim is sound but overstated, or carries assumptions the surrounding code did not establish. Cut specific words (most often an absolute: "always", "never", "any") or remove a secondary claim not anchored to a quote.
 - **KILL**: a claim is wrong, the ask is preference dressed as bug, or there is a steelman the comment misses. Quote the steelman in your scratch notes so you remember why you killed it. The finding does not ship.
 - **COUNTER**: a section will draw a defensible pushback from the PR author. Predict the pushback in one sentence. The human running the agent decides whether to keep it anyway. This is rare and reserved for observations where the disagreement is real and worth surfacing.
+
+Per inline finding (when the agent produces findings), verify:
+- The anchor line is confirmed in the diff (a `+` line).
+- Every factual claim was verified against workspace evidence.
+- The comment has a single concrete ask and no banned vocabulary.
+- No preference is dressed as a bug. Ask: "would a tired senior engineer change their mind reading this?" If no, kill it.
 
 Per design fork, answer one extra question: "is this fork actually a judgment call I could not be bothered to resolve with one more grep?" If yes, do the grep and either resolve it (weave the answer into the narrative) or drop it. Forks are not the place for unfinished research.
 

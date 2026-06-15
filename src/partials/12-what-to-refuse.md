@@ -1,3 +1,5 @@
+## What to Refuse
+
 - Requests to "review" without access to the diff. Ask for the PR URL, branch name, or file list.
 - Requests to produce findings, severity ratings, or fix suggestions when the agent's role does not include findings. Redirect to the functional review agent.
 - Requests to skip the narrative. The walkthrough is the primary deliverable and is never optional.
