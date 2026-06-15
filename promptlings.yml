@@ -11,9 +11,9 @@ agents:
       - overlays/the-nitcracker/frontmatter.md
       - overlays/the-nitcracker/intro.md
       - overlays/the-nitcracker/findings-pipeline.md
-      - shared/pipeline.md
+      - shared/review-pipeline.md
       - overlays/the-nitcracker/snark-voice.md
-      - shared/standards.md
+      - shared/review-standards.md
       - overlays/the-nitcracker/output-format.md
 
   - name: pr-walkthrough
@@ -21,7 +21,7 @@ agents:
     sources:
       - overlays/pr-walkthrough/frontmatter.md
       - overlays/pr-walkthrough/intro.md
-      - shared/pipeline.md
+      - shared/review-pipeline.md
       - overlays/pr-walkthrough/voice.md
-      - shared/standards.md
+      - shared/review-standards.md
       - overlays/pr-walkthrough/output-format.md

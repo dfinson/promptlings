@@ -2,14 +2,14 @@
 
 Opinionated, model-agnostic agent prompts for AI coding assistants.
 
-Each promptling is a self-contained `.agent.md` file: a structured system prompt that works with any LLM-powered coding tool (GitHub Copilot CLI, Claude Code, or any agent framework that accepts markdown instructions).
+Each promptling is a self-contained `.agent.md` file: a structured system prompt that works with any LLM-powered coding tool (GitHub Copilot CLI, Claude Code, or any agent framework that accepts markdown instructions). Agents that share logic are composed from shared modules at build time so the shipped files stay self-contained while the source stays DRY.
 
 ## Agents
 
 ### Code Review
 
 | Agent | What it does |
-| --- | --- |
+|-------|--------------|
 | [pr-walkthrough](agents/code-review/pr-walkthrough.agent.md) | Narrative PR orientation that walks a reviewer through the diff architecture. Surfaces judgment calls without rendering judgment. |
 | [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | Same thing, but with a sense of humor and a roast up front. |
 
@@ -21,23 +21,19 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 
 ## Installation
 
+Pick the agents you want and copy them to your tool's agent directory.
+
 ### GitHub Copilot CLI
 
-Copy agent files to your user agents directory:
-
 ```bash
+# User-wide
 cp agents/code-review/*.agent.md ~/.copilot/agents/
-```
 
-Or for a specific project:
-
-```bash
+# Per-project
 cp agents/code-review/*.agent.md .github/agents/
 ```
 
 ### Claude Code
-
-Copy agent files to your commands directory:
 
 ```bash
 mkdir -p .claude/commands
@@ -50,7 +46,7 @@ These are plain markdown files with YAML frontmatter. Parse the `name` and `desc
 
 ## Building
 
-Agents are assembled from shared modules and per-agent overlays. The `promptlings.yml` manifest declares each agent's source list. To rebuild:
+Agents are assembled from shared modules and per-agent overlays, declared in a single YAML manifest. To rebuild after editing sources:
 
 ```bash
 pip install pyyaml
@@ -59,24 +55,30 @@ python build.py
 
 ### Project structure
 
-```javascript
-promptlings.yml          # Single manifest: all agents, sources, outputs
-build.py                 # Reads manifest, concatenates sources, writes agents
-src/
-  shared/                # Modules used by all agents
-    pipeline.md          # What to do (diff mapping, input modes, structured observations)
-    standards.md         # How to do it (voice, style, scope, verification)
-  overlays/              # Per-agent customizations
-    the-nitcracker/      # Frontmatter, intro, findings pipeline, snark voice, output format
-    pr-walkthrough/      # Frontmatter, intro, voice, output format
-agents/
-  code-review/           # Built output (committed, verified by CI)
 ```
+promptlings.yml              # Manifest: agents, their sources, and output paths
+build.py                     # Reads manifest, concatenates sources, writes agents
+src/
+  shared/                    # Reusable modules (scoped by domain)
+    review-pipeline.md       # Code review: diff mapping, input modes, structured observations
+    review-standards.md      # Code review: voice, style, scope, verification
+  overlays/                  # Per-agent customizations
+    the-nitcracker/
+    pr-walkthrough/
+agents/                      # Built output (committed, verified by CI for drift)
+  code-review/
+```
+
+### Adding a new agent
+
+1. Create an overlay directory under `src/overlays/<name>/` with at least a `frontmatter.md`.
+2. Add an entry to `promptlings.yml` listing the sources in assembly order.
+3. Run `python build.py` and commit the built output.
 
 ## Philosophy
 
-- **High bar, low noise.** A finding that doesn't change a tired senior engineer's mind doesn't ship.
-- **Narrative over checklist.** The reviewer needs a mental model, not a bullet list.
+- **High bar, low noise.** Output that doesn't change a tired senior engineer's mind doesn't ship.
+- **Composable.** Shared logic lives in scoped modules; agents compose what they need.
 - **Model-agnostic.** No vendor lock-in. If it can follow instructions, it can run these.
 - **Opinionated.** These agents have a point of view. Fork them if yours differs.
 - **No em dashes.** Ever. Use colons, commas, parentheses, or restructure the sentence.
