@@ -10,8 +10,8 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 
 | Agent | Description |
 |-------|-------------|
-| [the-nitcracker](review/the-nitcracker.agent.md) | Full PR review: inline comments, design forks, implicit bets, and a narrative writeup. High signal-to-noise ratio tuned for senior engineers. |
-| [pr-walkthrough](review/pr-walkthrough.agent.md) | Narrative-driven PR orientation that walks a reviewer through the diff architecture before they open it. Surfaces judgment calls without rendering judgment. |
+| [pr-walkthrough](review/pr-walkthrough.agent.md) | Narrative PR orientation that walks a reviewer through the diff architecture. Surfaces judgment calls without rendering judgment. |
+| [the-nitcracker](review/the-nitcracker.agent.md) | Same thing, but with a sense of humor and a roast up front. |
 
 ## Installation
 
