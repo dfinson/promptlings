@@ -1,0 +1,33 @@
+# Markdownlint configuration for agent prompt files
+# These are prose-heavy instruction documents, not README-style docs
+
+# Disable line length - agent prompts are intentionally long-line prose
+MD013: false
+
+# Allow both dash and asterisk list styles (partials use different conventions)
+MD004: false
+
+# Allow heading level jumps (partials are concatenated; h4 after h2 is expected)
+MD001: false
+
+# Allow multiple headings with same content (common in templates)
+MD024: false
+
+# Allow trailing punctuation in headings
+MD026: false
+
+# Allow inline HTML (used in some agent output format examples)
+MD033: false
+
+# Don't require blank lines around lists in all contexts
+MD032: false
+
+# Allow emphasis used as heading (bold section labels are intentional)
+MD036: false
+
+# Allow fenced code blocks without language specified (template examples)
+MD040: false
+
+# Don't require first line to be a top-level heading (partials are fragments)
+MD041: false
+

@@ -1,4 +1,4 @@
-name: Lint
+name: CI
 
 on:
   pull_request:
@@ -7,24 +7,19 @@ on:
     branches: [main]
 
 jobs:
-  no-code:
-    name: No code files
+  build-verify:
+    name: Build and verify no drift
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Reject code files
+      - name: Run build
+        run: bash build.sh
+      - name: Check for drift
         run: |
-          # Only markdown, LICENSE, and dotfiles/config are allowed
-          allowed_pattern='^\./(\.|LICENSE|README|CONTRIBUTING|CHANGELOG|.*\.md$)'
-          violations=$(find . -type f \
-            -not -path './.git/*' \
-            -not -path './.github/*' \
-            | grep -Ev "$allowed_pattern" || true)
-          if [ -n "$violations" ]; then
-            echo "::error::Code or non-markdown files detected:"
-            echo "$violations"
-            echo ""
-            echo "This repo only contains markdown agent prompts. No code allowed."
+          if ! git diff --quiet review/; then
+            echo "::error::Built output differs from committed review/ files."
+            echo "Run 'bash build.sh' locally and commit the result."
+            git diff review/
             exit 1
           fi
 
@@ -36,3 +31,4 @@ jobs:
       - uses: DavidAnson/markdownlint-cli2-action@v19
         with:
           globs: "**/*.md"
+
