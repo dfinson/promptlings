@@ -25,6 +25,7 @@ partials/08-appendices.md
 partials/09-self-verification.md
 partials/10-style-rules.md
 partials/11-scope-rules.md
+partials/14-input-modes.md
 overlays/the-nitcracker/output-format.md
 partials/12-what-to-refuse.md
 partials/13-what-done-looks-like.md

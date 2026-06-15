@@ -1,18 +1,41 @@
-## Required Steps
-
-### Orchestrated Input
+## Orchestrated Input
 
 When a `diff-state.json` path is provided in the input by an orchestrator:
 
-1. Read `diff-state.json` once to obtain `branch`, `base`, `files`, `extensions`, `diffPatchPath`, and `findingsFolder`.
+1. Read `diff-state.json` once to obtain `branch`, `base`, `files`, `untrackedFiles`, `extensions`, `tshirtSize`, `diffPatchPath`, and `findingsFolder`.
 2. Issue a single parallel tool-call block to read all files needed by subsequent steps:
    * The diff at `diffPatchPath` (full file, single read). Do not re-read the diff for any reason: no partial re-reads, range extensions, or verification reads. If the first read returns truncated output, work with what was returned.
    * Source files referenced in the `files` array, at the hunk ranges identified in the diff.
-3. Skip all git diff commands (diff computation is already complete), but still perform the Step 1 analysis: map the hunks, identify changed files/ranges, and read surrounding file context using the provided diff and file list. Then proceed to Step 2 (Map the runway).
-4. After producing the walkthrough, write the output to `<findingsFolder>/walkthrough.md`.
-5. Skip standalone output steps.
+   * For files in `untrackedFiles` (no committed diff exists), read the full file content.
+3. Skip all git diff commands (diff computation is already complete), but still perform the map-the-diff analysis: map the hunks, identify changed files/ranges, and read surrounding file context using the provided diff and file list. Then proceed to map the runway.
+4. After producing output, write it to `<findingsFolder>/<output-filename>` (the agent's designated output file).
+5. Skip standalone mode steps.
 
-### Standalone Mode
+### diff-state.json contract
+
+```json
+{
+  "branch": "<branch-name>",
+  "base": "<base-branch>",
+  "files": ["path/to/file1.ts", "path/to/file2.py"],
+  "untrackedFiles": ["path/to/new-file.ts"],
+  "extensions": [".ts", ".py"],
+  "tshirtSize": "M",
+  "diffPatchPath": ".copilot-tracking/pr/pr-reference.xml",
+  "findingsFolder": ".copilot-tracking/reviews/code-reviews/<sanitized-branch>/"
+}
+```
+
+Fields:
+- `branch` / `base`: source and target branches
+- `files`: all committed changed file paths
+- `untrackedFiles`: paths with no committed diff (read in full)
+- `extensions`: unique file extensions in the changeset
+- `tshirtSize`: XS/S/M/L/XL classification (orchestrator hint for dispatch strategy)
+- `diffPatchPath`: path to the full diff output
+- `findingsFolder`: where this agent writes its output
+
+## Standalone Mode
 
 When no `diff-state.json` is provided:
 
@@ -23,7 +46,7 @@ When no `diff-state.json` is provided:
    git branch --show-current
    ```
 
-   If the current branch is the base branch or HEAD is detached, ask the user which branch to walk through before proceeding.
+   If the current branch is the base branch or HEAD is detached, ask the user which branch or PR to analyze before proceeding.
 
 2. Compute the diff using the pr-reference skill when available:
 
@@ -45,9 +68,9 @@ When no `diff-state.json` is provided:
 
 4. Execute the full pipeline.
 
-5. Write output to `.copilot-tracking/pr/review/<sanitized-branch>/walkthrough.md` (create the directory if needed, sanitize branch name by replacing `/` with `-`).
+5. Write output to `.copilot-tracking/pr/review/<sanitized-branch>/<output-filename>` (create the directory if needed, sanitize branch name by replacing `/` with `-`).
 
-6. Present the walkthrough in the conversation response.
+6. Present the output in the conversation response.
 
 ## Large Diff Handling
 
