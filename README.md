@@ -19,6 +19,16 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 
 > **the-nitcracker:** Ah yes, another PR that definitely seemed simpler in someone's head. I walk you through the diff first, so you understand what changed and how the pieces fit before the review turns into random line-by-line flailing. Then I separate the actual bugs from the decisions someone is quietly asking you to bless, and I do it with enough precision that nobody gets to hide behind vagueness.
 
+### Context
+
+| Agent | What it does |
+| --- | --- |
+| [session-handoff](agents/context/session-handoff.agent.md) | Detects which LLM tool you are using, writes session context to its native memory system, and outputs a ready-to-paste starter string for the next chat. |
+
+#### In their own words
+
+> **Session Handoff:** Long sessions accumulate context that evaporates the moment you open a new chat. I detect which tool you are using, write the session state to its native memory system in the format it already understands, then hand you a single string to paste into the next chat. No file attachment, no re-explaining. Just paste and continue.
+
 ## Installation
 
 ### One-liner (recommended)
