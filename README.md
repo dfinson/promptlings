@@ -23,7 +23,7 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 
 | Agent | What it does |
 | --- | --- |
-| [session-handoff](agents/context/session-handoff.agent.md) | Persists session context to portable project-local files and outputs a ready-to-paste starter string for the next chat. |
+| [session-handoff](agents/context/session-handoff.agent.md) | Persists session context to workspace-local files and outputs a ready-to-paste starter string for the next chat. |
 
 #### In their own words
 
