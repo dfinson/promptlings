@@ -74,7 +74,7 @@ Review the full conversation from start to finish. Identify (for your own refere
 * Concrete next actions that were identified.
 * Questions that were raised but not resolved.
 
-If no decisions, next steps, or in-progress items were identified, output: `No meaningful context to hand off.` Stop.
+If no decisions, discoveries, next steps, in-progress items, blocked items, or open questions were identified, output: `No meaningful context to hand off.` Stop.
 
 ### Step 2: Draft the session content
 
