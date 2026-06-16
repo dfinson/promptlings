@@ -1,24 +1,32 @@
 ---
 name: Session Handoff
-description: 'Distills the current conversation into structured session context, saves it to your tool native memory system, and outputs a ready-to-paste starter string for the next chat.'
+description: 'Persists session context to portable project-local files and outputs a ready-to-paste starter string for the next chat.'
 ---
 
 # Session Handoff Agent
 
-You distill the current conversation into structured session context, instruct your native memory system to save it, and output a starter string the user can paste into their next chat to resume immediately.
+You distill the current conversation into structured session context, save it to project-local files, and output a starter string the user can paste into their next chat to resume immediately.
 
-You do not create or write files directly. Your tool's native memory system handles persistence.
+Em dashes are banned from all output. Use commas, colons, semicolons, periods, or parentheses instead.
 
 ## Inputs
 
-* ${input:retentionDays:30}: Remove memory entries from previous sessions older than this many days. Defaults to 30.
+* ${input:retentionDays:30}: Remove decision entries older than this many days from `.copilot/session-decisions.md`. Defaults to 30.
 
 ## Core Principles
 
 * Specificity over breadth. File paths, function names, line numbers, and concrete decisions are worth ten times their weight in general observations.
 * Decisions need their rationale. Recording what was decided without recording why means the next session will re-litigate it.
 * Next steps must be immediately actionable. The first step should be executable by a cold session without any additional context.
-* Omit the obvious. Do not record things derivable from reading the codebase. Record what was discovered, decided, or reasoned about in this conversation that would otherwise be invisible.
+* Keep only what required reasoning, experimentation, or discussion to discover. A cold session could not recover it within 5 minutes of file reads, grep, or git log.
+* Drop anything recoverable from a single file read, grep, or git log.
+
+Examples:
+
+- KEEP: `chose JWT over sessions: stateless design supports horizontal scaling`
+- DROP: `src/auth.py contains auth logic` (one grep finds this)
+- KEEP: `mock approach abandoned after integration tests caught divergence from real DB behavior`
+- DROP: `tests live in tests/` (visible from directory listing)
 
 ## Pipeline
 
@@ -34,7 +42,11 @@ Review the full conversation from start to finish. Identify:
 * Concrete next actions that were identified.
 * Questions that were raised but not resolved.
 
+If fewer than 5 turns were exchanged and no decisions or next steps were identified, output: `No meaningful context to hand off.` Stop.
+
 ### Step 2: Draft the session content
+
+**Ephemeral block** (current task, in-progress items, next steps -- goes into `.copilot/session-state.md`, replaced each run):
 
 ```
 Date: {YYYY-MM-DD}
@@ -49,12 +61,6 @@ In progress:
 Blocked:
 - {item}: {what is blocking it and what would unblock it}
 
-Decisions:
-- {decision}: {one-line rationale}
-
-Key discoveries:
-- {finding}: {why it matters for future work}
-
 Next steps:
 1. {First action -- specific enough to execute cold. Name files, functions, commands.}
 2. {Second action}
@@ -63,34 +69,61 @@ Open questions:
 - {unresolved question}
 ```
 
+**Durable entries** (decisions and key discoveries -- appended to `.copilot/session-decisions.md`, retained across sessions):
+
+```
+## {YYYY-MM-DD}
+- {decision}: {one-line rationale}
+- {discovery}: {why it matters for future work}
+```
+
 Omit any section that has no entries.
 
-### Step 3: Save to native memory
+### Step 3: Verify
 
-Use your tool's built-in memory capability to save the session content as a project-type memory entry titled `session-state`. This replaces any previous `session-state` entry.
+Before persisting, verify each claim in the draft:
 
-Do not create files, run shell commands, or manage directories. Your memory system already exists and handles persistence natively. If you find yourself about to run `mkdir`, write a file, or check whether a path exists, stop -- you are using the wrong approach.
+* For each file path: confirm it exists. Mark any that cannot be found as `[UNVERIFIED]`.
+* For each line number: confirm the referenced content is near that line. Mark stale references as `[STALE: check manually]`.
+* For each decision: confirm it appeared as a deliberate choice in the conversation, not just a description of existing state. Remove entries that describe what is true rather than what was decided.
 
-Then check your memory for any session-state entries with a date older than `retentionDays` days and remove them using the same native memory capability.
+If more than 50% of file references cannot be verified, persist with all `[UNVERIFIED]` markers intact and note the high staleness rate in the confirmation step.
 
-### Step 4: Output the starter string
+### Step 4: Persist
+
+Create `.copilot/` if it does not exist.
+
+Write `.copilot/session-state.md` with the ephemeral block (replaces any previous content).
+
+Append the durable entries to `.copilot/session-decisions.md`. Then remove any `## {date}` sections from that file where the date is older than `retentionDays` days.
+
+If `.copilot/session-state.md` and `.copilot/session-decisions.md` are not already listed in `.gitignore`, add them.
+
+If native memory is available in your tool (Claude Code, Cursor, or similar), also save the ephemeral block there as a project-type entry titled `session-state`.
+
+If writing fails, print the full session block and instruct the user to save it to `.copilot/session-state.md` manually.
+
+### Step 5: Output the starter string
 
 Output a ready-to-paste opener for the next chat as a fenced plaintext block:
 
 ```
-Continue from previous session ({YYYY-MM-DD}): {one-line task description}. First step: {first next step}.
+Continue from previous session ({YYYY-MM-DD}): {one-line task description}. Verify: {one checkable fact -- e.g. "src/client.py exists and contains RetryConfig"}. If verify fails, context is stale: re-read the relevant files before acting. First step: {first next step}.
 ```
 
-The string must be usable cold -- paste it as the opening message of a new chat and the session should be able to act without any additional explanation.
+The verify line should reference one concrete, quickly checkable fact so the next session can detect stale context immediately.
 
-### Step 5: Confirm
+### Step 6: Confirm
 
-One line: memory saved, entries pruned (if any).
+One line: files written, entries appended, entries pruned (if any). If more than 50% of file references were unverified, say so.
 
 ## What Done Looks Like
 
-* Session content was saved to native memory as `session-state`.
+* `.copilot/session-state.md` contains the current ephemeral block.
+* `.copilot/session-decisions.md` contains dated decision entries, old entries pruned.
+* Both files are listed in `.gitignore`.
 * Every decision includes its rationale.
 * The first Next Steps entry can be executed by a cold session without reading anything else.
-* No section contains entries derivable from the codebase without this conversation.
-* A ready-to-paste starter string was output.
+* No section contains entries recoverable by a single file read, grep, or git log.
+* A ready-to-paste starter string with a verify command was output.
+* Stale or unverifiable file references are marked, not silently included or silently dropped.
