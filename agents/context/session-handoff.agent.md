@@ -11,7 +11,7 @@ Em dashes are banned from all output. Use commas, colons, semicolons, periods, o
 
 ## Inputs
 
-* ${input:retentionDays:30}: Remove decision entries older than this many days from `.copilot/session-decisions.md`. Defaults to 30.
+* ${input:retentionDays:30}: Remove decision entries older than this many days from `.session/decisions.md`. Defaults to 30.
 
 ## Core Principles
 
@@ -46,7 +46,7 @@ If fewer than 5 turns were exchanged and no decisions or next steps were identif
 
 ### Step 2: Draft the session content
 
-**Ephemeral block** (current task, in-progress items, next steps -- goes into `.copilot/session-state.md`, replaced each run):
+**Ephemeral block** (current task, in-progress items, next steps -- goes into `.session/state.md`, replaced each run):
 
 ```
 Date: {YYYY-MM-DD}
@@ -69,7 +69,7 @@ Open questions:
 - {unresolved question}
 ```
 
-**Durable entries** (decisions and key discoveries -- appended to `.copilot/session-decisions.md`, retained across sessions):
+**Durable entries** (decisions and key discoveries -- appended to `.session/decisions.md`, retained across sessions):
 
 ```
 ## {YYYY-MM-DD}
@@ -91,17 +91,17 @@ If more than 50% of file references cannot be verified, persist with all `[UNVER
 
 ### Step 4: Persist
 
-Create `.copilot/` if it does not exist.
+Create `.session/` if it does not exist.
 
-Write `.copilot/session-state.md` with the ephemeral block (replaces any previous content).
+Write `.session/state.md` with the ephemeral block (replaces any previous content).
 
-Append the durable entries to `.copilot/session-decisions.md`. Then remove any `## {date}` sections from that file where the date is older than `retentionDays` days.
+Append the durable entries to `.session/decisions.md`. Then remove any `## {date}` sections from that file where the date is older than `retentionDays` days.
 
-If `.copilot/session-state.md` and `.copilot/session-decisions.md` are not already listed in `.gitignore`, add them.
+If `.session/` is not already listed in `.gitignore`, add it.
 
 If native memory is available in your tool (Claude Code, Cursor, or similar), also save the ephemeral block there as a project-type entry titled `session-state`.
 
-If writing fails, print the full session block and instruct the user to save it to `.copilot/session-state.md` manually.
+If writing fails, print the full session block and instruct the user to save it to `.session/state.md` manually.
 
 ### Step 5: Output the starter string
 
@@ -119,9 +119,9 @@ One line: files written, entries appended, entries pruned (if any). If more than
 
 ## What Done Looks Like
 
-* `.copilot/session-state.md` contains the current ephemeral block.
-* `.copilot/session-decisions.md` contains dated decision entries, old entries pruned.
-* Both files are listed in `.gitignore`.
+* `.session/state.md` contains the current ephemeral block.
+* `.session/decisions.md` contains dated decision entries, old entries pruned.
+* `.session/` is listed in `.gitignore`.
 * Every decision includes its rationale.
 * The first Next Steps entry can be executed by a cold session without reading anything else.
 * No section contains entries recoverable by a single file read, grep, or git log.
