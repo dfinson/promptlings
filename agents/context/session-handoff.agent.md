@@ -108,7 +108,7 @@ If writing fails, print the full session block and instruct the user to save it 
 Output a ready-to-paste opener for the next chat as a fenced plaintext block:
 
 ```
-Continue from previous session ({YYYY-MM-DD}): {one-line task description}. Verify: {one checkable fact -- e.g. "src/client.py exists and contains RetryConfig"}. If verify fails, context is stale: re-read the relevant files before acting. First step: {first next step}.
+Continue from previous session ({YYYY-MM-DD}): {one-line task description}. Read .session/decisions.md for prior decisions. Verify: {one checkable fact -- e.g. "src/client.py exists and contains RetryConfig"}. If verify fails, context is stale: re-read the relevant files before acting. First step: {first next step}.
 ```
 
 The verify line should reference one concrete, quickly checkable fact so the next session can detect stale context immediately.
