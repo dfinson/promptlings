@@ -10,6 +10,7 @@ $BaseUrl = "https://raw.githubusercontent.com/$Repo/$Branch"
 $Agents = @(
     "agents/code-review/pr-walkthrough.agent.md"
     "agents/code-review/the-nitcracker.agent.md"
+    "agents/context/session-handoff.agent.md"
 )
 
 # Detect target directory

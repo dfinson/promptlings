@@ -19,6 +19,16 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 
 > **the-nitcracker:** Ah yes, another PR that definitely seemed simpler in someone's head. I walk you through the diff first, so you understand what changed and how the pieces fit before the review turns into random line-by-line flailing. Then I separate the actual bugs from the decisions someone is quietly asking you to bless, and I do it with enough precision that nobody gets to hide behind vagueness.
 
+### Context
+
+| Agent | What it does |
+| --- | --- |
+| [session-handoff](agents/context/session-handoff.agent.md) | Persists session context to workspace-local files and outputs a ready-to-paste starter string for the next chat. |
+
+#### In their own words
+
+> **Session Handoff:** Long sessions accumulate context that evaporates the moment you open a new chat. I distill the conversation into two files: a current-state snapshot for picking up immediately, and a running decisions log that survives across sessions. Then I hand you a single string to paste into the next chat, with a verification step so the next session can tell immediately if the context has gone stale.
+
 ## Installation
 
 ### One-liner (recommended)
