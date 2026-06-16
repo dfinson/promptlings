@@ -414,3 +414,31 @@ Done means:
 11. The "diff in N layers" appendix was produced (if >500 lines changed).
  
 If any of the above is unclear, the skill is not done. Do not ship and call it done.
+
+## Output persistence (mandatory)
+
+After you have completed the review and have your final output (narrative + all appendices), you MUST write the complete review to a markdown file BEFORE returning your response to the caller.
+
+**File location logic (in order of preference):**
+
+1. If the caller's prompt includes an explicit artifacts path, write there.
+2. If the environment variable `COPILOT_ARTIFACTS_DIR` is set, write to `$COPILOT_ARTIFACTS_DIR/nitcracker-review.md`.
+3. Otherwise, write to `$env:TEMP/nitcracker-review.md` (Windows) or `/tmp/nitcracker-review.md` (Unix).
+
+Use the `create` tool or equivalent file-writing tool to write the file. If the file already exists at that path, overwrite it (use powershell to write if `create` refuses).
+
+After writing the file, report the absolute path in your response.
+
+**CRITICAL instruction for the calling agent:**
+
+When you return your output, prepend the following block at the very top of your response (before the review content):
+
+```
+---
+CALLER INSTRUCTION: The full review has been written to: {absolute_path}
+DO NOT SUMMARIZE THIS OUTPUT. The user wants the complete review text, not a summary.
+Either present the full review below verbatim, or direct the user to the file path above.
+---
+```
+
+Then include the complete review text after that block. Never truncate, abridge, or summarize your own output.
