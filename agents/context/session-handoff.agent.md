@@ -11,10 +11,6 @@ Em dashes are banned from all output. Use commas, colons, semicolons, periods, o
 
 Note: `.session/` files are workspace-local and gitignored. They do not survive `git clone`, fresh checkouts, or teammate access. This is intentional: session state is personal and ephemeral.
 
-## Inputs
-
-* ${input:retentionGenerations:10}: Drop decision entries that have not been touched in this many sessions. Defaults to 10.
-
 ## Core Principles
 
 * Specificity over breadth. File paths, function names, line numbers, and concrete decisions are worth ten times their weight in general observations.
@@ -55,15 +51,13 @@ Open questions:
 - ...
 ```
 
-**`.session/decisions.md`** -- keyed entries, generation-tracked:
+**`.session/decisions.md`** -- one keyed entry per topic, never pruned:
 
 ```
-generation: {N}
-
-[{topic-key}] (gen {G}) {decision}: {rationale}
+[{topic-key}] {decision}: {rationale}
 ```
 
-Each entry has a topic key (kebab-case, e.g. `auth-strategy`, `db-driver`, `test-approach`) and the generation it was last written or updated. The file header tracks the current generation counter.
+Each entry has a kebab-case topic key (e.g. `auth-strategy`, `db-driver`, `retry-policy`). One entry per topic. Contradiction resolution is the only eviction mechanism: a new decision on the same topic replaces the old one. The file stabilizes at the number of active decisions in the project.
 
 ## Pipeline
 
@@ -108,9 +102,9 @@ Open questions:
 - {unresolved question}
 ```
 
-**Decision entries** (go into `.session/decisions.md`, keyed and generation-tracked):
+**Decision entries** (go into `.session/decisions.md`, keyed by topic):
 
-For each decision or key discovery, assign a short kebab-case topic key that identifies what the decision is about (e.g. `auth-strategy`, `db-driver`, `retry-policy`). Format:
+For each decision or key discovery, assign a short kebab-case topic key. Format:
 
 ```
 [{topic-key}] {decision}: {one-line rationale}
@@ -137,12 +131,11 @@ Write `.session/state.md` with the ephemeral block (replaces any previous conten
 
 For `.session/decisions.md`:
 
-1. Read the file if it exists. Parse the `generation: N` header (default 0 if absent). Set `current_gen = N + 1`.
+1. Read the file if it exists.
 2. For each new decision entry: check whether any existing entry shares the same topic key (semantic match -- "are these about the same thing?").
-   - If a match exists: update that entry's content and set its generation to `current_gen`. If the new decision contradicts the old one, append `(reverses previous)` to the rationale.
-   - If no match: add it as a new entry with generation `current_gen`.
-3. Drop any entry whose generation is less than `current_gen - retentionGenerations`.
-4. Write the updated file with `generation: {current_gen}` as the first line.
+   - If a match exists: replace that entry's content. If the new decision contradicts the old one, append `(reverses: {old decision summary})` to the rationale.
+   - If no match: append it as a new entry.
+3. Write the updated file.
 
 If `.session/` is not already listed in `.gitignore`, add it.
 
@@ -162,16 +155,15 @@ Continue from previous session ({YYYY-MM-DD}): {one-line task description}. Read
 
 ### Step 6: Confirm
 
-One line: files written, decision entries updated or added, entries pruned (generation cutoff: `current_gen - retentionGenerations`) (if any). If more than 50% of file references were unverified, say so.
+One line: files written, decision entries added or updated (note any reversals). If more than 50% of file references were unverified, say so.
 
 ## What Done Looks Like
 
 * `.session/state.md` contains the current ephemeral block.
-* `.session/decisions.md` has an incremented generation counter, updated entries at the current generation, and stale entries pruned.
+* `.session/decisions.md` has one entry per topic, with contradictions resolved in-place.
 * `.session/` is listed in `.gitignore`.
 * No credentials, tokens, or sensitive values appear in either file.
 * Every decision includes its rationale and topic key.
-* Contradictions are resolved by updating the existing entry to the current generation, not by appending a conflicting entry.
 * The first Next Steps entry can be executed by a cold session without reading anything else.
 * A ready-to-paste starter string with a verify command was output.
 * Stale or unverifiable file references are marked, not silently included or silently dropped.
