@@ -54,16 +54,17 @@ Open questions:
 **`.session/decisions.md`** -- one keyed entry per topic, never pruned:
 
 ```
-[{topic-key}] {decision}: {rationale}
+[{topic-key}] decision: {what was decided}: {rationale}
+[{topic-key}] discovery: {what was found}: {why it matters}
 ```
 
-Each entry has a kebab-case topic key (e.g. `auth-strategy`, `db-driver`, `retry-policy`). One entry per topic. Contradiction resolution is the only eviction mechanism: a new decision on the same topic replaces the old one. The file stabilizes at the number of active decisions in the project.
+Each entry has a kebab-case topic key (e.g. `auth-strategy`, `db-driver`, `retry-policy`). Contradiction resolution is the only eviction mechanism. Additive info on the same topic appends as a new line under the same key.
 
 ## Pipeline
 
 ### Step 1: Read the conversation
 
-Review the full conversation from start to finish. Identify:
+Review the full conversation from start to finish. Identify (for your own reference, not necessarily for output):
 
 * The core task or goal the session was working toward.
 * Every file, function, line number, or system touched or discussed.
@@ -104,10 +105,11 @@ Open questions:
 
 **Decision entries** (go into `.session/decisions.md`, keyed by topic):
 
-For each decision or key discovery, assign a short kebab-case topic key. Format:
+For each decision or key discovery, assign a short kebab-case topic key and a type:
 
 ```
-[{topic-key}] {decision}: {one-line rationale}
+[{topic-key}] decision: {what was decided}: {one-line rationale}
+[{topic-key}] discovery: {what was found}: {why it matters}
 ```
 
 Omit any section of the ephemeral block that has no entries.
@@ -116,12 +118,12 @@ Omit any section of the ephemeral block that has no entries.
 
 Before persisting, check each claim in the draft:
 
-* For each file path: confirm it exists. Mark any that cannot be found as `[UNVERIFIED]`.
-* For each line number: confirm the referenced content is near that line. Mark stale references as `[STALE: check manually]`.
-* For each decision: confirm it appeared as a deliberate choice in the conversation, not just a description of existing state. Remove entries that describe what is true rather than what was decided.
+* For each file path: confirm it exists. If it does not exist, mark as `[UNVERIFIED]`.
+* For each line number: confirm the referenced content is near that line. If the referenced content does not match, mark as `[STALE: check manually]`.
+* For each `decision:` entry: confirm it appeared as a deliberate choice in the conversation, not a description of existing state. Remove entries that describe what is true rather than what was decided. `discovery:` entries do not require this check: they just need to trace to an observed behavior or constraint.
 * Scan the draft for credentials, tokens, API keys, environment variable values, or private URLs. Redact any found. If context depends on a secret, record where to retrieve it (`requires GITHUB_TOKEN from local env`) rather than the value.
 
-If more than 50% of file references cannot be verified, persist with all `[UNVERIFIED]` markers intact and note the high staleness rate in the confirmation step.
+If more than 50% of file paths and line number references cannot be verified, persist with all markers intact and note the high staleness rate in the confirmation step.
 
 ### Step 4: Persist
 
@@ -132,25 +134,26 @@ Write `.session/state.md` with the ephemeral block (replaces any previous conten
 For `.session/decisions.md`:
 
 1. Read the file if it exists.
-2. For each new decision entry: check whether any existing entry shares the same topic key (semantic match -- "are these about the same thing?").
-   - If a match exists: replace that entry's content. If the new decision contradicts the old one, append `(reverses: {old decision summary})` to the rationale.
-   - If no match: append it as a new entry.
+2. For each new entry: check whether any existing entry shares the same topic key.
+   - Contradiction (same topic, incompatible content): replace that line. Append `(reverses: {old summary})` to the rationale.
+   - Additive (same topic, compatible content): append a new line under the same key.
+   - No match: append as a new entry.
 3. Write the updated file.
 
-If `.session/` is not already listed in `.gitignore`, add it.
+If `.session/` is not already listed in `.gitignore`, add it. If no `.gitignore` exists, create one with `.session/` as the first entry.
 
 If native memory is available in your tool (Claude Code, Cursor, or similar), also save the ephemeral block there as a project-type entry titled `session-state`.
 
-If writing fails, print the full session block and instruct the user to save it to `.session/state.md` manually.
+If writing fails, print both the ephemeral block and all decision entries, and instruct the user to save each to its respective file manually.
 
 Note: these file writes are not atomic. If multiple agents are running simultaneously (multi-worktree or parallel sessions), last write wins. This is a known limitation.
 
 ### Step 5: Output the starter string
 
-Output a ready-to-paste opener for the next chat as a fenced plaintext block:
+Output a ready-to-paste opener for the next chat as a fenced plaintext block. Items in brackets are conditional: omit if they do not apply.
 
 ```
-Continue from previous session ({YYYY-MM-DD}): {one-line task description}. Read .session/decisions.md for prior decisions. Verify: {one checkable fact -- e.g. "src/client.py exists and contains RetryConfig"}. If verify fails, context is stale: re-read the relevant files before acting. First step: {first next step}.
+Continue from previous session ({YYYY-MM-DD}): {one-line task description}. [Read .session/decisions.md for prior decisions.] Verify: {one checkable fact -- use a file path and greppable symbol if available; fall back to ".session/decisions.md exists" if no file references were recorded}. If verify fails, context is stale: re-read the relevant files before acting. [First step: {first next step}.]
 ```
 
 ### Step 6: Confirm
@@ -163,7 +166,7 @@ One line: files written, decision entries added or updated (note any reversals).
 * `.session/decisions.md` has one entry per topic, with contradictions resolved in-place.
 * `.session/` is listed in `.gitignore`.
 * No credentials, tokens, or sensitive values appear in either file.
-* Every decision includes its rationale and topic key.
+* Every entry has a topic key, type (decision or discovery), and rationale.
 * The first Next Steps entry can be executed by a cold session without reading anything else.
 * A ready-to-paste starter string with a verify command was output.
 * Stale or unverifiable file references are marked, not silently included or silently dropped.
