@@ -7,7 +7,7 @@ set -euo pipefail
 REPO="dfinson/promptlings"
 BRANCH="main"
 BASE_URL="https://raw.githubusercontent.com/$REPO/$BRANCH"
-READSIDE_PATH="agents/context/session-handoff-read-side-claude.md"
+READSIDE_PATH="agents/context/session-handoff-read-side.md"
 
 AGENTS=(
   "agents/code-review/pr-walkthrough.agent.md"

@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 $Repo = "dfinson/promptlings"
 $Branch = "main"
 $BaseUrl = "https://raw.githubusercontent.com/$Repo/$Branch"
-$ReadSidePath = "agents/context/session-handoff-read-side-claude.md"
+$ReadSidePath = "agents/context/session-handoff-read-side.md"
 
 $Agents = @(
     "agents/code-review/pr-walkthrough.agent.md"
