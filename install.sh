@@ -14,27 +14,39 @@ AGENTS=(
   "agents/context/session-handoff.agent.md"
 )
 
-# Detect target directory
-if [ -d "$HOME/.copilot/agents" ] || command -v copilot &>/dev/null; then
-  TARGET="$HOME/.copilot/agents"
-  TOOL="GitHub Copilot CLI"
-elif [ -d "$HOME/.claude/commands" ]; then
-  TARGET="$HOME/.claude/commands"
-  TOOL="Claude Code"
-else
-  TARGET="$HOME/.copilot/agents"
-  TOOL="GitHub Copilot CLI (default)"
+install_agents() {
+  local target="$1"
+  local tool="$2"
+  echo "Installing promptlings for $tool -> $target"
+  mkdir -p "$target"
+  for agent in "${AGENTS[@]}"; do
+    filename=$(basename "$agent")
+    echo "  Downloading $filename..."
+    curl -sL "$BASE_URL/$agent" -o "$target/$filename"
+  done
+  echo "  Done. Installed ${#AGENTS[@]} agents."
+}
+
+installed=0
+
+# GitHub Copilot CLI: directory already exists or gh copilot extension is available
+if [ -d "$HOME/.copilot/agents" ] || (command -v gh &>/dev/null && gh copilot --version &>/dev/null 2>&1); then
+  install_agents "$HOME/.copilot/agents" "GitHub Copilot CLI"
+  installed=1
 fi
 
-echo "Installing promptlings to: $TARGET ($TOOL)"
-mkdir -p "$TARGET"
+# Claude Code: ~/.claude directory exists or claude command is available
+# Agents live in ~/.claude/agents/, not ~/.claude/commands/
+if [ -d "$HOME/.claude" ] || command -v claude &>/dev/null; then
+  install_agents "$HOME/.claude/agents" "Claude Code"
+  installed=1
+fi
 
-for agent in "${AGENTS[@]}"; do
-  filename=$(basename "$agent")
-  echo "  Downloading $filename..."
-  curl -sL "$BASE_URL/$agent" -o "$TARGET/$filename"
-done
+# Default fallback when neither tool is detected
+if [ "$installed" -eq 0 ]; then
+  echo "No supported coding assistant detected. Installing to default GitHub Copilot CLI location."
+  install_agents "$HOME/.copilot/agents" "GitHub Copilot CLI (default)"
+fi
 
 echo ""
-echo "Done. Installed ${#AGENTS[@]} agents to $TARGET"
-echo "Restart your coding assistant to pick them up."
+echo "Restart your coding assistant to pick up the new agents."
