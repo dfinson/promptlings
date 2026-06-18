@@ -7,6 +7,7 @@ set -euo pipefail
 REPO="dfinson/promptlings"
 BRANCH="main"
 BASE_URL="https://raw.githubusercontent.com/$REPO/$BRANCH"
+READSIDE_PATH="agents/context/session-handoff-read-side-claude.md"
 
 AGENTS=(
   "agents/code-review/pr-walkthrough.agent.md"
@@ -55,32 +56,10 @@ if [[ "$TOOL" == "Claude Code" ]] || [ -d "$HOME/.claude" ]; then
     echo ""
     echo "Appending read-side protocol to $CLAUDE_MD ..."
     mkdir -p "$(dirname "$CLAUDE_MD")"
-    cat >> "$CLAUDE_MD" << 'READSIDE'
-
-<!-- session-handoff-read-side-start -->
-# Session Handoff: Mandatory Context Protocol
-
-These rules apply to EVERY session in every repository. No exceptions.
-
-## FIRST ACTION: Read environment context
-
-On your FIRST tool-calling turn of every session, before doing anything else, run:
-
-    cat "$(git rev-parse --git-common-dir)/session-handoff/environment.md" 2>/dev/null
-
-If this file exists, read it completely. It contains environment facts (auth methods, tool paths, encoding quirks, resource identifiers) that directly affect your ability to work correctly. If you skip this and get something wrong that the file would have told you, that failure is on you.
-
-Do NOT grep, search the codebase, search the filesystem, or answer any question until you have read this file or confirmed it does not exist.
-
-## DURING SESSION: Search decisions before fresh searches
-
-Before performing any fresh search of the codebase, filesystem, or web, grep the decisions file first:
-
-    grep -i "KEYWORD" "$(git rev-parse --git-common-dir)/session-handoff/decisions.md" 2>/dev/null
-
-Replace KEYWORD with terms relevant to your current subtask. If the decisions file has relevant entries, consult them before initiating any fresh search.
-<!-- session-handoff-read-side-end -->
-READSIDE
-    echo "Done."
+    if curl -fsSL "$BASE_URL/$READSIDE_PATH" >> "$CLAUDE_MD"; then
+      echo "Done."
+    else
+      echo "Warning: failed to fetch $READSIDE_PATH. Add the read-side block from agents/context/session-handoff.agent.md manually."
+    fi
   fi
 fi
