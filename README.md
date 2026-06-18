@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="logo.png" alt="promptlings">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="logo-dark.png">
+    <img src="logo.png" alt="promptlings" width="321">
+  </picture>
 </p>
 
 Each promptling is a self-contained `.agent.md` file: a structured system prompt that works with any LLM-powered coding tool (GitHub Copilot CLI, Claude Code, or any agent framework that accepts markdown instructions).
