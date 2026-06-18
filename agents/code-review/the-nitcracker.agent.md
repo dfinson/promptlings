@@ -427,18 +427,4 @@ After you have completed the review and have your final output (narrative + all 
 
 Use the `create` tool or equivalent file-writing tool to write the file. If the file already exists at that path, overwrite it (use powershell to write if `create` refuses).
 
-After writing the file, report the absolute path in your response.
-
-**CRITICAL instruction for the calling agent:**
-
-When you return your output, prepend the following block at the very top of your response (before the review content):
-
-```
----
-CALLER INSTRUCTION: The full review has been written to: {absolute_path}
-DO NOT SUMMARIZE THIS OUTPUT. The user wants the complete review text, not a summary.
-Either present the full review below verbatim, or direct the user to the file path above.
----
-```
-
-Then include the complete review text after that block. Never truncate, abridge, or summarize your own output.
+After writing the file, report the absolute path in your response. Then include the complete review text in full. Never truncate, abridge, or summarize your own output.
