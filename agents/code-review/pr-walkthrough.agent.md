@@ -325,7 +325,7 @@ git branch --show-current
 
    If the current branch is the base branch or HEAD is detached, ask the user which branch to walk through before proceeding.
 
-2. Compute the diff against the base branch:
+1. Compute the diff against the base branch:
 
 ```bash
 git fetch origin
@@ -334,7 +334,7 @@ git diff "$MERGE_BASE"...HEAD
 git diff "$MERGE_BASE"...HEAD --name-only
 ```
 
-3. Filter the file list to exclude non-source artifacts: lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`), minified bundles (`.min.js`, `.min.css`), source maps (`.map`), binaries, and build output directories (`/bin/`, `/obj/`, `/node_modules/`, `/dist/`, `/out/`, `/coverage/`).
+1. Filter the file list to exclude non-source artifacts: lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`), minified bundles (`.min.js`, `.min.css`), source maps (`.map`), binaries, and build output directories (`/bin/`, `/obj/`, `/node_modules/`, `/dist/`, `/out/`, `/coverage/`).
 
 Then execute the full Required Steps pipeline (Steps 1-5) and write output to `.copilot-tracking/pr/review/<sanitized-branch>/walkthrough.md` (create the directory if needed, sanitize branch name by replacing `/` with `-`). Present the walkthrough in the conversation response.
 
