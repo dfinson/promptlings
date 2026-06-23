@@ -240,7 +240,7 @@ The version of record is a sidecar file `schema.json` in the handoff directory:
 
 **Run pending migrations:** if `stored_version >= CURRENT_SCHEMA_VERSION`, skip this section entirely (fast path, no files touched). Otherwise, for each migration `M` from `stored_version + 1` up to `CURRENT_SCHEMA_VERSION` inclusive, in ascending order, apply its transform:
 
-- **Migration 2 (v1 to v2): split `environment.md` out of `decisions.md`.** Read `decisions.md`. For each entry, run the classification step against the 15 categories. Move every matching entry into its tier's `environment.md` (a **[global]** category to `~/.session-handoff/environment.md`, a **[repo]** category to `<git-common-dir>/session-handoff/environment.md`) using the key-based merge rules below, and remove it from `decisions.md`. This transform is content-idempotent: if the entries were already moved (for example a prior run crashed before stamping), no entries match and nothing changes.
+- **Migration 2 (v1 to v2): split `environment.md` out of `decisions.md`.** Read `decisions.md`. For each entry, run the classification step against the 15 categories. Move every matching entry into its tier's `environment.md` (a **[global]** category to `~/.session-handoff/environment.md`, a **[repo]** category to `<git-common-dir>/session-handoff/environment.md`) using the key-based merge rules below, then remove it from `decisions.md` only after the destination write has succeeded. This transform is content-idempotent across a crash at any point: an entry written to its `environment.md` but not yet removed from `decisions.md` is re-moved on the next run, and the exact-duplicate rule in the merge step below turns that re-move into a no-op instead of a second copy.
 
 After all pending migrations succeed, write `schema.json` with `schemaVersion: CURRENT_SCHEMA_VERSION` and the current UTC timestamp. Writing `schema.json` is the commit marker: if a session is interrupted after moving entries but before writing it, the next session re-runs the same content-idempotent transform and then stamps. Never write `schema.json` before the transforms it records have completed. `schema.json` lives in the repo-local tier and governs only this repository's files; the global `environment.md` uses the same entry format and is not independently versioned, so there is no global `schema.json`.
 
@@ -248,12 +248,13 @@ Then continue with the merge below, which operates on the now-current files.
 
 For each of the global `environment.md`, the repo-local `environment.md`, and `decisions.md`, apply the same key-based merge logic separately (each entry was already routed to exactly one of these files by the classification step):
 
-1. Read the file from the handoff directory if it exists.
+1. Read the file from its resolved path if it exists: the global `environment.md` from `~/.session-handoff/`, the repo-local `environment.md` and `decisions.md` from `<git-common-dir>/session-handoff/`.
 2. For each new entry destined for this file: check whether any existing entry shares the same topic key.
+   - Exact duplicate (an identical line already exists in the file): do nothing.
    - Contradiction (same topic, incompatible content): replace that line. Append `(reverses: {old summary})` to the rationale.
    - Additive (same topic, compatible content): append a new line under the same key.
    - No match: append as a new entry.
-3. Write the updated file.
+3. Write the updated file back to the same path.
 
 Write any companion artifacts that an entry references into `<git-common-dir>/session-handoff/artifacts/`, creating the subdirectory on demand. Only write an artifact that is referenced by a `state.md`, `decisions.md`, or `environment.md` entry and that cannot be recovered from the repository itself; never write secrets into it.
 
@@ -268,7 +269,7 @@ Note: these file writes are not atomic. If multiple agents are running simultane
 Output a ready-to-paste opener for the next chat as a fenced plaintext block. Items in brackets are conditional: omit if they do not apply.
 
 ```
-FIRST: read the environment handoff files before doing anything else: run `cat "$HOME/.session-handoff/environment.md" "$(git rev-parse --git-common-dir)/session-handoff/environment.md" 2>/dev/null` (bash) or `$g = "$HOME/.session-handoff/environment.md"; $d = "$(git rev-parse --git-common-dir)/session-handoff/environment.md"; foreach ($f in @($g,$d)) { if (Test-Path $f) { Get-Content $f } }` (PowerShell). The first path is machine-global, the second is repo-local. Prior task decisions are in `decisions.md` in the repo-local directory if needed. Continue from previous session ({YYYY-MM-DD}): {one-line task description}. Verify: {one checkable fact; use a file path and greppable symbol if available; fall back to "session-handoff/state.md exists in the git common dir" if no file references were recorded}. If verify fails, context is stale: re-read the relevant files before acting. [First step: {first next step}.]
+FIRST: read the environment handoff files before doing anything else: run `cat "$HOME/.session-handoff/environment.md" "$(git rev-parse --git-common-dir)/session-handoff/environment.md" 2>/dev/null || true` (bash) or `$g = "$HOME/.session-handoff/environment.md"; $d = "$(git rev-parse --git-common-dir)/session-handoff/environment.md"; foreach ($f in @($g,$d)) { if (Test-Path $f) { Get-Content $f } }` (PowerShell). The first path is machine-global, the second is repo-local. Prior task decisions are in `decisions.md` in the repo-local directory if needed. Continue from previous session ({YYYY-MM-DD}): {one-line task description}. Verify: {one checkable fact; use a file path and greppable symbol if available; fall back to "session-handoff/state.md exists in the git common dir" if no file references were recorded}. If verify fails, context is stale: re-read the relevant files before acting. [First step: {first next step}.]
 ```
 
 ### Step 7: Confirm
@@ -312,11 +313,12 @@ Add one of the following blocks to your custom user instructions (GitHub Copilot
 ### Bash / Linux / macOS
 
 ```
+<!-- session-handoff-read-side-start -->
 # MANDATORY FIRST ACTION - DO THIS BEFORE ANYTHING ELSE
 
 On your FIRST tool-calling turn of every session, run this command BEFORE responding to the user's question or doing any other work:
 
-    cat "$HOME/.session-handoff/environment.md" "$(git rev-parse --git-common-dir)/session-handoff/environment.md" 2>/dev/null
+    cat "$HOME/.session-handoff/environment.md" "$(git rev-parse --git-common-dir)/session-handoff/environment.md" 2>/dev/null || true
 
 These files contain environment facts (auth methods, encoding quirks, tool paths, resource identifiers) that directly affect your ability to do the task correctly. The first path is machine-global, the second is repo-local. If you skip this and get something wrong that the files would have told you, that failure is on you.
 
@@ -329,11 +331,13 @@ DURING THE SESSION: Before any fresh search of the codebase, filesystem, or web,
 Replace KEYWORD with terms relevant to your current subtask. Consult matching entries before initiating any fresh search. This file also holds dead-end entries (approaches already tried and abandoned, with the reason): if a match warns against an approach you were about to take, do not take it.
 
 Task-specific decisions from prior sessions are in `decisions.md` in the same directory. Search it when relevant, but do not read it unconditionally.
+<!-- session-handoff-read-side-end -->
 ```
 
 ### PowerShell / Windows
 
 ```
+<!-- session-handoff-read-side-start -->
 # MANDATORY FIRST ACTION - DO THIS BEFORE ANYTHING ELSE
 
 On your FIRST tool-calling turn of every session, run this command BEFORE responding to the user's question or doing any other work:
@@ -351,4 +355,5 @@ DURING THE SESSION: Before any fresh search of the codebase, filesystem, or web,
 Replace KEYWORD with terms relevant to your current subtask. Consult matching entries before initiating any fresh search. This file also holds dead-end entries (approaches already tried and abandoned, with the reason): if a match warns against an approach you were about to take, do not take it.
 
 Task-specific decisions from prior sessions are in `decisions.md` in the same directory. Search it when relevant, but do not read it unconditionally.
+<!-- session-handoff-read-side-end -->
 ```

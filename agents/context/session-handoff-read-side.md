@@ -9,7 +9,7 @@ On your FIRST tool-calling turn of every session, before doing anything else, ru
 
 Linux or macOS (bash):
 
-    cat "$HOME/.session-handoff/environment.md" "$(git rev-parse --git-common-dir)/session-handoff/environment.md" 2>/dev/null
+    cat "$HOME/.session-handoff/environment.md" "$(git rev-parse --git-common-dir)/session-handoff/environment.md" 2>/dev/null || true
 
 Windows (PowerShell):
 
