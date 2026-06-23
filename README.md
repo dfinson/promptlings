@@ -26,11 +26,11 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 
 | Agent | What it does |
 | --- | --- |
-| [session-handoff](agents/context/session-handoff.agent.md) | Persists session context to workspace-local files and outputs a ready-to-paste starter string for the next chat. |
+| [session-handoff](agents/context/session-handoff.agent.md) | Persists session context to workspace-local files and outputs a ready-to-paste starter string for the next chat. Requires a companion user instruction to close the read-side loop: see the [Read-Side Setup](agents/context/session-handoff.agent.md#read-side-setup) section in the agent file. |
 
 #### In their own words
 
-> **Session Handoff:** Long sessions accumulate context that evaporates the moment you open a new chat. I distill the conversation into two files: a current-state snapshot for picking up immediately, and a running decisions log that survives across sessions. Then I hand you a single string to paste into the next chat, with a verification step so the next session can tell immediately if the context has gone stale.
+> **Session Handoff:** Long sessions accumulate context that evaporates the moment you open a new chat. I distill the conversation into three files: a current-state snapshot for picking up immediately, an environment facts log read unconditionally by every future session, and a running decisions log searched on demand. Then I hand you a single string to paste into the next chat, with a verification step so the next session can tell immediately if the context has gone stale. Add the companion user instruction (see the agent file) to ensure future sessions actually read the context.
 
 ## Installation
 
@@ -58,7 +58,7 @@ Copy the agents you want to your tool's agent directory:
 | --- | --- |
 | GitHub Copilot CLI (user-wide) | `~/.copilot/agents/` |
 | GitHub Copilot CLI (per-project) | `.github/agents/` |
-| Claude Code | `~/.claude/commands/` |
+| Claude Code | `~/.claude/agents/` |
 
 ### Other Frameworks
 
