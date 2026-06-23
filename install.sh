@@ -28,29 +28,32 @@ install_agents() {
   echo "  Done. Installed ${#AGENTS[@]} agents."
 }
 
-installed=0
+installed_targets=()
+claude_installed=0
 
 # GitHub Copilot CLI: directory already exists or gh copilot extension is available
 if [ -d "$HOME/.copilot/agents" ] || (command -v gh &>/dev/null && gh copilot --version &>/dev/null 2>&1); then
   install_agents "$HOME/.copilot/agents" "GitHub Copilot CLI"
-  installed=1
+  installed_targets+=("$HOME/.copilot/agents")
 fi
 
 # Claude Code: ~/.claude directory exists or claude command is available
 # Agents live in ~/.claude/agents/, not ~/.claude/commands/
 if [ -d "$HOME/.claude" ] || command -v claude &>/dev/null; then
   install_agents "$HOME/.claude/agents" "Claude Code"
-  installed=1
+  installed_targets+=("$HOME/.claude/agents")
+  claude_installed=1
 fi
 
 # Default fallback when neither tool is detected
-if [ "$installed" -eq 0 ]; then
+if [ "${#installed_targets[@]}" -eq 0 ]; then
   echo "No supported coding assistant detected. Installing to default GitHub Copilot CLI location."
   install_agents "$HOME/.copilot/agents" "GitHub Copilot CLI (default)"
+  installed_targets+=("$HOME/.copilot/agents")
 fi
 
 echo ""
-echo "Done. Installed ${#AGENTS[@]} agents to $TARGET"
+echo "Done. Installed ${#AGENTS[@]} agents to: ${installed_targets[*]}"
 echo "Restart your coding assistant to pick them up."
 echo ""
 echo "NOTE: session-handoff requires a companion user instruction to ensure future sessions"
@@ -61,7 +64,7 @@ echo "block to add to your user instructions."
 CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 MARKER="session-handoff-read-side-start"
 
-if [[ "$TOOL" == "Claude Code" ]] || [ -d "$HOME/.claude" ]; then
+if [ "$claude_installed" -eq 1 ]; then
   if grep -qF "$MARKER" "$CLAUDE_MD" 2>/dev/null; then
     echo ""
     echo "Read-side protocol already present in $CLAUDE_MD. Skipping."

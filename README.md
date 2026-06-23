@@ -58,7 +58,7 @@ Copy the agents you want to your tool's agent directory:
 | --- | --- |
 | GitHub Copilot CLI (user-wide) | `~/.copilot/agents/` |
 | GitHub Copilot CLI (per-project) | `.github/agents/` |
-| Claude Code | `~/.claude/commands/` |
+| Claude Code | `~/.claude/agents/` |
 
 ### Other Frameworks
 

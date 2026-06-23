@@ -29,7 +29,8 @@ function Install-Agents {
     Write-Host "  Done. Installed $($Agents.Count) agents."
 }
 
-$installed = $false
+$installedTargets = @()
+$claudeInstalled = $false
 
 # GitHub Copilot CLI: directory already exists or gh copilot extension is available
 $ghCopilot = $false
@@ -40,7 +41,7 @@ if (Test-Path "$env:USERPROFILE\.copilot\agents") {
 }
 if ($ghCopilot) {
     Install-Agents -Target "$env:USERPROFILE\.copilot\agents" -Tool "GitHub Copilot CLI"
-    $installed = $true
+    $installedTargets += "$env:USERPROFILE\.copilot\agents"
 }
 
 # Claude Code: ~/.claude directory exists or claude command is available
@@ -48,17 +49,19 @@ if ($ghCopilot) {
 $claudeDetected = (Test-Path "$env:USERPROFILE\.claude") -or ($null -ne (Get-Command claude -ErrorAction SilentlyContinue))
 if ($claudeDetected) {
     Install-Agents -Target "$env:USERPROFILE\.claude\agents" -Tool "Claude Code"
-    $installed = $true
+    $installedTargets += "$env:USERPROFILE\.claude\agents"
+    $claudeInstalled = $true
 }
 
 # Default fallback when neither tool is detected
-if (-not $installed) {
+if ($installedTargets.Count -eq 0) {
     Write-Host "No supported coding assistant detected. Installing to default GitHub Copilot CLI location."
     Install-Agents -Target "$env:USERPROFILE\.copilot\agents" -Tool "GitHub Copilot CLI (default)"
+    $installedTargets += "$env:USERPROFILE\.copilot\agents"
 }
 
 Write-Host ""
-Write-Host "Done. Installed $($Agents.Count) agents to $Target"
+Write-Host "Done. Installed $($Agents.Count) agents to: $($installedTargets -join ', ')"
 Write-Host "Restart your coding assistant to pick them up."
 Write-Host ""
 Write-Host "NOTE: session-handoff requires a companion user instruction to ensure future sessions"
@@ -69,7 +72,7 @@ Write-Host "block to add to your user instructions."
 $ClaudeMd = Join-Path $env:USERPROFILE ".claude\CLAUDE.md"
 $Marker = "session-handoff-read-side-start"
 
-if ($Tool -eq "Claude Code" -or (Test-Path (Join-Path $env:USERPROFILE ".claude"))) {
+if ($claudeInstalled) {
     $alreadyPresent = (Test-Path $ClaudeMd) -and ((Get-Content $ClaudeMd -Raw) -match [regex]::Escape($Marker))
     if ($alreadyPresent) {
         Write-Host ""
