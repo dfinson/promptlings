@@ -9,15 +9,15 @@ On your FIRST tool-calling turn of every session, before doing anything else, ru
 
 Linux or macOS (bash):
 
-    cat "$(git rev-parse --git-common-dir)/session-handoff/environment.md" 2>/dev/null
+    cat "$HOME/.session-handoff/environment.md" "$(git rev-parse --git-common-dir)/session-handoff/environment.md" 2>/dev/null
 
 Windows (PowerShell):
 
-    $d = git rev-parse --git-common-dir; if (Test-Path "$d/session-handoff/environment.md") { Get-Content "$d/session-handoff/environment.md" }
+    $d = git rev-parse --git-common-dir; $g = "$HOME/.session-handoff/environment.md"; foreach ($f in @($g, "$d/session-handoff/environment.md")) { if (Test-Path $f) { Get-Content $f } }
 
-If this file exists, read it completely. It contains environment facts (auth methods, tool paths, encoding quirks, resource identifiers) that directly affect your ability to work correctly. If you skip this and get something wrong that the file would have told you, that failure is on you.
+If these files exist, read them completely. The first path is machine-global (facts true of this whole machine), the second is repo-local. They contain environment facts (auth methods, tool paths, encoding quirks, resource identifiers) that directly affect your ability to work correctly. If you skip this and get something wrong that the files would have told you, that failure is on you.
 
-Do NOT grep, search the codebase, search the filesystem, search the web, or answer any question until you have read this file or confirmed it does not exist.
+Do NOT grep, search the codebase, search the filesystem, search the web, or answer any question until you have read both files or confirmed they do not exist.
 
 ## DURING SESSION: Search decisions before fresh searches
 
