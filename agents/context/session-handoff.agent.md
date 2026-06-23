@@ -187,7 +187,34 @@ Create the directory if it does not exist.
 
 Write `state.md` to the handoff directory (replaces any previous content).
 
-**Migration step (run once per handoff if `decisions.md` already exists):** Read the existing `decisions.md`. For each entry, re-run the classification step against the 15 categories. If an entry now belongs in `environment.md`, move it: add it to `environment.md` using the merge rules below, and remove it from `decisions.md`.
+#### Schema versioning and migration
+
+The handoff file format is versioned so that when it changes, existing handoff directories are upgraded exactly once instead of being re-shaped on every session. This follows the same model as Alembic or Rails migrations: a single stored version number plus an ordered list of migrations applied in sequence. No agent instruction file ecosystem (CLAUDE.md, AGENTS.md, copilot-instructions.md, .cursor/rules) defines such a field, so this is a local convention modeled on how programmatic markdown managers (gradatum, new-orbit) do it.
+
+`CURRENT_SCHEMA_VERSION = 2`. Version history:
+
+- **v1**: two files, `state.md` and `decisions.md`.
+- **v2**: adds `environment.md`, split out of `decisions.md` using the 15-category classification.
+
+The version of record is a sidecar file `schema.json` in the handoff directory:
+
+```
+{ "schemaVersion": 2, "migratedAt": "{ISO-8601 UTC}" }
+```
+
+**Determine the stored version:**
+
+1. If `schema.json` exists, the stored version is its `schemaVersion`.
+2. If `schema.json` does not exist but `decisions.md` does, the stored version is `1` (a legacy directory written before versioning).
+3. If neither exists, the stored version is `CURRENT_SCHEMA_VERSION` (a fresh directory: nothing to migrate, just stamp it when you first write below).
+
+**Run pending migrations:** if `stored_version >= CURRENT_SCHEMA_VERSION`, skip this section entirely (fast path, no files touched). Otherwise, for each migration `M` from `stored_version + 1` up to `CURRENT_SCHEMA_VERSION` inclusive, in ascending order, apply its transform:
+
+- **Migration 2 (v1 to v2): split `environment.md` out of `decisions.md`.** Read `decisions.md`. For each entry, run the classification step against the 15 categories. Move every matching entry into `environment.md` using the key-based merge rules below, and remove it from `decisions.md`. This transform is content-idempotent: if the entries were already moved (for example a prior run crashed before stamping), no entries match and nothing changes.
+
+After all pending migrations succeed, write `schema.json` with `schemaVersion: CURRENT_SCHEMA_VERSION` and the current UTC timestamp. Writing `schema.json` is the commit marker: if a session is interrupted after moving entries but before writing it, the next session re-runs the same content-idempotent transform and then stamps. Never write `schema.json` before the transforms it records have completed.
+
+Then continue with the merge below, which operates on the now-current files.
 
 For each of `environment.md` and `decisions.md`, apply the same key-based merge logic separately:
 
@@ -219,7 +246,8 @@ One line: files written (including the resolved handoff directory path), decisio
 ## What Done Looks Like
 
 * `<git-common-dir>/session-handoff/state.md` contains the current ephemeral block.
-* `<git-common-dir>/session-handoff/environment.md` contains only entries matching the 15-category closed enumeration, with any previously misclassified entries migrated from `decisions.md`.
+* `<git-common-dir>/session-handoff/environment.md` contains only entries matching the 15-category closed enumeration.
+* `<git-common-dir>/session-handoff/schema.json` records `schemaVersion: 2`, written only after any pending migrations completed.
 * `<git-common-dir>/session-handoff/decisions.md` has one entry per topic, with contradictions resolved in-place.
 * No `.gitignore` changes were needed (the git directory is inherently untracked).
 * No credentials, tokens, or sensitive values appear in any file.

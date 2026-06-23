@@ -29,12 +29,14 @@ install_agents() {
 }
 
 installed_targets=()
+copilot_installed=0
 claude_installed=0
 
 # GitHub Copilot CLI: directory already exists or gh copilot extension is available
 if [ -d "$HOME/.copilot/agents" ] || (command -v gh &>/dev/null && gh copilot --version &>/dev/null 2>&1); then
   install_agents "$HOME/.copilot/agents" "GitHub Copilot CLI"
   installed_targets+=("$HOME/.copilot/agents")
+  copilot_installed=1
 fi
 
 # Claude Code: ~/.claude directory exists or claude command is available
@@ -50,32 +52,50 @@ if [ "${#installed_targets[@]}" -eq 0 ]; then
   echo "No supported coding assistant detected. Installing to default GitHub Copilot CLI location."
   install_agents "$HOME/.copilot/agents" "GitHub Copilot CLI (default)"
   installed_targets+=("$HOME/.copilot/agents")
+  copilot_installed=1
 fi
 
 echo ""
 echo "Done. Installed ${#AGENTS[@]} agents to: ${installed_targets[*]}"
 echo "Restart your coding assistant to pick them up."
 echo ""
-echo "NOTE: session-handoff requires a companion user instruction to ensure future sessions"
-echo "read the environment handoff file. See agents/context/session-handoff.agent.md for the"
-echo "block to add to your user instructions."
+echo "NOTE: session-handoff needs a companion read-side instruction so future sessions read the"
+echo "environment handoff file. Wiring it into your tool's user instructions now:"
 
-# For Claude Code installs, append the read-side protocol to ~/.claude/CLAUDE.md (non-destructive).
-CLAUDE_MD="$HOME/.claude/CLAUDE.md"
+# Wire the read-side protocol into the user instruction file of each installed tool
+# (non-destructive). Copilot CLI reads $HOME/.copilot/copilot-instructions.md; Claude Code reads
+# $HOME/.claude/CLAUDE.md.
 MARKER="session-handoff-read-side-start"
+COPILOT_INSTRUCTIONS="$HOME/.copilot/copilot-instructions.md"
+CLAUDE_MD="$HOME/.claude/CLAUDE.md"
 
-if [ "$claude_installed" -eq 1 ]; then
-  if grep -qF "$MARKER" "$CLAUDE_MD" 2>/dev/null; then
+readside_block=""
+if [ "$copilot_installed" -eq 1 ] || [ "$claude_installed" -eq 1 ]; then
+  readside_block=$(curl -fsSL "$BASE_URL/$READSIDE_PATH" || true)
+fi
+
+append_readside() {
+  local instr_file="$1"
+  if [ -z "$readside_block" ]; then
     echo ""
-    echo "Read-side protocol already present in $CLAUDE_MD. Skipping."
+    echo "Warning: failed to fetch $READSIDE_PATH. Add the read-side block from agents/context/session-handoff.agent.md to $instr_file manually."
+    return
+  fi
+  if grep -qF "$MARKER" "$instr_file" 2>/dev/null; then
+    echo ""
+    echo "Read-side protocol already present in $instr_file. Skipping."
   else
     echo ""
-    echo "Appending read-side protocol to $CLAUDE_MD ..."
-    mkdir -p "$(dirname "$CLAUDE_MD")"
-    if curl -fsSL "$BASE_URL/$READSIDE_PATH" >> "$CLAUDE_MD"; then
-      echo "Done."
-    else
-      echo "Warning: failed to fetch $READSIDE_PATH. Add the read-side block from agents/context/session-handoff.agent.md manually."
-    fi
+    echo "Appending read-side protocol to $instr_file ..."
+    mkdir -p "$(dirname "$instr_file")"
+    printf '\n%s\n' "$readside_block" >> "$instr_file"
+    echo "Done."
   fi
+}
+
+if [ "$copilot_installed" -eq 1 ]; then
+  append_readside "$COPILOT_INSTRUCTIONS"
+fi
+if [ "$claude_installed" -eq 1 ]; then
+  append_readside "$CLAUDE_MD"
 fi

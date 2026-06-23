@@ -30,6 +30,7 @@ function Install-Agents {
 }
 
 $installedTargets = @()
+$copilotInstalled = $false
 $claudeInstalled = $false
 
 # GitHub Copilot CLI: directory already exists or gh copilot extension is available
@@ -42,6 +43,7 @@ if (Test-Path "$env:USERPROFILE\.copilot\agents") {
 if ($ghCopilot) {
     Install-Agents -Target "$env:USERPROFILE\.copilot\agents" -Tool "GitHub Copilot CLI"
     $installedTargets += "$env:USERPROFILE\.copilot\agents"
+    $copilotInstalled = $true
 }
 
 # Claude Code: ~/.claude directory exists or claude command is available
@@ -58,36 +60,50 @@ if ($installedTargets.Count -eq 0) {
     Write-Host "No supported coding assistant detected. Installing to default GitHub Copilot CLI location."
     Install-Agents -Target "$env:USERPROFILE\.copilot\agents" -Tool "GitHub Copilot CLI (default)"
     $installedTargets += "$env:USERPROFILE\.copilot\agents"
+    $copilotInstalled = $true
 }
 
 Write-Host ""
 Write-Host "Done. Installed $($Agents.Count) agents to: $($installedTargets -join ', ')"
 Write-Host "Restart your coding assistant to pick them up."
 Write-Host ""
-Write-Host "NOTE: session-handoff requires a companion user instruction to ensure future sessions"
-Write-Host "read the environment handoff file. See agents/context/session-handoff.agent.md for the"
-Write-Host "block to add to your user instructions."
+Write-Host "NOTE: session-handoff needs a companion read-side instruction so future sessions read the"
+Write-Host "environment handoff file. Wiring it into your tool's user instructions now:"
 
-# For Claude Code installs, append the read-side protocol to ~/.claude/CLAUDE.md (non-destructive).
-$ClaudeMd = Join-Path $env:USERPROFILE ".claude\CLAUDE.md"
+# Wire the read-side protocol into the user instruction file of each installed tool (non-destructive).
+# Copilot CLI reads $HOME\.copilot\copilot-instructions.md; Claude Code reads $HOME\.claude\CLAUDE.md.
 $Marker = "session-handoff-read-side-start"
+$CopilotInstructions = Join-Path $env:USERPROFILE ".copilot\copilot-instructions.md"
+$ClaudeMd = Join-Path $env:USERPROFILE ".claude\CLAUDE.md"
 
-if ($claudeInstalled) {
-    $alreadyPresent = (Test-Path $ClaudeMd) -and ((Get-Content $ClaudeMd -Raw) -match [regex]::Escape($Marker))
-    if ($alreadyPresent) {
-        Write-Host ""
-        Write-Host "Read-side protocol already present in $ClaudeMd. Skipping."
-    } else {
-        Write-Host ""
-        Write-Host "Appending read-side protocol to $ClaudeMd ..."
-        $ClaudeDir = Split-Path $ClaudeMd -Parent
-        if (-not (Test-Path $ClaudeDir)) { New-Item -ItemType Directory -Force -Path $ClaudeDir | Out-Null }
-        try {
-            $ReadSideBlock = (Invoke-WebRequest -Uri "$BaseUrl/$ReadSidePath" -UseBasicParsing).Content
-            Add-Content -Path $ClaudeMd -Value $ReadSideBlock -Encoding UTF8
-            Write-Host "Done."
-        } catch {
-            Write-Warning "Failed to fetch $ReadSidePath. Add the read-side block from agents/context/session-handoff.agent.md manually."
-        }
+$ReadSideBlock = $null
+if ($copilotInstalled -or $claudeInstalled) {
+    try {
+        $ReadSideBlock = (Invoke-WebRequest -Uri "$BaseUrl/$ReadSidePath" -UseBasicParsing).Content
+    } catch {
+        $ReadSideBlock = $null
     }
 }
+
+function Add-ReadSide {
+    param([string]$InstructionFile)
+    if (-not $ReadSideBlock) {
+        Write-Host ""
+        Write-Warning "Failed to fetch $ReadSidePath. Add the read-side block from agents/context/session-handoff.agent.md to $InstructionFile manually."
+        return
+    }
+    if ((Test-Path $InstructionFile) -and ((Get-Content $InstructionFile -Raw) -match [regex]::Escape($Marker))) {
+        Write-Host ""
+        Write-Host "Read-side protocol already present in $InstructionFile. Skipping."
+        return
+    }
+    Write-Host ""
+    Write-Host "Appending read-side protocol to $InstructionFile ..."
+    $dir = Split-Path $InstructionFile -Parent
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    Add-Content -Path $InstructionFile -Value "`n$ReadSideBlock" -Encoding UTF8
+    Write-Host "Done."
+}
+
+if ($copilotInstalled) { Add-ReadSide -InstructionFile $CopilotInstructions }
+if ($claudeInstalled) { Add-ReadSide -InstructionFile $ClaudeMd }
