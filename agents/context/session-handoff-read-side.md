@@ -31,5 +31,5 @@ Windows (PowerShell):
 
     $d = git rev-parse --git-common-dir; $f = "$d/session-handoff/decisions.md"; if (Test-Path $f) { Select-String -Path $f -Pattern "KEYWORD" -CaseSensitive:$false }
 
-Replace KEYWORD with terms relevant to your current subtask. If matching entries exist, consult them before doing any fresh search.
+Replace KEYWORD with terms relevant to your current subtask. If matching entries exist, consult them before doing any fresh search. The decisions file also holds dead-end entries (approaches already tried and abandoned, with the reason): if a match warns against an approach you were about to take, do not take it.
 <!-- session-handoff-read-side-end -->
