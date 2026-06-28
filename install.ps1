@@ -11,6 +11,7 @@ $ReadSidePath = "agents/context/session-handoff-read-side.md"
 $Agents = @(
     "agents/code-review/pr-walkthrough.agent.md"
     "agents/code-review/the-nitcracker.agent.md"
+    "agents/code-review/pr-rescue.agent.md"
     "agents/context/session-handoff.agent.md"
 )
 

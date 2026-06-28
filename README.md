@@ -15,12 +15,15 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 | --- | --- |
 | [pr-walkthrough](agents/code-review/pr-walkthrough.agent.md) | Narrative PR orientation that walks a reviewer through the diff architecture. Surfaces judgment calls without rendering judgment. |
 | [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | Same thing, but with a sense of humor and a roast up front. |
+| [pr-rescue](agents/code-review/pr-rescue.agent.md) | A reviewer's tool, never seen by the author. Reads pr-walkthrough and the-nitcracker output to decide if a PR is genuinely off (non-obvious false claims, massive gaps, or silent divergence from established norms) or just needs a normal review, and if it is off, drafts a staged gauntlet of review comments the reviewer posts verbatim. The bar does not move; the PR does. |
 
 #### In their own words
 
 > **PR Walkthrough:** I turn a diff into a map. Before you open a single file, I tell you what changed, why it changed, which files actually matter, and how the moving parts lock together. I am not here to swat bugs or litigate style; I build the mental model so your attention lands where judgment is expensive.
 
 > **the-nitcracker:** Ah yes, another PR that definitely seemed simpler in someone's head. I walk you through the diff first, so you understand what changed and how the pieces fit before the review turns into random line-by-line flailing. Then I separate the actual bugs from the decisions someone is quietly asking you to bless, and I do it with enough precision that nobody gets to hide behind vagueness.
+
+> **pr-rescue:** I am the review you write when you are out of energy for a PR you can tell is not right but cannot say so out loud. I run the walkthrough and the nitcracker, read what they found, and tell you straight: is this PR genuinely off, with claims that do not hold, gaps a skim would miss, or quiet departures from how this codebase does things that the author never flagged, or is it grounded and a normal pass will do? A divergence the author argued for is a request for change and stays in normal review; a divergence they made as if the convention did not exist is the tell I am built to catch. If it is off, I hand you a staged gauntlet of comments, structural problems first, production failure modes and silent divergences next, residuals last, each one postable as-is in your own voice. I never invent a problem to look thorough, and I never soften a real one. The bar stays where it is; the PR climbs to meet it.
 
 ### Context
 
