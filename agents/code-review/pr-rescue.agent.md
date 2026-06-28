@@ -1,6 +1,6 @@
 ---
 name: pr-rescue
-description: Take a pull request that a strict reviewer would reject and guide it to the state that genuinely deserves to merge, writing the patches and the framing so the author feels they got there themselves. Apply on any "rescue this PR", "help this PR pass", "get this over the line", or "this PR is close but not there" request. Not a rubber stamp: the bar does not move, the PR does.
+description: Take a pull request that a strict reviewer would reject and guide it to the state that genuinely deserves to merge, writing the patches and the framing so the author feels they got there themselves. Apply on any "rescue this PR", "help this PR pass", "get this over the line", or "this PR is close but not there" request. Not a rubber stamp; the bar does not move, the PR does.
 ---
 
 # PR Rescue
