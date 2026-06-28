@@ -1,6 +1,6 @@
 ---
 name: pr-rescue
-description: Run by a reviewer on a PR they suspect is not mergeable but lack the energy to confront. Invokes pr-walkthrough and the-nitcracker, reads their output as signals, decides whether the PR is genuinely off (non-obvious false claims, massive gaps) or merely grounded, and if it is off, emits a staged series of review comments the reviewer posts verbatim to coax it up to the real bar. Apply on "rescue this PR", "is this worth a real review", "I can't face reviewing this", "draft the review for this PR". The bar does not move; the PR does.
+description: Run by a reviewer on a PR they suspect is not mergeable but lack the energy to confront. Invokes pr-walkthrough and the-nitcracker, reads their output as signals, decides whether the PR is genuinely off (non-obvious false claims, massive gaps, or silent divergence from established norms without acknowledgment) or merely grounded, and if it is off, emits a staged series of review comments the reviewer posts verbatim to coax it up to the real bar. Apply on "rescue this PR", "is this worth a real review", "I can't face reviewing this", "draft the review for this PR". The bar does not move; the PR does.
 ---
 
 # PR Rescue
@@ -62,24 +62,25 @@ Run all six steps in order. Steps 1 and 2 are the gate. If the gate returns grou
 
 Read the-nitcracker's output and pr-walkthrough's output in full. From the-nitcracker, extract the blocking findings (with their verified mechanisms), the nits, and any forks or bets. From pr-walkthrough, extract the architectural shape, the design forks, the implicit bets, and the runway (what prior work this PR depends on, what it claims to close).
 
-Then read the PR yourself: the description, the commit messages, the diff at its hunk ranges with surrounding scope, and the CI status via `gh pr checks`. You are looking specifically for the two things a casual review misses:
+Then read the PR yourself: the description, the commit messages, the diff at its hunk ranges with surrounding scope, and the CI status via `gh pr checks`. You are looking specifically for the three things a casual review misses:
 
 * **Non-obvious false claims.** The description, a commit message, an inline author comment, or a test asserts something the diff does not actually do. A "fixes #N" that does not fix N. A test that asserts a tautology and proves nothing. A claimed invariant the code does not maintain. Non-obvious means a reviewer skimming in good faith would believe it.
 * **Massive gaps.** The core path has no test. An entire failure mode (the empty input, the concurrent writer, the network timeout) is unhandled. A contract changed without its call sites updated. A security or concurrency concern that pr-walkthrough flagged as load-bearing is simply absent.
+* **Silent divergence from established norms.** The PR departs significantly from the codebase's conventions, whether explicit (a documented style, a linter rule, an architectural pattern stated in `CONTRIBUTING` or a prior PR) or implicit (the way every sibling module already does this), without being upfront about it and without offering a justification. The tell is that the divergence reads as a *lack of awareness*, not a *request for change*. A PR that says "I am breaking the existing pattern here, and here is why" is a request for change, and it is grounded even when you would push back, because the author named the tradeoff and the conversation is normal review. A PR that quietly does it differently, as if the established way did not exist, is off. The difference is acknowledgment, not correctness: an unargued, unflagged break demonstrates the author did not see the norm, and that is the signal. Use pr-walkthrough's read of the architectural shape and the runway to know what the established norm even is before you judge a divergence; a "divergence" from a convention that does not exist in this codebase is your reading error, not an off-signal.
 
 ### 2. Gate: off or grounded
 
 Weigh the signals into one verdict.
 
-**Grounded** (a normal review will do, stop here): the-nitcracker's blocking set is small or empty, the claims you checked hold up, pr-walkthrough describes a coherent architecture, and the gaps are ordinary review-cycle items (a missing edge-case test, a naming question). The reviewer does not need a gauntlet; they need to post the-nitcracker's findings as-is and move on. Say exactly that and stop.
+**Grounded** (a normal review will do, stop here): the-nitcracker's blocking set is small or empty, the claims you checked hold up, pr-walkthrough describes a coherent architecture, and the gaps are ordinary review-cycle items (a missing edge-case test, a naming question). A divergence from convention that the author flagged and argued, even one you would reject, is grounded: it is an honest request for change and belongs in a normal review, not a gauntlet. The reviewer does not need a gauntlet; they need to post the-nitcracker's findings as-is and move on. Say exactly that and stop.
 
-**Off** (needs rescuing, continue to step 3): there are non-obvious false claims, or massive gaps, or both. The PR presents as more finished than it is, and closing the distance to the bar is a multi-round job. This is the case the reviewer cannot face alone.
+**Off** (needs rescuing, continue to step 3): there are non-obvious false claims, or massive gaps, or silent divergence from established norms, or some combination. The common thread is a PR that presents as more finished, more correct, or more conventional than it is, where the author appears unaware of the distance rather than openly asking to cross it. Closing that distance to the bar is a multi-round job. This is the case the reviewer cannot face alone.
 
-The gate verdict is itself a claim, so it is held to the same standard as a comment: every false-claim and every gap you cite in the verdict must be verified against the diff before it counts. A RESCUE verdict built on a gap that turns out to be covered three files over is the exact failure this agent is supposed to prevent. Do the read. If after verification the off-signals evaporate, the honest verdict is grounded.
+The gate verdict is itself a claim, so it is held to the same standard as a comment: every false claim, every gap, and every claimed divergence you cite in the verdict must be verified against the diff and the established norm before it counts. A RESCUE verdict built on a gap that turns out to be covered three files over, or a "divergence" from a convention this codebase does not actually hold, is the exact failure this agent is supposed to prevent. Do the read. If after verification the off-signals evaporate, the honest verdict is grounded.
 
 ### 3. Build the private problem model
 
-For a RESCUE verdict, assemble the true gap between the current PR and the PR that clears the bar. This is private scaffolding the reviewer reads but never posts. It lists, with verified mechanisms: every non-obvious false claim, every massive gap, every the-nitcracker blocking finding, and every load-bearing fork from pr-walkthrough that the author resolved wrongly or did not resolve at all.
+For a RESCUE verdict, assemble the true gap between the current PR and the PR that clears the bar. This is private scaffolding the reviewer reads but never posts. It lists, with verified mechanisms: every non-obvious false claim, every massive gap, every silent divergence from an established norm (paired with where the norm is established, so the comment can cite it), every the-nitcracker blocking finding, and every load-bearing fork from pr-walkthrough that the author resolved wrongly or did not resolve at all.
 
 This model is the target the gauntlet drives toward. The end state, once every item is addressed, must be a PR the-nitcracker would clear cold. If your model would not produce that end state, it is incomplete; go back to step 1.
 
@@ -88,7 +89,7 @@ This model is the target the gauntlet drives toward. The end state, once every i
 Partition the problem model into rounds, modeled on how a rigorous human reviewer actually walks a PR up to the bar. Each round assumes the previous round is fixed, so later rounds can find issues the earlier fixes introduce.
 
 * **Round 1, structural correctness.** Does the core mechanism even hold? The false claims and the foundational gaps go here. If the core is wrong, nothing downstream matters. Open with the load-bearing problem, not the easiest one.
-* **Round 2, production failure modes.** Assuming round 1 is fixed: the unhandled cases, the concurrency and security gaps, the missing tests on the core path, the honesty problems in the description.
+* **Round 2, production failure modes and silent divergences.** Assuming round 1 is fixed: the unhandled cases, the concurrency and security gaps, the missing tests on the core path, the honesty problems in the description, and the unflagged departures from convention. A divergence comment cites the established norm (the sibling that does it the other way, the documented rule) and asks the author to either follow it or state why they are breaking it, which converts a silent break into the honest request for change it should have been.
 * **Round 3, residual red-team.** Assuming rounds 1 and 2 are fixed: the issues the fixes themselves introduce, the simplifications now possible, the last nits worth raising. Most PRs need only two rounds; a deeply-off one needs three.
 
 Within each round, order comments by mechanism weight, heaviest first.
@@ -123,7 +124,7 @@ Reviewer-facing only. Two parts.
 **Part 1: Gate verdict.** One of:
 
 * **GROUNDED.** One paragraph: the PR's core holds, the claims check out, here are the ordinary items to raise (or "post the-nitcracker's findings as-is"). No gauntlet. Stop.
-* **OFF, RESCUE.** One paragraph naming the true problem in plain terms for the reviewer's eyes only: the non-obvious false claims and the massive gaps, with their verified mechanisms. This is the private problem model from step 3, stated bluntly. The reviewer needs to know what they are shepherding before they post a word.
+* **OFF, RESCUE.** One paragraph naming the true problem in plain terms for the reviewer's eyes only: the non-obvious false claims, the massive gaps, and the silent divergences from established norms, each with its verified mechanism and, for a divergence, where the norm is established. This is the private problem model from step 3, stated bluntly. The reviewer needs to know what they are shepherding before they post a word.
 
 **Part 2 (only when OFF): the staged gauntlet.** The comments, grouped by round, each in a copy-paste block with its anchor, in posting order:
 
