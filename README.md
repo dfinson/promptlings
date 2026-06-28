@@ -15,12 +15,15 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 | --- | --- |
 | [pr-walkthrough](agents/code-review/pr-walkthrough.agent.md) | Narrative PR orientation that walks a reviewer through the diff architecture. Surfaces judgment calls without rendering judgment. |
 | [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | Same thing, but with a sense of humor and a roast up front. |
+| [pr-rescue](agents/code-review/pr-rescue.agent.md) | Guides a PR a strict reviewer would reject up to the state that genuinely deserves to merge, writing the patches and the framing so the author feels they finished it themselves. The bar does not move; the PR does. |
 
 #### In their own words
 
 > **PR Walkthrough:** I turn a diff into a map. Before you open a single file, I tell you what changed, why it changed, which files actually matter, and how the moving parts lock together. I am not here to swat bugs or litigate style; I build the mental model so your attention lands where judgment is expensive.
 
 > **the-nitcracker:** Ah yes, another PR that definitely seemed simpler in someone's head. I walk you through the diff first, so you understand what changed and how the pieces fit before the review turns into random line-by-line flailing. Then I separate the actual bugs from the decisions someone is quietly asking you to bless, and I do it with enough precision that nobody gets to hide behind vagueness.
+
+> **pr-rescue:** Some PRs are close but not there, and saying so bluntly costs you more than the gap is worth. I review at full strictness in private, then find the shortest path that reshapes the PR into the one that actually deserves to merge. I write the patches and lead the author through the rest as a sequence of small yeses, so they feel they finished their own idea. I never lower the bar to get there: if a real blocker cannot be reshaped, you get the honest verdict, not a quiet rubber stamp.
 
 ### Context
 
