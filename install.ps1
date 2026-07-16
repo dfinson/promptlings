@@ -12,6 +12,7 @@ $Agents = @(
     "agents/code-review/pr-walkthrough.agent.md"
     "agents/code-review/the-nitcracker.agent.md"
     "agents/context/session-handoff.agent.md"
+    "agents/media/technical-demo.agent.md"
 )
 
 function Install-Agents {

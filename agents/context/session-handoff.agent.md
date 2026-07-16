@@ -277,7 +277,7 @@ FIRST: read the environment handoff files before doing anything else: run `cat "
 Begin with an operation label in bold: **Saved** for a normal handoff, or **Migrated and Saved** when a schema migration ran this session. Then print a summary table, always showing the Handoff dir, Schema, and State rows and omitting any other row whose value is zero or empty:
 
 | Field | Value |
-|-------|-------|
+| --- | --- |
 | Handoff dir | {resolved repo-local path} |
 | Schema | {`v{current}, no migration`, or `v{stored} to v{current}`} |
 | State | written |
