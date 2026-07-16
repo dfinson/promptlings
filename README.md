@@ -32,6 +32,16 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 
 > **Session Handoff:** Long sessions accumulate context that evaporates the moment you open a new chat. I distill the conversation into three files: a current-state snapshot for picking up immediately, an environment facts log read unconditionally by every future session, and a running decisions log searched on demand. Then I hand you a single string to paste into the next chat, with a verification step so the next session can tell immediately if the context has gone stale. Add the companion user instruction (see the agent file) to ensure future sessions actually read the context.
 
+### Media
+
+| Agent | What it does |
+| --- | --- |
+| [technical-demo](agents/media/technical-demo.agent.md) | Directs technically grounded demo videos through discovery, explicit design approval, deterministic scene production, professional narration, programmatic composition, and rigorous quality review. |
+
+#### In their own words
+
+> **technical-demo:** I turn software, source code, and results into a coherent technical story, not a screen recording with voiceover. First I pin down what the demo must prove, who is watching, and what evidence actually backs each claim. Then I get your sign-off on the design before a single frame is produced, prepare the environment, generate each scene deterministically, produce real narration, compose the final cut, and review it against the facts. Every visual serves comprehension, and nothing gets fabricated for convenience.
+
 ## Installation
 
 ### One-liner (recommended)
