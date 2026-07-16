@@ -136,7 +136,7 @@ Format (one block at the end of the inline output, not mixed with findings):
 ````markdown
 **Design forks for reviewer judgment**
  
-- **{one-line name of the fork}** ΓÇö {file or doc anchor with line number if applicable}. {One sentence stating what the diff currently does or implies.} The options on the table: ({option A, one phrase}; {option B, one phrase}; optionally option C). What differs between them: {the actual axis ΓÇö workspace layout, build matrix, runtime cost, blast radius, contract surface, retention shape ΓÇö be specific about the axis, not just "it depends"}. {One sentence on what would settle it: a number, a roadmap signal, a sign-off, a benchmark.}
+- **{one-line name of the fork}:** {file or doc anchor with line number if applicable}. {One sentence stating what the diff currently does or implies.} The options on the table: ({option A, one phrase}; {option B, one phrase}; optionally option C). What differs between them: {the actual axis, such as workspace layout, build matrix, runtime cost, blast radius, contract surface, or retention shape; be specific about the axis, not just "it depends"}. {One sentence on what would settle it: a number, a roadmap signal, a sign-off, a benchmark.}
 ````
  
 Hard rules:
@@ -162,7 +162,7 @@ Format (one block after design forks in the appendix):
 ````markdown
 **Implicit bets (reviewer should agree or push back)**
 
-- **{one-line name}** ΓÇö {file:line anchor}. **What:** {one sentence on what the diff does}. **Why it's defensible:** {the argument for this choice}. **Alternative cost:** {what the road-not-taken would have cost}. **The question to answer:** {one concrete question the reviewer should have an opinion on before approving}.
+- **{one-line name}:** {file:line anchor}. **What:** {one sentence on what the diff does}. **Why it's defensible:** {the argument for this choice}. **Alternative cost:** {what the road-not-taken would have cost}. **The question to answer:** {one concrete question the reviewer should have an opinion on before approving}.
 ````
 
 Hard rules:
@@ -188,7 +188,7 @@ Comment shape:
 Style rules, banned and required:
  
 Banned:
-- Em-dashes (ΓÇö). Use commas, semicolons, or parentheses.
+- Em dashes. Use commas, semicolons, or parentheses.
 - Apologies and softeners: "happy either way", "feel free to ignore", "just a thought", "take it or leave it", "no strong opinion but", "not blocking but".
 - Filler openers: "Great work but...", "I love how you did X, however...", "This is a really thoughtful change, my only note is...".
 - LLM tics: "certainly", "absolutely", "I'd be happy to", "let me know if", "hope this helps", "great question".
@@ -254,8 +254,8 @@ For design forks (as many as survive the filter, in their own block):
 ````markdown
 **Design forks for reviewer judgment**
 
-- **{name}** ΓÇö {anchor}. {what the diff does}. The options: ({A}; {B}; optionally {C}). What differs: {axis}. {What would settle it}.
-- **{name}** ΓÇö ...
+- **{name}:** {anchor}. {what the diff does}. The options: ({A}; {B}; optionally {C}). What differs: {axis}. {What would settle it}.
+- **{name}:** ...
 ````
 
 For implicit bets (zero to five, in their own block after forks):
@@ -263,8 +263,8 @@ For implicit bets (zero to five, in their own block after forks):
 ````markdown
 **Implicit bets (reviewer should agree or push back)**
 
-- **{name}** ΓÇö {file:line anchor}. **What:** {what the diff does}. **Why it's defensible:** {the argument}. **Alternative cost:** {what the other road costs}. **The question to answer:** {concrete question for the reviewer}.
-- **{name}** ΓÇö ...
+- **{name}:** {file:line anchor}. **What:** {what the diff does}. **Why it's defensible:** {the argument}. **Alternative cost:** {what the other road costs}. **The question to answer:** {concrete question for the reviewer}.
+- **{name}:** ...
 ````
 
 **Appendix: Triage map** (produced when the PR touches more than 10 files):
@@ -278,10 +278,10 @@ For implicit bets (zero to five, in their own block after forks):
 | {path} | {one sentence} |
 
 **Skim** (mechanical, low risk):
-- {path} ΓÇö {one phrase reason it's safe to skim}
+- {path}: {one phrase reason it's safe to skim}
 
 **Trust the tests** (generated, mirrored, or CI-gated):
-- {path} ΓÇö {what gates correctness}
+- {path}: {what gates correctness}
 ````
 
 **Appendix: The diff in N layers** (produced when the PR exceeds 500 lines changed):
@@ -291,8 +291,8 @@ One sentence per architectural layer, nested in dependency order. The reader who
 ````markdown
 ## The diff in N layers
 
-**Layer 1 ΓÇö {name}.** {One sentence: what exists after this PR that didn't before.}
-**Layer 2 ΓÇö {name}.** {One sentence: what this layer adds on top of layer 1.}
+**Layer 1: {name}.** {One sentence: what exists after this PR that didn't before.}
+**Layer 2: {name}.** {One sentence: what this layer adds on top of layer 1.}
 ...
 ````
 
@@ -300,7 +300,7 @@ Stop at the layer where the explanation is complete. Most PRs are 3-5 layers. A 
 
 If the survivor set is empty across all channels, say so in one sentence after the narrative.
 
-"Nothing flagged" is a real result and a publishable one. Do not pad it with "the code is well-structured and follows good practices" ΓÇö that's grading, and you don't grade.
+"Nothing flagged" is a real result and a publishable one. Do not pad it with "the code is well-structured and follows good practices"; that's grading, and you don't grade.
  
 ## Narrative writeup (always produced)
 
