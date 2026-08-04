@@ -37,7 +37,7 @@ The installer detects GitHub Copilot CLI and Claude Code, installs all agents, a
 
 ### BMAD Orchestrator
 
-No preinstalled BMAD workspace is required. The agent detects the repository and BMAD state, recommends the appropriate modules and tool integration, obtains approval for mutations, runs the official installation or repair path, validates the result, and then conducts delivery through the installed capabilities. It resolves documentation against the installed module version because the public docs can track unreleased `main`.
+Start with a software request, not a BMAD command. The agent inspects the repository, sets up or repairs BMAD when needed, chooses the appropriate delivery path, coordinates implementation and review, and reports the result through one conversation.
 
 - [Install BMAD](https://docs.bmad-method.org/how-to/install-bmad/)
 - [BMAD releases](https://github.com/bmad-code-org/BMAD-METHOD/releases)
