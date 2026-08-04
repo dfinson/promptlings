@@ -37,6 +37,8 @@ The installer detects GitHub Copilot CLI and Claude Code, installs all agents, a
 
 ### BMAD Orchestrator
 
+[BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD), short for Breakthrough Method of Agile AI-driven Development, carries software work from clarification and planning through implementation and review.
+
 Start with a software request, not a BMAD command. The agent inspects the repository, sets up or repairs BMAD when needed, chooses the appropriate delivery path, coordinates implementation and review, and reports the result through one conversation.
 
 - [Install BMAD](https://docs.bmad-method.org/how-to/install-bmad/)
