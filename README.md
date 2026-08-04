@@ -5,97 +5,69 @@
   </picture>
 </p>
 
-Each promptling is a self-contained `.agent.md` file: a structured system prompt that works with any LLM-powered coding tool (GitHub Copilot CLI, Claude Code, or any agent framework that accepts markdown instructions).
+Focused custom agents for code review, session continuity, technical demos, and BMAD-driven delivery. Each promptling is one portable `.agent.md` file.
 
-## Agents
+## Install
 
-### Code Review
-
-| Agent | What it does |
-| --- | --- |
-| [pr-walkthrough](agents/code-review/pr-walkthrough.agent.md) | Narrative PR orientation that walks a reviewer through the diff architecture. Surfaces judgment calls without rendering judgment. |
-| [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | Same thing, but with a sense of humor and a roast up front. |
-
-#### In their own words
-
-> **PR Walkthrough:** I turn a diff into a map. Before you open a single file, I tell you what changed, why it changed, which files actually matter, and how the moving parts lock together. I am not here to swat bugs or litigate style; I build the mental model so your attention lands where judgment is expensive.
-
-> **the-nitcracker:** Ah yes, another PR that definitely seemed simpler in someone's head. I walk you through the diff first, so you understand what changed and how the pieces fit before the review turns into random line-by-line flailing. Then I separate the actual bugs from the decisions someone is quietly asking you to bless, and I do it with enough precision that nobody gets to hide behind vagueness.
-
-### Context
-
-| Agent | What it does |
-| --- | --- |
-| [session-handoff](agents/context/session-handoff.agent.md) | Persists session context to workspace-local files and outputs a ready-to-paste starter string for the next chat. Requires a companion user instruction to close the read-side loop: see the [Read-Side Setup](agents/context/session-handoff.agent.md#read-side-setup) section in the agent file. |
-
-#### In their own words
-
-> **Session Handoff:** Long sessions accumulate context that evaporates the moment you open a new chat. I distill the conversation into three files: a current-state snapshot for picking up immediately, an environment facts log read unconditionally by every future session, and a running decisions log searched on demand. Then I hand you a single string to paste into the next chat, with a verification step so the next session can tell immediately if the context has gone stale. Add the companion user instruction (see the agent file) to ensure future sessions actually read the context.
-
-### Media
-
-| Agent | What it does |
-| --- | --- |
-| [technical-demo](agents/media/technical-demo.agent.md) | Directs technically grounded demo videos through discovery, explicit design approval, deterministic scene production, professional narration, programmatic composition, and rigorous quality review. |
-
-#### In their own words
-
-> **technical-demo:** I turn software, source code, and results into a coherent technical story, not a screen recording with voiceover. First I pin down what the demo must prove, who is watching, and what evidence actually backs each claim. Then I get your sign-off on the design before a single frame is produced, prepare the environment, generate each scene deterministically, produce real narration, compose the final cut, and review it against the facts. Every visual serves comprehension, and nothing gets fabricated for convenience.
-
-### Orchestration
-
-| Agent | What it does |
-| --- | --- |
-| [master-orchestration](agents/orchestration/master-orchestration.agent.md) | Provides one conversational interface over installed BMAD capabilities without recreating BMAD workflows, artifacts, routing, review logic, or status tracking. |
-
-#### In their own words
-
-> **master-orchestration:** BMAD owns the development method; I conduct it. I inspect the installed catalog and artifacts, select and sequence BMAD entry points, gate consequential mutations, manage the deferred-work policy BMAD explicitly leaves to its caller, require honest review separation, route recovery through BMAD, and give the user one continuous interface.
-
-It uses the installed BMAD manifest, catalog, configuration, and system-of-record artifacts rather than a parallel lifecycle. Documentation is resolved against the installed module version because the public [BMAD documentation](https://docs.bmad-method.org/) can track unreleased `main`. See the official [installation guide](https://docs.bmad-method.org/how-to/install-bmad/) and [releases](https://github.com/bmad-code-org/BMAD-METHOD/releases).
-
-## Installation
-
-### One-liner (recommended)
-
-**Linux / macOS:**
+**Linux / macOS**
 
 ```bash
-curl -sL https://raw.githubusercontent.com/dfinson/promptlings/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/dfinson/promptlings/main/install.sh | bash
 ```
 
-**Windows (PowerShell):**
+**Windows PowerShell**
 
 ```powershell
 irm https://raw.githubusercontent.com/dfinson/promptlings/main/install.ps1 | iex
 ```
 
-The installer auto-detects your tool (Copilot CLI or Claude Code) and downloads the agents to the right directory.
+The installer detects GitHub Copilot CLI and Claude Code, installs all agents, and configures the session-handoff read-side instruction.
 
-### Manual
+## Pick an Agent
 
-Copy the agents you want to your tool's agent directory:
+| Agent | Use it when you need |
+| --- | --- |
+| [PR Walkthrough](agents/code-review/pr-walkthrough.agent.md) | A narrative map of a PR before reviewing it: architecture, important files, design forks, and implicit bets. |
+| [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | A full PR review with inline defects, separate design judgments, and a candid narrative walkthrough. |
+| [Session Handoff](agents/context/session-handoff.agent.md) | Durable context across chats: current state, environment facts, decisions, and a verified restart prompt. |
+| [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
+| [Master Orchestration](agents/orchestration/master-orchestration.agent.md) | One conversational interface over installed BMAD capabilities for routing, execution, review, recovery, and reporting. |
+
+## Agent Notes
+
+### Master Orchestration
+
+Requires an installed [BMAD Method](https://docs.bmad-method.org/) workspace. It resolves capabilities and documentation against the installed module version because the public docs can track unreleased `main`.
+
+- [Install BMAD](https://docs.bmad-method.org/how-to/install-bmad/)
+- [BMAD releases](https://github.com/bmad-code-org/BMAD-METHOD/releases)
+
+### Session Handoff
+
+Requires a companion read-side instruction so future sessions load the persisted context. The installers configure this automatically. For manual setup, see [Read-Side Setup](agents/context/session-handoff.agent.md#read-side-setup).
+
+## Manual Install
+
+Copy any `.agent.md` file into the directory for your tool:
 
 | Tool | Directory |
 | --- | --- |
-| GitHub Copilot CLI (user-wide) | `~/.copilot/agents/` |
-| GitHub Copilot CLI (per-project) | `.github/agents/` |
+| GitHub Copilot CLI, user-wide | `~/.copilot/agents/` |
+| GitHub Copilot CLI, per-project | `.github/agents/` |
 | Claude Code | `~/.claude/agents/` |
 
-### Other Frameworks
+For other frameworks, parse the YAML frontmatter and use the Markdown body as the system prompt.
 
-These are plain markdown files with YAML frontmatter. Parse the `name` and `description` from the frontmatter, use the body as the system prompt.
+## Principles
 
-## Philosophy
-
-- **High bar, low noise.** Output that doesn't change a tired senior engineer's mind doesn't ship.
-- **Model-agnostic.** No vendor lock-in. If it can follow instructions, it can run these.
-- **Opinionated.** These agents have a point of view. Fork them if yours differs.
-- **No em dashes.** Ever. Use colons, commas, parentheses, or restructure the sentence.
+- **High bar, low noise.** Ship output that changes an experienced reviewer's mind.
+- **Portable.** Plain Markdown, no required agent runtime.
+- **Opinionated.** Every agent has a defined point of view and judgment boundary.
+- **No em dashes.** Use commas, colons, semicolons, periods, or parentheses.
 
 ## Contributing
 
-PRs welcome. The bar for inclusion is: "would I actually use this agent every day?"
+PRs are welcome. The inclusion bar is simple: would you use this agent every day?
 
 ## License
 
