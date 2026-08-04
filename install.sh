@@ -14,6 +14,7 @@ AGENTS=(
   "agents/code-review/the-nitcracker.agent.md"
   "agents/context/session-handoff.agent.md"
   "agents/media/technical-demo.agent.md"
+  "agents/orchestration/master-orchestration.agent.md"
 )
 
 install_agents() {
@@ -24,7 +25,7 @@ install_agents() {
   for agent in "${AGENTS[@]}"; do
     filename=$(basename "$agent")
     echo "  Downloading $filename..."
-    curl -sL "$BASE_URL/$agent" -o "$target/$filename"
+    curl -fsSL "$BASE_URL/$agent" -o "$target/$filename"
   done
   echo "  Done. Installed ${#AGENTS[@]} agents."
 }
