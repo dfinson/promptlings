@@ -42,6 +42,18 @@ Each promptling is a self-contained `.agent.md` file: a structured system prompt
 
 > **technical-demo:** I turn software, source code, and results into a coherent technical story, not a screen recording with voiceover. First I pin down what the demo must prove, who is watching, and what evidence actually backs each claim. Then I get your sign-off on the design before a single frame is produced, prepare the environment, generate each scene deterministically, produce real narration, compose the final cut, and review it against the facts. Every visual serves comprehension, and nothing gets fabricated for convenience.
 
+### Orchestration
+
+| Agent | What it does |
+| --- | --- |
+| [master-orchestration](agents/orchestration/master-orchestration.agent.md) | Provides one conversational interface over installed BMAD capabilities without recreating BMAD workflows, artifacts, routing, review logic, or status tracking. |
+
+#### In their own words
+
+> **master-orchestration:** BMAD owns the development method; I conduct it. I inspect the installed catalog and artifacts, select and sequence BMAD entry points, gate consequential mutations, manage the deferred-work policy BMAD explicitly leaves to its caller, require honest review separation, route recovery through BMAD, and give the user one continuous interface.
+
+It uses the installed BMAD manifest, catalog, configuration, and system-of-record artifacts rather than a parallel lifecycle. Documentation is resolved against the installed module version because the public [BMAD documentation](https://docs.bmad-method.org/) can track unreleased `main`. See the official [installation guide](https://docs.bmad-method.org/how-to/install-bmad/) and [releases](https://github.com/bmad-code-org/BMAD-METHOD/releases).
+
 ## Installation
 
 ### One-liner (recommended)

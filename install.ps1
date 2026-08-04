@@ -13,6 +13,7 @@ $Agents = @(
     "agents/code-review/the-nitcracker.agent.md"
     "agents/context/session-handoff.agent.md"
     "agents/media/technical-demo.agent.md"
+    "agents/orchestration/master-orchestration.agent.md"
 )
 
 function Install-Agents {
