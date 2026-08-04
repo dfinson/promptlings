@@ -1,5 +1,5 @@
 ---
-name: master-orchestration
+name: bmad-orchestrator
 description: 'Use as one continuous interface to bootstrap, configure, operate, repair, and update BMAD-driven software delivery.'
 ---
 
