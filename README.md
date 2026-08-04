@@ -31,13 +31,13 @@ The installer detects GitHub Copilot CLI and Claude Code, installs all agents, a
 | [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | A full PR review with inline defects, separate design judgments, and a candid narrative walkthrough. |
 | [Session Handoff](agents/context/session-handoff.agent.md) | Durable context across chats: current state, environment facts, decisions, and a verified restart prompt. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
-| [Master Orchestration](agents/orchestration/master-orchestration.agent.md) | One conversational interface over installed BMAD capabilities for routing, execution, review, recovery, and reporting. |
+| [Master Orchestration](agents/orchestration/master-orchestration.agent.md) | One conversational interface that bootstraps, configures, operates, repairs, and updates BMAD-driven delivery. |
 
 ## Agent Notes
 
 ### Master Orchestration
 
-Requires an installed [BMAD Method](https://docs.bmad-method.org/) workspace. It resolves capabilities and documentation against the installed module version because the public docs can track unreleased `main`.
+No preinstalled BMAD workspace is required. The agent detects the repository and BMAD state, recommends the appropriate modules and tool integration, obtains approval for mutations, runs the official installation or repair path, validates the result, and then conducts delivery through the installed capabilities. It resolves documentation against the installed module version because the public docs can track unreleased `main`.
 
 - [Install BMAD](https://docs.bmad-method.org/how-to/install-bmad/)
 - [BMAD releases](https://github.com/bmad-code-org/BMAD-METHOD/releases)
