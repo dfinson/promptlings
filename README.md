@@ -31,7 +31,7 @@ The installer detects GitHub Copilot CLI and Claude Code, installs all agents, a
 | [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | A full PR review with inline defects, separate design judgments, and a candid narrative walkthrough. |
 | [Session Handoff](agents/context/session-handoff.agent.md) | Durable context across chats: current state, environment facts, decisions, and a verified restart prompt. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
-| [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | One conversational interface that bootstraps, configures, operates, repairs, and updates BMAD-driven delivery. |
+| [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Adaptive BMAD delivery through one interface, from verified setup and bounded fixes to full-assurance initiatives. |
 | [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | A setup-to-delivery conductor for Spec-Kit Fleet with advisory workflow sizing and artifact-derived review coverage. |
 
 ## Agent Notes
@@ -40,7 +40,7 @@ The installer detects GitHub Copilot CLI and Claude Code, installs all agents, a
 
 [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD), short for Breakthrough Method of Agile AI-driven Development, carries software work from clarification and planning through implementation and review.
 
-Start with a software request, not a BMAD command. The agent inspects the repository, sets up or repairs BMAD when needed, chooses the appropriate delivery path, coordinates implementation and review, and reports the result through one conversation.
+Start with a software request, not a BMAD command. The agent verifies setup, uses focused evidence for bounded work, escalates uncertainty and high-risk changes to full assurance, and keeps every output conformant with the installed BMAD workflow.
 
 - [Install BMAD](https://docs.bmad-method.org/how-to/install-bmad/)
 - [BMAD releases](https://github.com/bmad-code-org/BMAD-METHOD/releases)
