@@ -32,7 +32,7 @@ The installer detects GitHub Copilot CLI and Claude Code, installs all agents, a
 | [Session Handoff](agents/context/session-handoff.agent.md) | Durable context across chats: current state, environment facts, decisions, and a verified restart prompt. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
 | [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Adaptive BMAD delivery through one interface, from verified setup and bounded fixes to full-assurance initiatives. |
-| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | Adaptive delivery through direct execution, selective Spec-Kit, or Fleet when parallelism and lifecycle controls add value. |
+| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | Anchor every change in Spec-Kit specification, plan, and tasks, then use only the additional phases and Fleet capabilities that add value. |
 
 ## Agent Notes
 
@@ -47,7 +47,7 @@ Start with a software request, not a BMAD command. The agent verifies setup, use
 
 ### Spec-Kit Flow
 
-Starts from a software request and selects the lightest path that preserves the outcome. Bounded work can proceed directly, artifact-driven work uses only the necessary [Spec-Kit](https://github.com/github/spec-kit) capabilities, and [Fleet](https://github.com/sharathsatish/spec-kit-fleet) takes over when parallel tasks, resume, rollback, remediation, or assurance make its lifecycle valuable.
+Starts from a software request and always establishes current `spec.md`, `plan.md`, and `tasks.md` anchors before implementation. It then selects the lightest anchored execution path, adding [Spec-Kit](https://github.com/github/spec-kit) phases only when they resolve a named need and handing control to [Fleet](https://github.com/sharathsatish/spec-kit-fleet) when parallel tasks, resume, rollback, remediation, or assurance make its lifecycle valuable.
 
 ### Session Handoff
 
