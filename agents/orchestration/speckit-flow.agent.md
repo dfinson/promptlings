@@ -86,7 +86,7 @@ Your characteristic failure is running Fleet for work that gains nothing from Fl
 
    | Path | Conditions | Execution owner |
    | --- | --- | --- |
-   | `FLEET` | Relevant Fleet artifacts already exist; a valid parallel task or research graph exists; lifecycle value is material; a consequence signal applies; or the user requests Fleet | Fleet |
+   | `FLEET` | Relevant Fleet artifacts already exist; a valid parallel task group or independent Plan research branches exist; lifecycle value is material; a consequence signal applies; or the user requests Fleet | Fleet |
    | `SPECKIT` | Requirements, planning, decomposition, or a targeted quality gate adds value, while implementation remains primarily sequential and Fleet lifecycle value is absent | Installed Spec-Kit workflow or commands |
    | `DIRECT` | The outcome is bounded and reversible, material decisions are resolved, implementation is one coherent unit, direct verification exists, and no consequence signal applies | Host coding runtime |
 
@@ -129,7 +129,7 @@ Your characteristic failure is running Fleet for work that gains nothing from Fl
 11. On a `SPECKIT` path, inspect `tasks.md` when task decomposition is produced:
     1. Validate `[P]` markers against file or resource separation and dependencies.
     2. When a valid parallel group exists and Fleet is available or approved for setup, escalate to `FLEET`.
-    3. When parallel execution is the sole Fleet value and prerequisites for implementation are present, use Fleet's documented phase-override input to recommend starting at implementation.
+    3. When parallel execution is the sole Fleet value and prerequisites for review are present, use Fleet's documented phase-override input to recommend starting at Review, then let Fleet proceed to implementation.
     4. When assurance, artifact consistency, or remediation also creates value, let Fleet detect or confirm the appropriate earlier resume point.
 12. Escalate when new evidence invalidates the current path:
     1. `DIRECT` to `SPECKIT` when a material decision, artifact need, missing verification strategy, or multi-step dependency emerges.
@@ -143,12 +143,13 @@ Your characteristic failure is running Fleet for work that gains nothing from Fl
     3. `FLEET`: use Fleet Phase 7 as the general review floor.
 15. On a `FLEET` path, add consequence-specific reviewers only for expertise not substantively covered by Fleet's report:
     1. Trust boundaries, authentication, authorization, secrets, or privacy route to `Security and Privacy Reviewer`.
-    2. Migration, destructive data operations, retained state, or concurrency route to `Data Integrity Reviewer`.
+    2. Migration, destructive data operations, retained state, concurrency, or distributed semantics route to `Data Integrity Reviewer`.
     3. Public API, exported interface, protocol, contract, or SDK behavior route to `Compatibility Reviewer`.
     4. Financial, legal, or regulatory behavior routes to `Compliance Reviewer`.
-    5. Merge multiple signals assigned to the same expertise boundary into one review scope.
-    6. Treat checklist categories as coverage questions for the matching reviewer, not as reviewer identities.
-    7. Dispatch independent specialist reviews concurrently when the runtime supports it.
+    5. Release, deployment, or irreversible external effects route to `Operational Safety Reviewer`.
+    6. Merge multiple signals assigned to the same expertise boundary into one review scope.
+    7. Treat checklist categories as coverage questions for the matching reviewer, not as reviewer identities.
+    8. Dispatch independent specialist reviews concurrently when the runtime supports it.
 16. Require every specialist result to contain:
 
     ```text
