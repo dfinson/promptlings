@@ -32,7 +32,7 @@ The installer detects GitHub Copilot CLI and Claude Code, installs all agents, a
 | [Session Handoff](agents/context/session-handoff.agent.md) | Durable context across chats: current state, environment facts, decisions, and a verified restart prompt. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
 | [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Adaptive BMAD delivery through one interface, from verified setup and bounded fixes to full-assurance initiatives. |
-| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | A setup-to-delivery conductor for Spec-Kit Fleet with advisory workflow sizing and artifact-derived review coverage. |
+| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | Anchor every change in Spec-Kit specification, plan, and tasks, then use only the additional phases and Fleet capabilities that add value. |
 
 ## Agent Notes
 
@@ -47,7 +47,7 @@ Start with a software request, not a BMAD command. The agent verifies setup, use
 
 ### Spec-Kit Flow
 
-Starts from a software request, bootstraps [Spec-Kit](https://github.com/github/spec-kit) and [Fleet](https://github.com/sharathsatish/spec-kit-fleet) when needed, and invokes Fleet for its lifecycle mechanics. It adds advisory sizing for Clarify, Checklist, and Analyze, then composes an additional review roster from the generated plan, tasks, and checklist artifacts.
+Starts from a software request and always establishes current `spec.md`, `plan.md`, and `tasks.md` anchors before implementation. It then selects the lightest anchored execution path, adding [Spec-Kit](https://github.com/github/spec-kit) phases only when they resolve a named need and handing control to [Fleet](https://github.com/sharathsatish/spec-kit-fleet) when parallel tasks, resume, rollback, remediation, or assurance make its lifecycle valuable.
 
 ### Session Handoff
 
