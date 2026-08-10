@@ -14,6 +14,7 @@ $Agents = @(
     "agents/context/session-handoff.agent.md"
     "agents/media/technical-demo.agent.md"
     "agents/orchestration/bmad-orchestrator.agent.md"
+    "agents/orchestration/speckit-flow.agent.md"
 )
 
 function Install-Agents {
