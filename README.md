@@ -32,6 +32,7 @@ The installer detects GitHub Copilot CLI and Claude Code, installs all agents, a
 | [Session Handoff](agents/context/session-handoff.agent.md) | Durable context across chats: current state, environment facts, decisions, and a verified restart prompt. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
 | [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | One conversational interface that bootstraps, configures, operates, repairs, and updates BMAD-driven delivery. |
+| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | A setup-to-delivery conductor for Spec-Kit Fleet with advisory workflow sizing and artifact-derived review coverage. |
 
 ## Agent Notes
 
@@ -43,6 +44,10 @@ Start with a software request, not a BMAD command. The agent inspects the reposi
 
 - [Install BMAD](https://docs.bmad-method.org/how-to/install-bmad/)
 - [BMAD releases](https://github.com/bmad-code-org/BMAD-METHOD/releases)
+
+### Spec-Kit Flow
+
+Starts from a software request, bootstraps [Spec-Kit](https://github.com/github/spec-kit) and [Fleet](https://github.com/sharathsatish/spec-kit-fleet) when needed, and invokes Fleet for its lifecycle mechanics. It adds advisory sizing for Clarify, Checklist, and Analyze, then composes an additional review roster from the generated plan, tasks, and checklist artifacts.
 
 ### Session Handoff
 
