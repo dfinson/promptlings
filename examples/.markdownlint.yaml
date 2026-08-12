@@ -1,0 +1,14 @@
+# Configuration for the committed example outputs.
+#
+# The files in this directory are unedited agent output, committed as evidence. They quote
+# real Go source, which uses hard tabs, and reproduce a table lifted from the diff analysis.
+# Reformatting them would destroy the only property that makes them worth committing, so the
+# two rules that fire on quoted source are disabled here and here only.
+
+extends: "../.markdownlint.yaml"
+
+# Quoted Go source uses tab indentation
+MD010: false
+
+# A table copied verbatim out of the review output
+MD060: false

@@ -1,5 +1,28 @@
 # promptlings installer (Windows PowerShell)
-# Usage: irm https://raw.githubusercontent.com/dfinson/promptlings/main/install.ps1 | iex
+#
+# Installs selected agent files into your assistant's agents directory.
+#
+# This script does NOT modify any global instruction file by default. The session-handoff
+# read-side block changes how your assistant behaves in every future session in every
+# repository, so it is opt-in only, via -WithReadSide or an explicit interactive
+# confirmation. See -Help.
+#
+# Recommended usage (read the script before running it):
+#   irm https://raw.githubusercontent.com/dfinson/promptlings/main/install.ps1 -OutFile install.ps1
+#   Get-Content install.ps1 | more
+#   .\install.ps1 -Review
+
+[CmdletBinding()]
+param(
+    [switch]$Review,
+    [switch]$All,
+    [string]$Agents,
+    [switch]$List,
+    [switch]$DryRun,
+    [switch]$Yes,
+    [switch]$WithReadSide,
+    [switch]$Help
+)
 
 $ErrorActionPreference = "Stop"
 
@@ -7,106 +30,333 @@ $Repo = "dfinson/promptlings"
 $Branch = "main"
 $BaseUrl = "https://raw.githubusercontent.com/$Repo/$Branch"
 $ReadSidePath = "agents/context/session-handoff-read-side.md"
+$ReadSideMarker = "session-handoff-read-side-start"
 
-$Agents = @(
-    "agents/code-review/pr-walkthrough.agent.md"
-    "agents/code-review/the-nitcracker.agent.md"
-    "agents/context/session-handoff.agent.md"
-    "agents/media/technical-demo.agent.md"
-    "agents/orchestration/bmad-orchestrator.agent.md"
-    "agents/orchestration/speckit-flow.agent.md"
+$AllAgents = @(
+    "the-nitcracker"
+    "pr-walkthrough"
+    "session-handoff"
+    "technical-demo"
+    "bmad-orchestrator"
+    "speckit-flow"
 )
+$ReviewAgents = @("the-nitcracker", "pr-walkthrough")
 
-function Install-Agents {
-    param(
-        [string]$Target,
-        [string]$Tool
-    )
-    Write-Host "Installing promptlings for $Tool -> $Target"
-    New-Item -ItemType Directory -Force -Path $Target | Out-Null
-    foreach ($agent in $Agents) {
-        $filename = Split-Path $agent -Leaf
-        Write-Host "  Downloading $filename..."
-        Invoke-WebRequest -Uri "$BaseUrl/$agent" -OutFile "$Target\$filename" -UseBasicParsing
+$AgentPaths = @{
+    "pr-walkthrough"    = "agents/code-review/pr-walkthrough.agent.md"
+    "the-nitcracker"    = "agents/code-review/the-nitcracker.agent.md"
+    "session-handoff"   = "agents/context/session-handoff.agent.md"
+    "technical-demo"    = "agents/media/technical-demo.agent.md"
+    "bmad-orchestrator" = "agents/orchestration/bmad-orchestrator.agent.md"
+    "speckit-flow"      = "agents/orchestration/speckit-flow.agent.md"
+}
+
+function Show-Usage {
+    Write-Host @'
+promptlings installer
+
+Usage: .\install.ps1 [options]
+
+Selection (pick at most one):
+  -Review               Install the two code-review agents (the-nitcracker, pr-walkthrough)
+  -All                  Install all six agents
+  -Agents a,b,c         Install agents by name (comma separated)
+  -List                 Print available agent names and exit
+
+Behavior:
+  -DryRun               Print every path that would be written, write nothing
+  -Yes                  Skip the confirmation prompt
+  -WithReadSide         Also append the session-handoff read-side block to your GLOBAL
+                        instruction file. Requires the session-handoff agent. This changes
+                        assistant behavior in every future session in every repository.
+  -Help                 Print this message and exit
+
+With no selection flag, an interactive run asks which set you want. A non-interactive run
+(a piped one-liner) installs the two code-review agents and prints how to ask for more.
+
+Files written by default: one .agent.md per selected agent, under %USERPROFILE%\.copilot\agents\
+and/or %USERPROFILE%\.claude\agents\. Nothing outside those directories is touched unless
+-WithReadSide is given or you confirm the read-side prompt.
+'@
+}
+
+function Write-Fail {
+    # Mirrors the bash script: message on stderr, exit code 2.
+    param([string]$Message)
+    [Console]::Error.WriteLine("Error: $Message")
+}
+
+if ($Help) { Show-Usage; return }
+if ($List) { $AllAgents | ForEach-Object { Write-Host $_ }; return }
+
+# ----- resolve the selection flags -----
+
+$selection = @()
+$selectionSource = $null
+
+if ($Review) {
+    $selectionSource = "-Review"
+    $selection = $ReviewAgents
+}
+if ($All) {
+    if ($selectionSource) {
+        Write-Fail "-All conflicts with $selectionSource. Pick one selection flag."
+        exit 2
     }
-    Write-Host "  Done. Installed $($Agents.Count) agents."
+    $selectionSource = "-All"
+    $selection = $AllAgents
+}
+if ($Agents) {
+    if ($selectionSource) {
+        Write-Fail "-Agents conflicts with $selectionSource. Pick one selection flag."
+        exit 2
+    }
+    $selectionSource = "-Agents"
+    $selection = @($Agents -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" })
 }
 
-$installedTargets = @()
-$copilotInstalled = $false
-$claudeInstalled = $false
+# ----- interactivity -----
+#
+# Interactive means the script was invoked as a file on disk AND stdin is a real console.
+# `irm ... | iex` leaves $PSCommandPath empty, so it can never prompt and never silently
+# opts in to anything.
 
-# GitHub Copilot CLI: directory already exists or gh copilot extension is available
-$ghCopilot = $false
-if (Test-Path "$env:USERPROFILE\.copilot\agents") {
-    $ghCopilot = $true
-} elseif (Get-Command gh -ErrorAction SilentlyContinue) {
-    $ghCopilot = (& gh copilot --version 2>$null) -ne $null
-}
-if ($ghCopilot) {
-    Install-Agents -Target "$env:USERPROFILE\.copilot\agents" -Tool "GitHub Copilot CLI"
-    $installedTargets += "$env:USERPROFILE\.copilot\agents"
-    $copilotInstalled = $true
+$scriptIsFile = -not [string]::IsNullOrEmpty($PSCommandPath)
+$interactive = $scriptIsFile -and [Environment]::UserInteractive -and (-not [Console]::IsInputRedirected)
+
+# ----- resolve the selection -----
+
+if ($selection.Count -eq 0) {
+    if ($interactive) {
+        Write-Host "Which agents do you want?"
+        Write-Host "  1) The two code-review agents: the-nitcracker, pr-walkthrough (default)"
+        Write-Host "  2) All six agents"
+        Write-Host "  3) Cancel"
+        $choice = Read-Host "Choice [1]"
+        switch (("$choice").Trim()) {
+            "" { $selection = $ReviewAgents }
+            "1" { $selection = $ReviewAgents }
+            "2" { $selection = $AllAgents }
+            default { Write-Host "Cancelled. Nothing was written."; return }
+        }
+    }
+    else {
+        $selection = $ReviewAgents
+        Write-Host "No selection flag and no console to ask on, so defaulting to the two code-review agents."
+        Write-Host "For everything else, download the script and pass a flag:"
+        Write-Host "  irm $BaseUrl/install.ps1 -OutFile install.ps1"
+        Write-Host "  .\install.ps1 -All            # all six agents"
+        Write-Host "  .\install.ps1 -List           # available agent names"
+        Write-Host ""
+    }
 }
 
-# Claude Code: ~/.claude directory exists or claude command is available
-# Agents live in ~/.claude/agents/, not ~/.claude/commands/
-$claudeDetected = (Test-Path "$env:USERPROFILE\.claude") -or ($null -ne (Get-Command claude -ErrorAction SilentlyContinue))
+# validate and de-duplicate
+$resolved = @()
+foreach ($a in $selection) {
+    if (-not $AgentPaths.ContainsKey($a)) {
+        Write-Fail "Unknown agent '$a'. Run with -List to see valid names."
+        exit 2
+    }
+    if ($resolved -notcontains $a) { $resolved += $a }
+}
+$selection = $resolved
+
+if ($selection.Count -eq 0) {
+    Write-Fail "No agents selected."
+    exit 2
+}
+
+$selectionHasSessionHandoff = $selection -contains "session-handoff"
+
+if ($WithReadSide -and (-not $selectionHasSessionHandoff)) {
+    Write-Fail "-WithReadSide only makes sense alongside the session-handoff agent."
+    [Console]::Error.WriteLine("Try: .\install.ps1 -Agents session-handoff -WithReadSide")
+    exit 2
+}
+
+# ----- detect targets -----
+
+$targets = @()
+$copilotDir = Join-Path $env:USERPROFILE ".copilot\agents"
+$claudeDir = Join-Path $env:USERPROFILE ".claude\agents"
+$copilotSelected = $false
+$claudeSelected = $false
+
+$copilotDetected = (Test-Path (Join-Path $env:USERPROFILE ".copilot")) -or
+                   ($null -ne (Get-Command copilot -ErrorAction SilentlyContinue))
+if ((-not $copilotDetected) -and ($null -ne (Get-Command gh -ErrorAction SilentlyContinue))) {
+    $copilotDetected = $null -ne (& gh copilot --version 2>$null)
+}
+if ($copilotDetected) {
+    $targets += $copilotDir
+    $copilotSelected = $true
+}
+
+$claudeDetected = (Test-Path (Join-Path $env:USERPROFILE ".claude")) -or
+                  ($null -ne (Get-Command claude -ErrorAction SilentlyContinue))
 if ($claudeDetected) {
-    Install-Agents -Target "$env:USERPROFILE\.claude\agents" -Tool "Claude Code"
-    $installedTargets += "$env:USERPROFILE\.claude\agents"
-    $claudeInstalled = $true
+    $targets += $claudeDir
+    $claudeSelected = $true
 }
 
-# Default fallback when neither tool is detected
-if ($installedTargets.Count -eq 0) {
-    Write-Host "No supported coding assistant detected. Installing to default GitHub Copilot CLI location."
-    Install-Agents -Target "$env:USERPROFILE\.copilot\agents" -Tool "GitHub Copilot CLI (default)"
-    $installedTargets += "$env:USERPROFILE\.copilot\agents"
-    $copilotInstalled = $true
+if ($targets.Count -eq 0) {
+    Write-Host "No supported assistant detected. Defaulting to the GitHub Copilot CLI location."
+    Write-Host ""
+    $targets = @($copilotDir)
+    $copilotSelected = $true
 }
 
+$readSideFiles = @()
+if ($WithReadSide -or ($selectionHasSessionHandoff -and $interactive)) {
+    if ($copilotSelected) { $readSideFiles += Join-Path $env:USERPROFILE ".copilot\copilot-instructions.md" }
+    if ($claudeSelected) { $readSideFiles += Join-Path $env:USERPROFILE ".claude\CLAUDE.md" }
+}
+
+# ----- print the plan before writing anything -----
+
+Write-Host "Plan"
+Write-Host "===="
+Write-Host "Source: $BaseUrl"
 Write-Host ""
-Write-Host "Done. Installed $($Agents.Count) agents to: $($installedTargets -join ', ')"
-Write-Host "Restart your coding assistant to pick them up."
+Write-Host "Directories created if missing:"
+foreach ($t in $targets) { Write-Host "  $t" }
 Write-Host ""
-Write-Host "NOTE: session-handoff needs a companion read-side instruction so future sessions read the"
-Write-Host "environment handoff file. Wiring it into your tool's user instructions now:"
+Write-Host "Files written ($($selection.Count) agent(s) per directory, overwritten if present):"
+foreach ($t in $targets) {
+    foreach ($a in $selection) { Write-Host "  $t\$a.agent.md" }
+}
+Write-Host ""
 
-# Wire the read-side protocol into the user instruction file of each installed tool (non-destructive).
-# Copilot CLI reads $HOME\.copilot\copilot-instructions.md; Claude Code reads $HOME\.claude\CLAUDE.md.
-$Marker = "session-handoff-read-side-start"
-$CopilotInstructions = Join-Path $env:USERPROFILE ".copilot\copilot-instructions.md"
-$ClaudeMd = Join-Path $env:USERPROFILE ".claude\CLAUDE.md"
-
-$ReadSideBlock = $null
-if ($copilotInstalled -or $claudeInstalled) {
-    try {
-        $ReadSideBlock = (Invoke-WebRequest -Uri "$BaseUrl/$ReadSidePath" -UseBasicParsing).Content
-    } catch {
-        $ReadSideBlock = $null
-    }
+if ($WithReadSide) {
+    Write-Host "Global instruction files appended to (opt-in via -WithReadSide):"
+    foreach ($f in $readSideFiles) { Write-Host "  $f" }
+    Write-Host ""
+    Write-Host "  The appended block instructs EVERY future session in EVERY repository to read your"
+    Write-Host "  session-handoff files before doing anything else, including before answering a"
+    Write-Host "  question or searching the codebase. It is added once, marked with"
+    Write-Host "  '$ReadSideMarker', and nothing existing is removed."
+    Write-Host ""
+}
+else {
+    Write-Host "Global instruction files modified: none."
+    Write-Host ""
 }
 
-function Add-ReadSide {
-    param([string]$InstructionFile)
-    if (-not $ReadSideBlock) {
-        Write-Host ""
-        Write-Warning "Failed to fetch $ReadSidePath. Add the read-side block from agents/context/session-handoff.agent.md to $InstructionFile manually."
-        return
-    }
-    if ((Test-Path $InstructionFile) -and ((Get-Content $InstructionFile -Raw) -match [regex]::Escape($Marker))) {
-        Write-Host ""
-        Write-Host "Read-side protocol already present in $InstructionFile. Skipping."
+if ($DryRun) {
+    Write-Host "Dry run. Nothing was written."
+    return
+}
+
+if ($interactive -and (-not $Yes)) {
+    $reply = Read-Host "Proceed? [y/N]"
+    if (("$reply").Trim() -notmatch '^(y|Y|yes|Yes|YES)$') {
+        Write-Host "Cancelled. Nothing was written."
         return
     }
     Write-Host ""
-    Write-Host "Appending read-side protocol to $InstructionFile ..."
-    $dir = Split-Path $InstructionFile -Parent
-    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    Add-Content -Path $InstructionFile -Value "`n$ReadSideBlock" -Encoding UTF8
-    Write-Host "Done."
 }
 
-if ($copilotInstalled) { Add-ReadSide -InstructionFile $CopilotInstructions }
-if ($claudeInstalled) { Add-ReadSide -InstructionFile $ClaudeMd }
+# ----- install -----
+
+function Get-Remote {
+    # Get-Remote REMOTE DEST: download to a temp file first so a failed fetch cannot
+    # truncate a file that is already installed.
+    param([string]$Remote, [string]$Dest)
+    $tmp = "$Dest.$([System.IO.Path]::GetRandomFileName())"
+    try {
+        Invoke-WebRequest -Uri "$BaseUrl/$Remote" -OutFile $tmp -UseBasicParsing
+        Move-Item -Path $tmp -Destination $Dest -Force
+    }
+    catch {
+        if (Test-Path $tmp) { Remove-Item $tmp -Force }
+        throw "Failed to download $Remote"
+    }
+}
+
+foreach ($t in $targets) {
+    Write-Host "Installing to $t"
+    New-Item -ItemType Directory -Force -Path $t | Out-Null
+    foreach ($a in $selection) {
+        Write-Host "  $a.agent.md"
+        Get-Remote -Remote $AgentPaths[$a] -Dest (Join-Path $t "$a.agent.md")
+    }
+}
+
+Write-Host ""
+Write-Host "Installed $($selection.Count) agent(s). Restart your assistant to pick them up."
+
+# ----- read-side block, opt-in only -----
+
+function Add-ReadSide {
+    param([string]$InstructionFile, [string]$Block)
+    if ((Test-Path $InstructionFile) -and
+        ((Get-Content $InstructionFile -Raw) -match [regex]::Escape($ReadSideMarker))) {
+        Write-Host "  Already present in $InstructionFile. Skipping."
+        return
+    }
+    $dir = Split-Path $InstructionFile -Parent
+    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
+    Add-Content -Path $InstructionFile -Value "`n$Block" -Encoding UTF8
+    Write-Host "  Appended to $InstructionFile"
+}
+
+function Show-ReadSideEnableHint {
+    Write-Host "To enable it later, run:"
+    Write-Host "  irm $BaseUrl/install.ps1 -OutFile install.ps1"
+    Write-Host "  .\install.ps1 -Agents session-handoff -WithReadSide"
+    Write-Host "Or add it by hand: see the Read-Side Setup section of"
+    Write-Host "  $BaseUrl/agents/context/session-handoff.agent.md"
+}
+
+if ($selectionHasSessionHandoff) {
+    Write-Host ""
+    $proceedReadSide = $false
+
+    if ($WithReadSide) {
+        $proceedReadSide = $true
+    }
+    elseif ($interactive) {
+        Write-Host "session-handoff needs a companion read-side instruction so that future sessions load"
+        Write-Host "the context it persisted. Enabling it appends a block to:"
+        foreach ($f in $readSideFiles) { Write-Host "  $f" }
+        Write-Host ""
+        Write-Host "That block applies to EVERY future session in EVERY repository, not just this one. It"
+        Write-Host "instructs your assistant to read the session-handoff files before doing anything else,"
+        Write-Host "including before answering a question or searching the codebase."
+        Write-Host ""
+        $reply = Read-Host "Append it now? [y/N]"
+        $proceedReadSide = ("$reply").Trim() -match '^(y|Y|yes|Yes|YES)$'
+    }
+    else {
+        Write-Host "Skipping the session-handoff read-side block: it modifies a global instruction file"
+        Write-Host "that affects every future session in every repository, and there is no console here"
+        Write-Host "to confirm on."
+        Show-ReadSideEnableHint
+        $proceedReadSide = $false
+    }
+
+    if ($proceedReadSide) {
+        Write-Host ""
+        Write-Host "Fetching $ReadSidePath ..."
+        $readSideBlock = $null
+        try {
+            $readSideBlock = (Invoke-WebRequest -Uri "$BaseUrl/$ReadSidePath" -UseBasicParsing).Content
+        }
+        catch {
+            $readSideBlock = $null
+        }
+        if ([string]::IsNullOrWhiteSpace($readSideBlock)) {
+            Write-Warning "Failed to fetch $ReadSidePath. Nothing was appended."
+            Show-ReadSideEnableHint
+        }
+        else {
+            foreach ($f in $readSideFiles) { Add-ReadSide -InstructionFile $f -Block $readSideBlock }
+        }
+    }
+    elseif ($interactive -and (-not $WithReadSide)) {
+        Write-Host ""
+        Write-Host "Left your global instruction files untouched."
+        Show-ReadSideEnableHint
+    }
+}
