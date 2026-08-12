@@ -195,33 +195,36 @@ claude_selected=0
 
 if [ -d "$HOME/.copilot" ] || command -v copilot >/dev/null 2>&1 \
   || { command -v gh >/dev/null 2>&1 && gh copilot --version >/dev/null 2>&1; }; then
-  targets="$targets $copilot_dir"
+  targets="set"
   copilot_selected=1
 fi
 
 if [ -d "$HOME/.claude" ] || command -v claude >/dev/null 2>&1; then
-  targets="$targets $claude_dir"
+  targets="set"
   claude_selected=1
 fi
 
-if [ -z "$(echo "$targets" | tr -d ' ')" ]; then
+if [ -z "$targets" ]; then
   echo "No supported assistant detected. Defaulting to the GitHub Copilot CLI location."
   echo ""
-  targets="$copilot_dir"
+  targets="set"
   copilot_selected=1
 fi
-targets="$(echo "$targets" | sed 's/^ *//;s/ *$//')"
 
-readside_files=""
+readside_copilot=0
+readside_claude=0
+readside_each() {
+  if [ "$readside_copilot" -eq 1 ]; then printf '%s\n' "$HOME/.copilot/copilot-instructions.md"; fi
+  if [ "$readside_claude" -eq 1 ]; then printf '%s\n' "$HOME/.claude/CLAUDE.md"; fi
+}
 if [ "$want_readside" -eq 1 ] || { [ "$selection_has_session_handoff" -eq 1 ] && [ "$interactive" -eq 1 ]; }; then
   if [ "$copilot_selected" -eq 1 ]; then
-    readside_files="$readside_files $HOME/.copilot/copilot-instructions.md"
+    readside_copilot=1
   fi
   if [ "$claude_selected" -eq 1 ]; then
-    readside_files="$readside_files $HOME/.claude/CLAUDE.md"
+    readside_claude=1
   fi
 fi
-readside_files="$(echo "$readside_files" | sed 's/^ *//;s/ *$//')"
 
 # ----- print the plan before writing anything -----
 
@@ -233,21 +236,22 @@ echo "===="
 echo "Source: $BASE_URL"
 echo ""
 echo "Directories created if missing:"
-for t in $targets; do
-  echo "  $t"
-done
+if [ "$copilot_selected" -eq 1 ]; then echo "  $copilot_dir"; fi
+if [ "$claude_selected" -eq 1 ]; then echo "  $claude_dir"; fi
 echo ""
 echo "Files written ($agent_count agent(s) per directory, overwritten if present):"
-for t in $targets; do
+plan_files() {
   for a in $selection; do
-    echo "  $t/$a.agent.md"
+    echo "  $1/$a.agent.md"
   done
-done
+}
+if [ "$copilot_selected" -eq 1 ]; then plan_files "$copilot_dir"; fi
+if [ "$claude_selected" -eq 1 ]; then plan_files "$claude_dir"; fi
 echo ""
 
 if [ "$want_readside" -eq 1 ]; then
   echo "Global instruction files appended to (opt-in via --with-readside):"
-  for f in $readside_files; do
+  readside_each | while IFS= read -r f; do
     echo "  $f"
   done
   echo ""
@@ -255,6 +259,15 @@ if [ "$want_readside" -eq 1 ]; then
   echo "  session-handoff files before doing anything else, including before answering a"
   echo "  question or searching the codebase. It is added once, marked with"
   echo "  '$READSIDE_MARKER', and nothing existing is removed."
+  echo ""
+elif [ -n "$(readside_each)" ]; then
+  echo "Global instruction files: you will be asked, after the agents are installed, whether to"
+  echo "append the session-handoff read-side block to:"
+  readside_each | while IFS= read -r f; do
+    echo "  $f"
+  done
+  echo ""
+  echo "  Answering no leaves them untouched. Nothing is written without that answer."
   echo ""
 else
   echo "Global instruction files modified: none."
@@ -294,14 +307,16 @@ download() {
   fi
 }
 
-for t in $targets; do
-  echo "Installing to $t"
-  mkdir -p "$t"
+install_to() {
+  echo "Installing to $1"
+  mkdir -p "$1"
   for a in $selection; do
     echo "  $a.agent.md"
-    download "$(agent_path "$a")" "$t/$a.agent.md"
+    download "$(agent_path "$a")" "$1/$a.agent.md"
   done
-done
+}
+if [ "$copilot_selected" -eq 1 ]; then install_to "$copilot_dir"; fi
+if [ "$claude_selected" -eq 1 ]; then install_to "$claude_dir"; fi
 
 echo ""
 echo "Installed $agent_count agent(s). Restart your assistant to pick them up."
@@ -337,7 +352,7 @@ if [ "$selection_has_session_handoff" -eq 1 ]; then
   elif [ "$interactive" -eq 1 ]; then
     echo "session-handoff needs a companion read-side instruction so that future sessions load"
     echo "the context it persisted. Enabling it appends a block to:"
-    for f in $readside_files; do
+    readside_each | while IFS= read -r f; do
       echo "  $f"
     done
     echo ""
@@ -367,7 +382,7 @@ if [ "$selection_has_session_handoff" -eq 1 ]; then
       echo "Warning: failed to fetch $READSIDE_PATH. Nothing was appended." >&2
       readside_enable_hint
     else
-      for f in $readside_files; do
+      readside_each | while IFS= read -r f; do
         append_readside "$f" "$readside_block"
       done
     fi

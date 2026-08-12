@@ -160,8 +160,13 @@ bash install.sh --review        # the two code-review agents
 ```powershell
 irm https://raw.githubusercontent.com/dfinson/promptlings/main/install.ps1 -OutFile install.ps1
 Get-Content install.ps1 | more
-.\install.ps1 -Review
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -Review
 ```
+
+Windows PowerShell 5.1 defaults to the `Restricted` execution policy on client editions, which
+blocks running a downloaded script file at all. The `-ExecutionPolicy Bypass -File` form above
+applies to that single invocation and changes nothing about your machine's policy. If you have
+already set a policy that permits local scripts, `.\install.ps1 -Review` works directly.
 
 Flags, identical in both scripts:
 
