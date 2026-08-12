@@ -79,9 +79,20 @@ disagreeing about what an empty value means, introduced by a review comment that
 and quoted incompletely the second time.
 
 Note what the committed run then does with it. It traces whether the divergent branch is reachable
-today, finds it is not, and records the divergence in the narrative instead of promoting it to a
+today, concludes it is not, and records the divergence in the narrative instead of promoting it to a
 defect. That is the discipline working: the finding channel stayed empty of it because the
 "what concretely breaks" question came back "nothing, yet."
+
+The two committed outputs disagree about that conclusion, and both are published unedited so you can
+adjudicate. The review traces the local inference path and states that `server/routes.go:2777` is the
+only assignment on the chat path. The walkthrough, in its implicit bets section, identifies a path the
+review did not consider: the cloud passthrough at `server/routes.go:2543-2557` marshals an upstream
+`api.ChatResponse` and writes it straight into `ChatWriter`, so a remote host's done reason does reach
+this code. That branch is guarded by a locally registered model pointing at a remote host, and it
+serves non-streaming requests too, which is the path without the default.
+
+This is the same effect as the run-to-run variance below. Independent passes over the same diff
+surface different things, and neither output was edited to make them agree.
 
 ## What these agents cannot do
 
