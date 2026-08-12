@@ -80,8 +80,8 @@ and quoted incompletely the second time.
 
 Note what the committed run then does with it. It traces whether the divergent branch is reachable
 today, concludes it is not, and records the divergence in the narrative instead of promoting it to a
-defect. That is the discipline working: the finding channel stayed empty of it because the
-"what concretely breaks" question came back "nothing, yet."
+defect. Its words: "Noted, not flagged." Whether that was the right call rests entirely on the
+reachability conclusion, which is where the second output comes in.
 
 The two committed outputs disagree about that conclusion, and both are published unedited so you can
 adjudicate. The review traces the local inference path and states that `server/routes.go:2777` is the
@@ -89,7 +89,8 @@ only assignment on the chat path. The walkthrough, in its implicit bets section,
 review did not consider: the cloud passthrough at `server/routes.go:2543-2557` marshals an upstream
 `api.ChatResponse` and writes it straight into `ChatWriter`, so a remote host's done reason does reach
 this code. That branch is guarded by a locally registered model pointing at a remote host, and it
-serves non-streaming requests too, which is the path without the default.
+serves non-streaming requests too, which is the path without the default. It never goes through
+`server/routes.go:2777`, so the review's "only assignment on the chat path" does not hold.
 
 This is the same effect as the run-to-run variance below. Independent passes over the same diff
 surface different things, and neither output was edited to make them agree.
