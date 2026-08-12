@@ -7,6 +7,15 @@ Nothing here has been trimmed, reordered, or cleaned up. If a claim in one of th
 wrong, it is wrong in the committed file too. That is the point: a curated sample tells you
 nothing about what the agent does on a Tuesday.
 
+**These two files contradict each other, and neither was edited to hide it.**
+[`ollama-17485-review.md`](ollama-17485-review.md) concludes that an empty done reason cannot reach
+the code path in question and records it as "Noted, not flagged," on the grounds that
+`server/routes.go:2777` is the only assignment on the chat path.
+[`ollama-17485-walkthrough.md`](ollama-17485-walkthrough.md) identifies the cloud passthrough branch,
+which never goes through that assignment, so "only assignment on the chat path" does not hold. The
+[top-level README](../README.md#real-output-unedited) walks the full mechanism if you want to
+adjudicate it yourself.
+
 ## What was reviewed
 
 | Field | Value |
