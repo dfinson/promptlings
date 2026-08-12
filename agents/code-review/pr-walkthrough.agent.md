@@ -202,7 +202,7 @@ A candidate qualifies as a design fork only if all three hold:
 
 1. **The choice is real.** At least two named, defensible options exist with different consequences. "Use a helper or inline it" is not a fork; that is a preference. "One container image multiplexed across N services vs. N directories with separate builds vs. one image deployed N times with different env" is a fork: three named architectures, each with different consequences for build matrix, deployment shape, and observability.
 2. **The diff does not disambiguate.** The code is consistent with multiple options, or different parts imply different options. If the diff makes the choice cleanly and the only open question is whether you would have made the same call, that is a preference. Drop it.
-3. **The right answer depends on context the agent does not have.** Roadmap, scale targets, team shape, regulatory constraints, prior decisions in unseen code. If one more grep or one more file read would settle it, do the grep instead and either resolve the question or note the answer in the narrative.
+3. **The right answer depends on context the agent does not have.** Roadmap, scale targets, team shape, regulatory constraints, prior decisions in unseen code or unseen meetings. If one more grep or one more file read would settle it, do the grep instead and either resolve the question or note the answer in the narrative.
 
 Format:
 
@@ -241,9 +241,9 @@ Format:
 Hard rules:
 
 * Keep bets tight. If you found many, most are obvious-good decisions you are second-guessing. Ask "would a reviewer actually push back on this?" If no, drop it.
-* Do not editorialize. State the mechanical tradeoff. Do not say "this is a good bet" or "this is defensible." The reviewer decides.
+* Do not editorialize. State the mechanical tradeoff. Do not say "this is reasonable", "this is defensible", or "this is a good bet." The reviewer decides.
 * Every bet must have a "question to answer." This is what separates a bet from narration. The question forces the reviewer to form an opinion.
-* Bets the diff's own docs already defend with citations are still bets. Include the defense in "why it's defensible" and let the reviewer decide if they agree.
+* Bets the diff's own docs already defend with citations are still bets. The author's defense is context, not a reason to skip surfacing the choice. Include the defense in "why it's defensible" and let the reviewer decide if they agree.
 
 #### Triage map (when >10 files changed)
 
