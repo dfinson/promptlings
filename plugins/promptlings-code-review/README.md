@@ -71,12 +71,15 @@ Worth knowing before you install, since these agents drive your tools:
 - They read files in your workspace around the changed lines, not only the diff fragment.
 - They make outbound web requests. Both agents treat contextual research as mandatory: pr-walkthrough looks for a CVE, RFC, postmortem, or named pattern relevant to the change, and the-nitcracker researches domain references for the narrative.
 - the-nitcracker writes its review to `$COPILOT_ARTIFACTS_DIR` when that variable is set, and otherwise to the system temp directory.
+- pr-walkthrough writes its walkthrough into your repository working tree, at `.copilot-tracking/pr/review/<sanitized-branch>/walkthrough.md`, creating that directory if it does not exist. This is the one write that lands inside your project rather than a scratch location, so add `.copilot-tracking/` to your `.gitignore` if you do not want it tracked.
 
 This plugin ships no hooks, no MCP servers, no LSP servers, and no executable code. It is two markdown files and a manifest. It collects no telemetry and makes no network calls of its own; the requests above are ones the agent asks your Claude Code session to make, and you see them as normal tool calls.
 
 ## Example outputs
 
-Not published yet. The repository does not currently contain recorded example reviews, and this README does not link to any rather than point at something that does not exist. The agent definitions themselves contain the exact output formats, including the templates for the design fork and implicit bet blocks, in [the-nitcracker](agents/the-nitcracker.md) and [pr-walkthrough](agents/pr-walkthrough.md).
+Both agents were run against [ollama/ollama#17485](https://github.com/ollama/ollama/pull/17485), and the unedited output is committed in the repository's [`examples/`](https://github.com/dfinson/promptlings/tree/main/examples) directory. The two outputs disagree with each other about whether a code path is reachable, and neither was edited to hide it, which is worth reading for what the review channels do and do not settle.
+
+The agent definitions also contain the exact output formats, including the templates for the design fork and implicit bet blocks, in [the-nitcracker](agents/the-nitcracker.md) and [pr-walkthrough](agents/pr-walkthrough.md).
 
 ## Relationship to the source files
 
