@@ -1,0 +1,18 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "promptlings",
+  "description": "Promptlings marketplace for Claude Code. Currently distributes the code review agents; the other promptlings stay install-by-hand.",
+  "owner": {
+    "name": "dfinson",
+    "url": "https://github.com/dfinson"
+  },
+  "plugins": [
+    {
+      "name": "promptlings-code-review",
+      "source": "./plugins/promptlings-code-review",
+      "description": "Two pull request review agents. the-nitcracker flags defects inline and writes a narrative walkthrough; pr-walkthrough writes orientation only. Both split output into defects, design forks, and implicit bets, and render judgment on defects alone.",
+      "category": "development",
+      "homepage": "https://github.com/dfinson/promptlings/tree/main/plugins/promptlings-code-review"
+    }
+  ]
+}

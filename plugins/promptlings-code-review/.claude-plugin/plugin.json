@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "promptlings-code-review",
+  "displayName": "Promptlings Code Review",
+  "description": "Two pull request review agents. the-nitcracker flags defects inline and writes a narrative walkthrough; pr-walkthrough writes orientation only. Both split output into defects, design forks, and implicit bets, and render judgment on defects alone.",
+  "version": "0.1.0",
+  "author": {
+    "name": "dfinson",
+    "url": "https://github.com/dfinson"
+  },
+  "homepage": "https://github.com/dfinson/promptlings/tree/main/plugins/promptlings-code-review",
+  "repository": "https://github.com/dfinson/promptlings",
+  "license": "Apache-2.0",
+  "keywords": [
+    "code-review",
+    "pull-requests",
+    "agents",
+    "subagents"
+  ]
+}
