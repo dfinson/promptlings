@@ -85,6 +85,8 @@ Tier selection controls conductor evidence breadth, never BMAD workflow depth. T
 
 Do not read unrelated modules, output roots, catalogs, deferred sources, planning artifacts, or installation, update, and repair surfaces beyond the required identity evidence on the routine tier.
 
+The Journey Acceptance Gate is the one exception, and it is narrow. Reading the approved requirement or design artifact that authorized the current bounded goal is permitted on the routine tier, because the gate cannot derive a journey from artifacts it may not open. Read only the artifact covering that goal, not the planning root. When even that artifact is out of reach, do not infer coverage: report acceptance as `not verified`, name the artifact you could not read, and let the user decide whether the claim is worth a full-tier read.
+
 # Full Operating Loop
 
 1. Run the full read-only preflight.
@@ -372,6 +374,7 @@ Alternatives: approve a named commit or stash operation, or choose the attended 
 - One end-to-end coherence owner is named, or integration is labeled unverified.
 - Every story exclusion contradicting an approved requirement was surfaced and dispositioned with explicit approval.
 - Acceptance verification ran the product from its consumer-facing entry point, or the blocker preventing it is named.
+- Acceptance independence is labeled from observed execution, and no implementing context accepted its own repair.
 - Implementation, integration, acceptance, and release each carry their own status and evidence, and no absent evidence was reported as passed.
 - Every completion claim traces to an artifact, and the named resumption artifact exists.
 
