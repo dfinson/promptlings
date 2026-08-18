@@ -1,0 +1,140 @@
+# promptfoo eval for the promptlings review agents, run under GitHub Copilot CLI.
+#
+# Purpose, in order:
+#   1. establish a baseline for the current agent files
+#   2. shorten an agent file and check for regression against that baseline
+#
+# The dimensions are the ones used in the microsoft/hve-core pr-walkthrough A/B
+# (10 PRs, independent scoring subagents). They measure whether the walkthrough
+# holds a reader's attention and builds a mental model, which is what the agent
+# exists to do. They deliberately do not measure defect detection: pr-walkthrough
+# states it is not a findings tool.
+#
+# Run:
+#   npx promptfoo@latest eval -c evals/promptfooconfig.yaml
+#   npx promptfoo@latest view
+
+description: promptlings review agents, attention and orientation quality
+
+env:
+  PROMPTLINGS_CWD: evals/.work/target
+
+providers:
+  # Baseline: the agent file as it ships today.
+  - id: exec:node evals/providers/copilot-agent.js
+    label: baseline
+    config:
+      env:
+        PROMPTLINGS_AGENT: pr-walkthrough-baseline
+
+  # Candidate: a shortened agent file. Uncomment once a shortened variant exists
+  # in .github/agents/, so the comparison has a baseline to regress against.
+  # - id: exec:node evals/providers/copilot-agent.js
+  #   label: short
+  #   config:
+  #     env:
+  #       PROMPTLINGS_AGENT: pr-walkthrough-short
+
+defaultTest:
+  options:
+    # Every rubric is graded by Copilot, not by an OpenAI key.
+    provider: exec:node evals/providers/copilot-judge.js
+  assert:
+    - type: llm-rubric
+      metric: architectural-abstraction
+      value: |
+        Does this walkthrough organize around the IDEA of the change, or around
+        the file list? Passing output explains the architectural shape once and
+        then shows how it manifests. Failing output visits files or hunks in
+        sequence and describes each.
+        Score high only if a reader could restate the shape of the change
+        without reciting the file list.
+
+    - type: llm-rubric
+      metric: voice-intensity
+      value: |
+        Does this read as a specific person who read this specific diff, or as a
+        generated summary? Passing output has a point of view, rhythm, and lines
+        that could only have been written about this change.
+        Score low for flat, evenly paced, interchangeable prose, even when it is
+        accurate. Accuracy is not the dimension here.
+
+    - type: llm-rubric
+      metric: narrative-pull
+      value: |
+        Does each section make the reader want the next one? Passing output has
+        momentum: a question raised and then answered, a tension set up and then
+        resolved.
+        Score low if the sections could be reordered without loss. That is a
+        list, not a narrative.
+
+    - type: llm-rubric
+      metric: specificity
+      value: |
+        Is every claim about the code anchored to a quoted fragment, a named
+        symbol, or a line reference from this diff?
+        Score low for claims that would be true of any change of this kind.
+        Unanchored generalities are the failure being measured.
+
+    - type: llm-rubric
+      metric: judgment-neutrality
+      value: |
+        The agent is forbidden from telling the reviewer whether a design choice
+        is correct. It surfaces the choice and stops.
+        Score low for any of: "this is the right call", "this is fine",
+        "reasonable", "handled well", "solid", or any sentence where the writer
+        declares a tradeoff acceptable. Describing mechanical consequences is
+        not a violation. Rendering a verdict is.
+
+    - type: llm-rubric
+      metric: hunk-gluing-absence
+      value: |
+        Hunk-gluing is prose used as filler between diff fragments, where the
+        hunks carry the structure and the sentences are connective tissue.
+        Score high when the prose carries the structure and the code appears
+        because the narrative reached it.
+        Score low when removing the code blocks would leave sentences that no
+        longer connect to anything.
+
+    - type: llm-rubric
+      metric: header-quality
+      value: |
+        Do the H2 headers read as beats in a story, or as labels on a report?
+        Passing headers pull the reader forward and could serve as a table of
+        contents for THIS decision.
+        Score low for headers that map to files, layers, or components, and for
+        generic labels like Overview, Summary, Test Strategy, Code Changes.
+
+    - type: llm-rubric
+      metric: cold-open-quality
+      value: |
+        Judge the first paragraph alone. Does it start in the middle of
+        something specific to this diff and make the reader continue?
+        Score low for a topic sentence that announces the subject
+        ("This PR introduces...", "This change adds..."), and low for a hook
+        that could open a walkthrough of any other change.
+
+tests:
+  - description: ollama-17485 wire-format compatibility, 4 files, +846/-103
+    vars:
+      prompt: |
+        Walk through the change between a199313eb334d59486160fcfc3f8f2d30fc576be
+        and cb5871d5 in this repository. Compute it with:
+          git diff a199313eb334d59486160fcfc3f8f2d30fc576be cb5871d5
+        Skip the contextual research step.
+
+  - description: promptlings-bmad-gate prompt contract, 1 file, +69/-6
+    vars:
+      prompt: |
+        Walk through the change between b6454f58 and 65e3bcd9 in this
+        repository. Compute it with:
+          git diff b6454f58 65e3bcd9
+        Skip the contextual research step.
+
+  - description: promptlings-installer mixed shell, PowerShell, docs, 7 files
+    vars:
+      prompt: |
+        Walk through the change between 51f8cf08 and ba16cab2 in this
+        repository. Compute it with:
+          git diff 51f8cf08 ba16cab2
+        Skip the contextual research step.
