@@ -16,29 +16,24 @@
 
 description: promptlings review agents, attention and orientation quality
 
-env:
-  PROMPTLINGS_CWD: evals/.work/target
-
 providers:
   # Baseline: the agent file as it ships today.
-  - id: exec:node evals/providers/copilot-agent.js
+  - id: file://providers/agent.js
     label: baseline
     config:
-      env:
-        PROMPTLINGS_AGENT: pr-walkthrough-baseline
+      agent: pr-walkthrough-baseline
 
   # Candidate: a shortened agent file. Uncomment once a shortened variant exists
   # in .github/agents/, so the comparison has a baseline to regress against.
-  # - id: exec:node evals/providers/copilot-agent.js
+  # - id: file://providers/agent.js
   #   label: short
   #   config:
-  #     env:
-  #       PROMPTLINGS_AGENT: pr-walkthrough-short
+  #     agent: pr-walkthrough-short
 
 defaultTest:
   options:
     # Every rubric is graded by Copilot, not by an OpenAI key.
-    provider: exec:node evals/providers/copilot-judge.js
+    provider: file://providers/judge.js
   assert:
     - type: llm-rubric
       metric: architectural-abstraction
@@ -117,6 +112,7 @@ defaultTest:
 tests:
   - description: ollama-17485 wire-format compatibility, 4 files, +846/-103
     vars:
+      target: ollama
       prompt: |
         Walk through the change between a199313eb334d59486160fcfc3f8f2d30fc576be
         and cb5871d5 in this repository. Compute it with:
@@ -125,6 +121,7 @@ tests:
 
   - description: promptlings-bmad-gate prompt contract, 1 file, +69/-6
     vars:
+      target: promptlings
       prompt: |
         Walk through the change between b6454f58 and 65e3bcd9 in this
         repository. Compute it with:
@@ -133,6 +130,7 @@ tests:
 
   - description: promptlings-installer mixed shell, PowerShell, docs, 7 files
     vars:
+      target: promptlings
       prompt: |
         Walk through the change between 51f8cf08 and ba16cab2 in this
         repository. Compute it with:

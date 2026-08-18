@@ -73,6 +73,21 @@ holding elsewhere is the specific regression this suite exists to catch.
 A tie is not proof of equivalence. It can also mean the instrument could not
 resolve the difference, which is worth stating plainly when reporting one.
 
+## Two harness details that changed the numbers
+
+**The provider returns the artifact, not the transcript.** Even under `--silent`,
+the CLI emits the model's own progress narration before the walkthrough. Judging
+that text scores the harness rather than the agent: on the first run it dropped
+cold-open quality to 0.05 while every other dimension scored above 0.82, because
+the judge read "I''ll map the requested commit-to-commit diff first" as the
+opening paragraph. The provider now slices from the first H1.
+
+**Providers are in-process JavaScript, not `exec:`.** promptfoo passes the
+prompt, the provider config, and the full test context as command-line arguments
+to an exec provider. Eight rubrics in that context exceed the Windows
+command-line limit and fail with `ENAMETOOLONG`. A JavaScript provider receives
+the same values as function arguments, so there is no ceiling.
+
 ## Windows note
 
 `copilot` resolves to a `.cmd` shim on Windows, and spawning a shim requires a
