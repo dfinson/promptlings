@@ -63,7 +63,9 @@ class CopilotAgentProvider {
       return { error: res.stderr || `copilot exited ${res.status}` };
     }
 
-    return { output: extractArtifact(res.stdout) };
+    const artifact = extractArtifact(res.stdout);
+    if (artifact.error) return { error: artifact.error };
+    return { output: artifact.output };
   }
 }
 
@@ -77,14 +79,29 @@ class CopilotAgentProvider {
  * because the judge read process narration as the opening paragraph.
  *
  * The walkthrough format opens with an H1 title, so the artifact begins at the
- * first top-level heading. When no heading is present the full text is returned
- * rather than silently emitting nothing.
+ * first top-level heading.
+ *
+ * A missing H1 is reported as an error rather than falling back to the full
+ * text. The fallback is what made this dangerous: on the 77 percent cut the
+ * agent stopped emitting a title at all, the transcript was scored as prose,
+ * and the result read as "cold-open quality collapsed to 0.05" when the real
+ * finding was "the agent no longer follows its output contract". Those are
+ * different failures and only one of them is about writing quality, so the run
+ * is marked invalid instead of being given a number that means nothing.
  */
 function extractArtifact(stdout) {
-  const text = stdout || "";
+  const text = (stdout || "").trim();
   const lines = text.split("\n");
   const start = lines.findIndex((l) => /^#\s+\S/.test(l));
-  return start === -1 ? text.trim() : lines.slice(start).join("\n").trim();
+  if (start === -1) {
+    return {
+      error:
+        "output contract violated: no H1 title in the agent output, so there " +
+        "is no walkthrough to score. Scoring the session transcript instead " +
+        "would report a prose regression that did not happen.",
+    };
+  }
+  return { output: lines.slice(start).join("\n").trim() };
 }
 
 module.exports = CopilotAgentProvider;
