@@ -1,2 +1,9 @@
-.work/
-results/
+# Target checkouts are large and reconstructible from a clone plus a SHA.
+.work/*
+!.work/reduction/
+.work/reduction/variants/
+
+# Raw promptfoo output is large; the inputs and the analysis are what matter.
+results/*
+!results/baseline.json
+!results/ladder-summary.md

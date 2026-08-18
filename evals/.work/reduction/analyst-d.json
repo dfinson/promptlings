@@ -1,0 +1,642 @@
+[
+  {
+    "segment": "# PR Walkthrough Agent",
+    "lines": "6-13",
+    "bytes": 895,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["judgment-neutrality", "architectural-abstraction"],
+    "mechanism": "The first paragraph is the only complete orientation contract (what the reviewer must understand before opening the diff), but paragraphs 2-3 restating 'not a findings tool' and 'opinion is noise' are repeated in What to Refuse, Scope Rules, and Step 3, so the block as a whole is contested rather than uniformly load-bearing."
+  },
+  {
+    "segment": "## Inputs",
+    "lines": "14-17",
+    "bytes": 108,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "This is the only declaration of the baseBranch input and its origin/main default; cutting it does not move a scored dimension, but the agent then has no schema for the comparison base that Diff Computation later interpolates."
+  },
+  {
+    "segment": "## Core Principles",
+    "lines": "18-25",
+    "bytes": 936,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["hunk-gluing-absence", "judgment-neutrality", "specificity"],
+    "mechanism": "Four of five bullets are restated at length later, but as an early compact list they create primacy weighting that keeps quote-anchoring, idea-not-files, and no-judgment attached after the model wades into 16KB of voice rules; the read-once discipline bullet is unique and would be lost in a wholesale cut."
+  },
+  {
+    "segment": "## Required Steps",
+    "lines": "26-29",
+    "bytes": 43,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "'Run all steps in order' adds no constraint the numbered Step 1-5 headings do not already impose."
+  },
+  {
+    "segment": "### Step 1: Map the diff",
+    "lines": "30-43",
+    "bytes": 1220,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["specificity", "architectural-abstraction"],
+    "mechanism": "This is the only place that teaches inclusive hunk-range math and requires opening workspace files at those ranges rather than narrating the diff fragment, which is how claims stay quote-anchored instead of becoming a hunk tour."
+  },
+  {
+    "segment": "### Step 2: Map the runway",
+    "lines": "44-63",
+    "bytes": 2006,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["specificity", "narrative-pull"],
+    "mechanism": "The gh pr list runway procedure and the '0 references across 10 runs means skipped' enforcement line exist only here; without them the model invents generic history or silently drops research, which is how specificity and narrative-pull flatten into a self-contained diff recap."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / purpose and non-optionality",
+    "lines": "66-66",
+    "bytes": 700,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["narrative-pull"],
+    "mechanism": "The triple 'never optional / never gated / never refused' is restated in What to Refuse and Output Format; cutting it risks the model treating the walkthrough as skippable when a user asks for findings, but the later refuse list still blocks that path."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / not a summary",
+    "lines": "68-68",
+    "bytes": 650,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["architectural-abstraction", "hunk-gluing-absence"],
+    "mechanism": "The lifespan-credential-runner-timeout construction walk is the only concrete demonstration of architectural traversal versus 'the service now uses the new framework,' which is the failure mode that collapses abstraction to  a file-by-file recap."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / proportional restatement",
+    "lines": "70-70",
+    "bytes": 320,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "This restates Core Principles bullet 4 almost verbatim; 'stops when the diff is fully walked' does not add a check the later anchoring rule does not already enforce."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / stage-aware calibration",
+    "lines": "72-72",
+    "bytes": 450,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["narrative-pull", "voice-intensity"],
+    "mechanism": "This is the only instruction that tells the model not to give a 30-line TODO stub the same intensity as a production handler; cutting it wastes voice on scaffolding, a bounded misfire rather than a collapse of the narrative machinery."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / retention over brevity",
+    "lines": "74-76",
+    "bytes": 1100,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["narrative-pull", "specificity"],
+    "mechanism": "This is the only explicit anti-brevity test (cut the paragraph: if the point becomes forgettable it was working), which fights summary-collapse, but Voice already demands compulsive readability and liberal quoting, so the same pressure can be applied without this sermon."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / weave and judgment-call definition",
+    "lines": "78-80",
+    "bytes": 1400,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["architectural-abstraction", "hunk-gluing-absence", "judgment-neutrality"],
+    "mechanism": "This is the only place that both defines judgment calls as bets-not-findings-not-forks and requires them woven into flow rather than dumped as sections, which is how the model avoids a file tour followed by a verdict list."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / do not editorialize",
+    "lines": "82-82",
+    "bytes": 220,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "The abstract 'surface them, do not judge them' sentence is immediately operationalized by the banned-phrase list and four-step procedure; dropping this line alone should not move a ceiling dimension."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / banned editorial phrases",
+    "lines": "84-91",
+    "bytes": 500,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "Concrete phrase bans are how a model at 1.00 neutrality stays there: abstract 'do not editorialize' is ignored, while 'the right call' / 'this is fine' / 'defensible' as assessment are string-matchable and therefore actually suppressed."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / four-step decision procedure",
+    "lines": "93-98",
+    "bytes": 480,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "Name / state the choice / name two failure modes / stop is the only mechanical procedure that produces a tradeoff without a verdict; without it the model resolves the call in the next clause even if the phrase list is intact."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / BAD-GOOD editorializing example",
+    "lines": "100-104",
+    "bytes": 1150,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "This is the first and only contrastive pair showing editorializing versus two named failure modes on the same ADR; few-shot contrast is how the 1.00 neutrality ceiling is actually hit, and there is no later example of this pattern to fall back on."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / opening structure intro",
+    "lines": "106-109",
+    "bytes": 150,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "'Opens with three elements' is a table-of-contents line whose entire content is restated by the title, subtitle, and hook blocks that follow."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / title requirements",
+    "lines": "110-110",
+    "bytes": 900,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["header-quality", "cold-open-quality"],
+    "mechanism": "This is the only rule that forces the H1 to name a real module/pattern/contract and forbids substituting metaphor or anthropomorphization for the technical subject, without which titles regress to 'Auth Service Improvements' or domestic drama."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / title examples",
+    "lines": "110-110",
+    "bytes": 1200,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["header-quality"],
+    "mechanism": "Four successes and six failures teach the same two contrasts (wit-with-subject versus no-subject, technical frame versus anthropomorphization); one pair of each would carry the rule, and the extra four failures are diminishing-returns few-shot."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / subtitle",
+    "lines": "111-111",
+    "bytes": 400,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["header-quality"],
+    "mechanism": "This is the only specification of an italicized scope-and-stakes subtitle, which is part of the 0.84 header-quality score, but a strong H1 plus hook can open the piece without it, so the format element is load-bearing only if header-quality is defined to include this slot."
+  },
+  {
+    "segment": "### Step 3: Generate the narrative walkthrough / hook",
+    "lines": "112-112",
+    "bytes": 700,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["cold-open-quality"],
+    "mechanism": "The type-matched hook (silent bug opens on absurd success; refactor opens on the old shape) is the operational cold-open spec, but Voice still has a dedicated Cold opens technique with a sharper example, and a 0.02 move on a 0.57 dimension is inside noise."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / convention note thesis",
+    "lines": "116-116",
+    "bytes": 550,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["architectural-abstraction", "hunk-gluing-absence", "voice-intensity"],
+    "mechanism": "This is the only sentence that tells the model the personality is the mechanism that prevents hunk-paraphrase, so without it voice looks like optional decoration and the model reverts to gluing English between diffs."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / prose identity",
+    "lines": "118-118",
+    "bytes": 800,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["hunk-gluing-absence", "header-quality"],
+    "mechanism": "The ban on headers like '### Entry: settings' and '### Test strategy' is the only named documentation-voice failure mode; without those examples the model emits a changelog with personality adjectives on top."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / engineering-blog pep talk",
+    "lines": "120-120",
+    "bytes": 280,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "'Think of the best engineering blogs' restates the previous paragraph's blog-post identity without adding a rule, test, or forbidden pattern."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / H2 as narrative beats",
+    "lines": "124-124",
+    "bytes": 750,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["header-quality", "hunk-gluing-absence"],
+    "mechanism": "This is the only place that forbids report-section labels ('Test Strategy', 'Code Changes') and bans bullet lists in the narrative body, which is how headers stay chapter titles instead of becoming a file-by-file outline."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / organize around bets not files",
+    "lines": "125-125",
+    "bytes": 800,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["architectural-abstraction", "hunk-gluing-absence"],
+    "mechanism": "The organizing principle '2-3 bets, not the call graph' plus the rewrite test ('here is what [file] does' means reorganize) is the primary anti-hunk-glue rule; without it the model uses files as narrative scaffolding even if headers sound essay-like."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / quote liberally",
+    "lines": "126-126",
+    "bytes": 350,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["specificity", "hunk-gluing-absence"],
+    "mechanism": "Must-quote is already a Core Principle; the unique residue is '3-8 lines, fenced, embedded not exhibits,' and losing the exhibit ban slightly raises hunk-gluing risk while the quote obligation remains."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / judgment calls quote the line",
+    "lines": "127-127",
+    "bytes": 180,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "This narrows the already-stated quote rule to judgment calls without adding a check Step 3's four-step procedure and the global anchoring pass do not already require."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / explain the seams",
+    "lines": "128-128",
+    "bytes": 280,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["architectural-abstraction", "specificity"],
+    "mechanism": "This is the only requirement to show production path versus test injection at the moment it becomes relevant; cutting it loses a real abstraction move, but the walkthrough can still cohere if bets-not-files and quote-anchoring survive."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / no end summary",
+    "lines": "129-129",
+    "bytes": 180,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["narrative-pull"],
+    "mechanism": "Forbidding a recap paragraph prevents a dead landing, a bounded narrative-pull dip, while the rest of the voice machinery still produces an ending by exhaustion of the story."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / compulsively readable test",
+    "lines": "130-130",
+    "bytes": 380,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["voice-intensity", "narrative-pull"],
+    "mechanism": "The 'would someone forward this to a colleague not on the PR' test is the intensity target at 0.90 voice; it is also an unfalsifiable vibe check that restates 'write like a blog post,' so it is either the load-bearing bar or empty exhortation."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / register and contrastive pairs",
+    "lines": "132-132",
+    "bytes": 550,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["voice-intensity"],
+    "mechanism": "The two contrastive register pairs ('happen to you' versus 'requires careful attention'; 'announce itself' versus 'good practice to log') are the few-shot that sets dry-sharp instead of professional-bland, and no later example replaces them."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / technique cold opens",
+    "lines": "136-136",
+    "bytes": 420,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["cold-open-quality"],
+    "mechanism": "This retells Step 3's hook with a different example ('green and sixteen thousand lines' versus 'this PR introduces a backend'); useful, but the operational spec already lives at line 112, and cold-open is the dimension where a 0.02 move is noise."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / technique aphoristic distillation",
+    "lines": "137-137",
+    "bytes": 350,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["voice-intensity"],
+    "mechanism": "This is the only named lesson in compressing a pattern into a stand-alone sentence, which is a real voice-intensity move, but the wit section already defines wit as compression so the technique card is arguably surplus."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / technique rhythmic variation",
+    "lines": "138-138",
+    "bytes": 280,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Alternate-long-and-short is restated with operational numbers (40+ word sentences, sub-10 punches, reorder test) in the prose rhythm block at 155-157, which supersedes this card."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / technique specific over general",
+    "lines": "139-139",
+    "bytes": 420,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["specificity"],
+    "mechanism": "'Every paragraph needs one detail that could only be true of this PR' is the paragraph-level specificity rule; without it the model emits transferable observations, which is exactly the 0.72 specificity failure mode."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / technique parenthetical reframes",
+    "lines": "140-140",
+    "bytes": 300,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["voice-intensity"],
+    "mechanism": "A single optional craft move whose 'reframe-as-aside' cousin reappears in the wit-at-full-intensity catalog; losing it thins craft variety without removing the register."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / technique question that pulls",
+    "lines": "141-141",
+    "bytes": 320,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["narrative-pull"],
+    "mechanism": "Ending a paragraph with an inevitable question is unique forward-momentum craft, but headers-as-beats and the hook already create pull, so the cost is a flatter transition rather than a lost throughline."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / wit definition",
+    "lines": "143-143",
+    "bytes": 500,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["voice-intensity"],
+    "mechanism": "Defining wit as severe compression rather than jokes is what stops the model from inserting puns or levity; without this definition, raising 'voice' produces comedy instead of characterization."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / characterize don't describe",
+    "lines": "145-147",
+    "bytes": 900,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["voice-intensity", "hunk-gluing-absence"],
+    "mechanism": "'You do not describe code. You characterize it' is a strong anti-tour line, but it restates the wit definition and the later 'wit is continuous' thesis, so it is either the memorable slogan or a third pass at the same instruction."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / wit is continuous / voice equals structure",
+    "lines": "149-149",
+    "bytes": 550,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["architectural-abstraction", "hunk-gluing-absence", "voice-intensity"],
+    "mechanism": "The claim that a witty writer cannot write a code tour because compression forces prioritization forces structure is the load-bearing theory that couples voice to architecture; cut it and the model can add sharp sentences on top of a file-ordered tour."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / quotable-line and strip-voice test",
+    "lines": "151-151",
+    "bytes": 320,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "One quotable line per paragraph and 'if you strip the voice it still works as a flat document' restate the compulsive-readability test, the specific-over-general rule, and the continuous-wit thesis without a new failure mode."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / wit at full intensity catalog",
+    "lines": "153-153",
+    "bytes": 550,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["voice-intensity"],
+    "mechanism": "Honest reframe, brutal compression, subordination-as-indictment, and reframe-as-aside are a third taxonomy of craft already covered by aphorism, parentheticals, and the wit definition; cutting the catalog thins craft labels more than it removes the register."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / prose rhythm rules",
+    "lines": "155-157",
+    "bytes": 1300,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["voice-intensity", "narrative-pull"],
+    "mechanism": "The 15-to-25-word monotone diagnosis plus the 40-plus-word nested sentence and 'if sentences can be reordered it is not prose' test is the only operational cure for cadence-as-bullet-list, which is how voice-intensity dies even when the claims are sharp."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / what wit is not",
+    "lines": "159-159",
+    "bytes": 400,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["voice-intensity"],
+    "mechanism": "Banning puns, Twitter-thread energy, and staccato-as-paragraphs is a useful negative space, but 'dry, sharp, compression not jokes' already implies it; the residual risk is a jokey register, not a return to hunk-gluing."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / specific-earned and author-person ban",
+    "lines": "161-161",
+    "bytes": 450,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["specificity", "judgment-neutrality"],
+    "mechanism": "This is the first full ban on treating the author as a person (motivations, character) while listing what is fair game; without it neutrality leaks into imagined psychology even if design-choice verdicts stay banned."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / contextual research restatement",
+    "lines": "163-163",
+    "bytes": 520,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Step 2 already makes research mandatory and states the apt-and-specific bar; this paragraph restates the duty without a new command, format, or failure test."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / anti-patterns",
+    "lines": "165-165",
+    "bytes": 650,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["hunk-gluing-absence", "voice-intensity"],
+    "mechanism": "The 'GitHub Copilot default PR summary' and 'headers map 1:1 to files' tests are memorable, but both are restated at 191 and 167; this paragraph is the first occurrence, so cutting it keeps the later copies and only loses one repetition's extra weight."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / structural test on H2s",
+    "lines": "167-167",
+    "bytes": 280,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["header-quality"],
+    "mechanism": "The post-draft check 'could these H2s be a TOC for the codebase rather than for this story' is the most actionable header test, and also a restatement of 124-125; models fail headers even after the rule, so the checklist form may be doing real work."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / em dash ban first copy",
+    "lines": "171-171",
+    "bytes": 280,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "This is the lint-rule of record for a repository-wide em dash ban; later copies at 183 and 389 are restatements, so this instance is the one that must remain even though it does not move a scored dimension."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / apologies stock metaphors hedging",
+    "lines": "172-172",
+    "bytes": 180,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["voice-intensity", "judgment-neutrality"],
+    "mechanism": "The hedging lexicon (likely, probably, maybe, perhaps, seems, appears, might) is listed only here; without the word list the model reintroduces softeners that drop voice-intensity and smuggle unearned verdicts."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / author treatment restatement",
+    "lines": "173-173",
+    "bytes": 250,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "'The human is never the subject' restates line 161's author-person ban without adding a new prohibited move."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / deployment context",
+    "lines": "174-174",
+    "bytes": 250,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "This unique ban on inferring audience or deployment from implementation details stops a specific speculation class; losing it lets a few unanchored audience claims through without reopening design verdicts."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / external reference restatement",
+    "lines": "175-175",
+    "bytes": 180,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Falsifiable-claim-about-a-specific-line is already the Step 2 inclusion bar; this line does not change the research procedure or the research-note fallback."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / no magic numbers",
+    "lines": "176-176",
+    "bytes": 220,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["narrative-pull", "specificity"],
+    "mechanism": "Telling the model that '3-8 lines' and '2-3 bets' are vibes not quotas prevents cargo-cult counts, which is real, but it also undercuts the cadence numbers in the prose-rhythm block, so cutting it is either liberation or an invitation to treat every number as a quota."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / extra check anchoring",
+    "lines": "180-180",
+    "bytes": 150,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "This is a word-for-word preview of Step 5's anchoring pass; the later pass is the one attached to a verdict (OK/WEAKEN/KILL)."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / extra check research note format",
+    "lines": "181-181",
+    "bytes": 550,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["specificity"],
+    "mechanism": "The must-research duty is already in Step 2; the unique residue is the one-line 'Research note: searched X' proof format, and losing that format makes skipped research harder to detect without stopping the walkthrough itself."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / extra check filler openers",
+    "lines": "182-182",
+    "bytes": 200,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["voice-intensity", "cold-open-quality"],
+    "mechanism": "The softener list ('happy either way', 'just a thought', 'no strong opinion but') is unique and string-matchable; cutting it lets a few hedged openers through on a dimension already at 0.57, which is mostly noise."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / extra check em dash",
+    "lines": "183-183",
+    "bytes": 350,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Second full copy of the line 171 lint rule, including the same comma/colon/period/parenthesis substitutions."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / fence breathing",
+    "lines": "184-184",
+    "bytes": 220,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Blank lines around fences are a typesetting preference that none of the eight scored dimensions measure."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / stock metaphors again",
+    "lines": "185-185",
+    "bytes": 40,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "A two-word restatement of the stock-metaphor ban already issued at line 172."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / body-clothing metaphors",
+    "lines": "186-186",
+    "bytes": 220,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["voice-intensity"],
+    "mechanism": "The naked/bare/undressed family is a unique metaphor ban with substitutions (unprotected, unvalidated); losing it permits one tired metaphor cluster without flattening the register."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / agentic judgment words",
+    "lines": "187-187",
+    "bytes": 520,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "Correct/proper/right/wrong/good/bad overlaps the Step 3 phrase ban and adds a few missing tokens plus the 'attribute quoted evaluative language' rule; cutting it is bounded because the four-step procedure and the earlier list still block verdicts."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / emoji",
+    "lines": "188-188",
+    "bytes": 100,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Duplicate of Step 5's emoji pass; decorative emoji are not one of the eight scored dimensions."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / no restating code to the author",
+    "lines": "189-189",
+    "bytes": 180,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["hunk-gluing-absence"],
+    "mechanism": "'They wrote it; skip to what they do not know' is a direct anti-paraphrase rule, and also what 'lead with the decision' already implies, so it is either the memorable slogan that stops hunk-gluing or a fourth restatement of bets-not-files."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / concrete mechanism example",
+    "lines": "190-190",
+    "bytes": 280,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["judgment-neutrality", "specificity"],
+    "mechanism": "The token-rotation-requires-pod-restart example restates Step 3's 'state two failure modes' with a second worked illustration; useful, but the first BAD/GOOD pair and the four-step procedure already teach the move."
+  },
+  {
+    "segment": "### Voice and Narrative Conventions / documentation voice again",
+    "lines": "191-191",
+    "bytes": 280,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Default-PR-summary / monotone / changelog is the third copy of the anti-pattern already stated at 118, 130, and 165."
+  },
+  {
+    "segment": "### Step 4: Produce appendices",
+    "lines": "193-209",
+    "bytes": 1551,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["judgment-neutrality", "architectural-abstraction"],
+    "mechanism": "The three-part fork filter (choice is real / diff does not disambiguate / agent lacks context) is the only test that stops preferences and unfinished greps from being promoted into reviewer-facing forks."
+  },
+  {
+    "segment": "## Design forks for reviewer judgment",
+    "lines": "210-235",
+    "bytes": 1951,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["judgment-neutrality", "header-quality"],
+    "mechanism": "The output template and the mandatory settling-criterion rule are unique format machinery, but the five hard rules mostly restate the three qualification tests in 201-205, so the block is load-bearing as a schema and contested as prose."
+  },
+  {
+    "segment": "## Implicit bets (reviewer should agree or push back)",
+    "lines": "236-250",
+    "bytes": 1128,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "The 'question to answer' field is the only device that turns a resolved choice into something the reviewer must agree or push back on; without the template the model either editorialize-closes the bet or omits the appendix."
+  },
+  {
+    "segment": "## Triage map",
+    "lines": "251-269",
+    "bytes": 441,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["architectural-abstraction"],
+    "mechanism": "Must-read versus skim versus trust-the-tests is a useful weight map on large diffs, but the narrative is already supposed to say where architectural weight lives, so losing the appendix is a navigation aid loss rather than a walkthrough collapse."
+  },
+  {
+    "segment": "## The diff in N layers",
+    "lines": "270-278",
+    "bytes": 248,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["architectural-abstraction"],
+    "mechanism": "One sentence per layer restates the architectural shape the walkthrough was required to explain in prose; cutting it loses a skim-sheet, not the abstraction itself."
+  },
+  {
+    "segment": "### Step 5: Self-verification",
+    "lines": "279-302",
+    "bytes": 2214,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["judgment-neutrality", "hunk-gluing-absence"],
+    "mechanism": "OK / WEAKEN / KILL / COUNTER plus a zero-new-observations quota is the only structured kill pass; without it overstated claims and narration-without-value ship, which is how a 1.00 neutrality ceiling and 0.93 hunk-gluing score actually get defended at the end."
+  },
+  {
+    "segment": "## Output Format",
+    "lines": "303-314",
+    "bytes": 447,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["header-quality"],
+    "mechanism": "Walkthrough-first then rule then appendices is implied by Steps 3-4; the unique residue is 'omit the rule when nothing qualifies' and 'do not pad,' and losing those lets empty appendix stubs appear without damaging the narrative body."
+  },
+  {
+    "segment": "## Diff Computation",
+    "lines": "315-340",
+    "bytes": 1093,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["specificity"],
+    "mechanism": "This is the only procedure that computes merge-base, filters lockfiles and build output, and writes walkthrough.md; without it the agent walks the wrong tree or includes generated noise, which poisons specificity before voice ever runs."
+  },
+  {
+    "segment": "## What to Refuse",
+    "lines": "341-349",
+    "bytes": 750,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "Most bullets restate Step 3 and Core Principles for adversarial user phrasing; the refuse-list form is useful under prompt pressure, but 'what survives the floor' is leftover findings-tool diction and the editorializing ban already lives in the four-step procedure."
+  },
+  {
+    "segment": "## Scope Rules",
+    "lines": "350-355",
+    "bytes": 439,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "Only-diff-is-in-scope is restated by Step 5's scope pass and Required Protocol line 373; the unique clause is 'distinguish context from active change,' and losing it lets pre-existing code get framed as something the PR should fix."
+  },
+  {
+    "segment": "## Large Diff Handling",
+    "lines": "356-367",
+    "bytes": 1019,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["architectural-abstraction", "specificity"],
+    "mechanism": "The 20/50-file table and 2000-line chunking are the only size-based read strategy; cutting them risks random truncation on large PRs, a bounded operational failure rather than a voice regression on typical diffs."
+  },
+  {
+    "segment": "## Required Protocol",
+    "lines": "368-374",
+    "bytes": 457,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["specificity"],
+    "mechanism": "Timeouts and 'do not read source before the diff' are unique operational guards overlapping Step 1 and Core Principles read discipline; cutting them raises hang-and-wander risk without changing how a successful walkthrough is written."
+  },
+  {
+    "segment": "## What Done Looks Like",
+    "lines": "375-391",
+    "bytes": 1490,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["specificity", "judgment-neutrality"],
+    "mechanism": "All eleven items restate Steps 1-5 and the ban list, so the section is pure recap, but it sits at the end of a 42KB prompt where recency weighting is how the model still remembers to open files, run research, and execute the kill pass after 16KB of voice rules."
+  }
+]

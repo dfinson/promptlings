@@ -1,0 +1,218 @@
+[
+  {
+    "segment": "PR Walkthrough Agent",
+    "lines": "6-13",
+    "bytes": 895,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["narrative-pull"],
+    "mechanism": "The high-level framing sets the persona's purpose (building a mental model) which anchors the LLM's understanding of its goal before the specific rules begin."
+  },
+  {
+    "segment": "## Inputs",
+    "lines": "14-17",
+    "bytes": 108,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Basic variable scaffolding that LLMs infer automatically from system context."
+  },
+  {
+    "segment": "## Core Principles",
+    "lines": "18-25",
+    "bytes": 936,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Pure redundancy as every bullet point here is expanded into a mandatory, detailed rule in Steps 1-3."
+  },
+  {
+    "segment": "## Required Steps",
+    "lines": "26-29",
+    "bytes": 43,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Transition text with no semantic payload."
+  },
+  {
+    "segment": "### Step 1: Map the diff",
+    "lines": "30-43",
+    "bytes": 1220,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["architectural-abstraction", "specificity"],
+    "mechanism": "Forces the LLM out of isolated diff hunks and into full file workspace reads, which is required to make anchored claims about surrounding architecture."
+  },
+  {
+    "segment": "### Step 2: Map the runway",
+    "lines": "44-63",
+    "bytes": 2006,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["specificity", "narrative-pull"],
+    "mechanism": "Compels the use of external search tools to find CVEs, RFCs, and issues, generating the novel contextual data the narrative relies on to avoid being generic."
+  },
+  {
+    "segment": "### Step 3 / Purpose and Proportionality",
+    "lines": "64-77",
+    "bytes": 1000,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["hunk-gluing-absence"],
+    "mechanism": "Directs the LLM to write continuously rather than summarizing, though it is highly redundant with the Voice and Narrative sections."
+  },
+  {
+    "segment": "### Step 3 / Judgment Calls",
+    "lines": "78-105",
+    "bytes": 1800,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "Provides exact mechanical examples of how to frame a tradeoff without endorsing it, directly suppressing the LLM's instinct to declare things 'correct'."
+  },
+  {
+    "segment": "### Step 3 / The opening",
+    "lines": "106-113",
+    "bytes": 1200,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["cold-open-quality", "header-quality"],
+    "mechanism": "Explicitly bans metaphors and domestic anthropomorphization in H1s, forcing the model to name the structural relationship."
+  },
+  {
+    "segment": "Voice / Prose Identity & Narrative rules",
+    "lines": "114-131",
+    "bytes": 1500,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["architectural-abstraction", "header-quality"],
+    "mechanism": "Prohibits organizing headers by file name or component, forcing the LLM to organize the essay around thematic bets and decisions."
+  },
+  {
+    "segment": "Voice / Voice register & Techniques",
+    "lines": "132-142",
+    "bytes": 1000,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["voice-intensity"],
+    "mechanism": "Specific rhetorical tricks (cold opens, aphorisms) boost the prose style, but their absence would likely only soften the edge rather than break the core task."
+  },
+  {
+    "segment": "Voice / The wit",
+    "lines": "143-154",
+    "bytes": 1200,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["voice-intensity"],
+    "mechanism": "Heavy repetition about 'compression' and 'characterization' acts as a systemic weight on the LLM's generation to keep it from reverting to verbose corporate speak."
+  },
+  {
+    "segment": "Voice / Prose rhythm",
+    "lines": "155-160",
+    "bytes": 900,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["voice-intensity"],
+    "mechanism": "Instructs the LLM to vary sentence lengths (preventing bullet-list cadence), affecting the reading experience but not the factual architectural content."
+  },
+  {
+    "segment": "Voice / Constraints, Anti-patterns & Hard constraints",
+    "lines": "161-192",
+    "bytes": 2400,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["judgment-neutrality", "hunk-gluing-absence"],
+    "mechanism": "Explicitly bans hedging words, apologies, and the em dash, forcing the agent into the required definitive, non-evaluative posture."
+  },
+  {
+    "segment": "### Step 4: Produce appendices",
+    "lines": "193-209",
+    "bytes": 1551,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "The preamble merely states what the appendices are before actually defining them, serving as pure filler."
+  },
+  {
+    "segment": "## Design forks for reviewer judgment",
+    "lines": "210-235",
+    "bytes": 1951,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["specificity"],
+    "mechanism": "The requirement to state 'What would settle it' forces the LLM to provide a falsifiable metric rather than just narrating uncertainty."
+  },
+  {
+    "segment": "## Implicit bets (reviewer should agree or push back)",
+    "lines": "236-250",
+    "bytes": 1128,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["judgment-neutrality", "specificity"],
+    "mechanism": "Forcing a concrete 'question to answer' prevents the LLM from merely praising the author's defensible choice."
+  },
+  {
+    "segment": "## Triage map",
+    "lines": "251-269",
+    "bytes": 441,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["architectural-abstraction"],
+    "mechanism": "Provides a rigid output format for large PRs, though standard markdown tables would likely emerge naturally without it."
+  },
+  {
+    "segment": "## The diff in N layers",
+    "lines": "270-278",
+    "bytes": 248,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["architectural-abstraction"],
+    "mechanism": "Helps enforce layered thinking for huge PRs, but the main narrative rules already heavily demand this."
+  },
+  {
+    "segment": "### Step 5: Self-verification",
+    "lines": "279-302",
+    "bytes": 2214,
+    "tier": "NEVER",
+    "dimensions_at_risk": ["hunk-gluing-absence", "judgment-neutrality"],
+    "mechanism": "Creates a distinct cognitive pass instructing the LLM to aggressively flag and cut its own unanchored or editorial claims, effectively acting as an internal critic."
+  },
+  {
+    "segment": "## Output Format",
+    "lines": "303-314",
+    "bytes": 447,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Redundant structural wrapper; LLMs naturally follow the layout of the generated steps."
+  },
+  {
+    "segment": "## Diff Computation",
+    "lines": "315-340",
+    "bytes": 1093,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Standard git CLI commands to generate diffs; most modern models know how to pull a diff natively without explicit bash snippets."
+  },
+  {
+    "segment": "## What to Refuse",
+    "lines": "341-349",
+    "bytes": 750,
+    "tier": "TIER3",
+    "dimensions_at_risk": ["judgment-neutrality"],
+    "mechanism": "Explicitly protects the boundary of the agent against user manipulation, which is load-bearing in chat but less so in automated pipeline runs."
+  },
+  {
+    "segment": "## Scope Rules",
+    "lines": "350-355",
+    "bytes": 439,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "Purely redundant with Step 1 and 3's existing directives to only judge diff lines."
+  },
+  {
+    "segment": "## Large Diff Handling",
+    "lines": "356-367",
+    "bytes": 1019,
+    "tier": "TIER2",
+    "dimensions_at_risk": ["specificity"],
+    "mechanism": "Chunking strategy helps prevent context window saturation on huge PRs, though LLMs often do this naturally or just fail outright."
+  },
+  {
+    "segment": "## Required Protocol",
+    "lines": "368-374",
+    "bytes": 457,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "General tool-usage hygiene rules (use timeout, don't read before diff) that duplicate standard agent capabilities."
+  },
+  {
+    "segment": "## What Done Looks Like",
+    "lines": "375-391",
+    "bytes": 1490,
+    "tier": "TIER1",
+    "dimensions_at_risk": ["none"],
+    "mechanism": "A literal summary checklist of the entire prompt; it adds zero novel constraints and can be safely deleted."
+  }
+]

@@ -17,18 +17,44 @@
 description: promptlings review agents, attention and orientation quality
 
 providers:
-  # Baseline: the agent file as it ships today.
+  # Baseline: the agent file as it ships today, 42,862 bytes.
   - id: file://providers/agent.js
     label: baseline
     config:
       agent: pr-walkthrough-baseline
 
-  # Candidate: a shortened agent file. Uncomment once a shortened variant exists
-  # in .github/agents/, so the comparison has a baseline to regress against.
-  # - id: file://providers/agent.js
-  #   label: short
-  #   config:
-  #     agent: pr-walkthrough-short
+  # The consensus cut ladder. Four independent analysts (claude-opus-4.6,
+  # gpt-5.6-terra, gemini-3.1-pro, grok-4.6) tiered every line; the levels
+  # relax how many of them must defend a line for it to survive, so the sets
+  # nest and the result is a dose-response curve rather than one arbitrary
+  # shortened file. See evals/tools/consensus.js for the rules.
+  #
+  # L1 is absent on purpose: no line was unanimously rated pure redundancy by
+  # all four analysts, which is itself a result.
+  - id: file://providers/agent.js
+    label: L2-3.5pct
+    config:
+      agent: pr-walkthrough-l2
+
+  - id: file://providers/agent.js
+    label: L3-16pct
+    config:
+      agent: pr-walkthrough-l3
+
+  - id: file://providers/agent.js
+    label: L4-26pct
+    config:
+      agent: pr-walkthrough-l4
+
+  - id: file://providers/agent.js
+    label: L5-52pct
+    config:
+      agent: pr-walkthrough-l5
+
+  - id: file://providers/agent.js
+    label: L6-77pct
+    config:
+      agent: pr-walkthrough-l6
 
 defaultTest:
   options:

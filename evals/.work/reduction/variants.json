@@ -1,0 +1,30 @@
+{
+  "baselineBytes": 42862,
+  "written": [
+    {
+      "level": "L2",
+      "name": "pr-walkthrough-l2.agent.md",
+      "bytes": 41348
+    },
+    {
+      "level": "L3",
+      "name": "pr-walkthrough-l3.agent.md",
+      "bytes": 35969
+    },
+    {
+      "level": "L4",
+      "name": "pr-walkthrough-l4.agent.md",
+      "bytes": 31718
+    },
+    {
+      "level": "L5",
+      "name": "pr-walkthrough-l5.agent.md",
+      "bytes": 20524
+    },
+    {
+      "level": "L6",
+      "name": "pr-walkthrough-l6.agent.md",
+      "bytes": 9975
+    }
+  ]
+}

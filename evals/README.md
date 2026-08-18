@@ -51,9 +51,73 @@ cp agents/code-review/pr-walkthrough.agent.md \
 ```
 
 A variant is just another file in that directory. The provider selects one by
-name through `PROMPTLINGS_AGENT`, so comparing a shortened agent means writing
-`pr-walkthrough-short.agent.md` beside the baseline and enabling the `short`
-provider in the config.
+name through its `config.agent`, so comparing a shortened agent means writing
+`pr-walkthrough-l3.agent.md` beside the baseline and adding a provider block.
+
+## How the shortened variants are chosen
+
+The obvious way to test "can this be shorter" is to write one shortened version
+and score it. That tests a single guess, and if it holds, all it shows is that
+one particular edit was survivable. It says nothing about where the limit is.
+
+So the cut is built as a ladder instead. Four analysts, each a different model
+family (`claude-opus-4.6`, `gpt-5.6-terra`, `gemini-3.1-pro`, `grok-4.6`), read
+the agent file independently and tiered every part of it:
+
+| Tier | Meaning |
+| --- | --- |
+| TIER1 | Pure redundancy, restated elsewhere verbatim |
+| TIER2 | Compressible with bounded risk |
+| TIER3 | Cuttable but plausibly load-bearing |
+| NEVER | Removing this changes what the agent does |
+
+They disagreed a lot, which is the useful part. They also used different segment
+names and different granularity, so the merge happens per **line**: each entry
+casts its tier as a vote for every line it covers, and a line nobody scored is
+kept, because silence is not agreement.
+
+The levels then relax how strongly a line must be defended to survive:
+
+| Level | Rule | Cut |
+| --- | --- | --- |
+| L1 | Every vote is TIER1 | 0% |
+| L2 | Every vote is TIER1 or TIER2 | 3.5% |
+| L3 | No NEVER vote, and a majority say cuttable | 16.1% |
+| L4 | Veto needs 2+ NEVER votes | 26.0% |
+| L5 | Veto needs 3+ NEVER votes | 52.1% |
+| L6 | Veto needs unanimous NEVER | 76.7% |
+
+The sets nest by construction, so the result is a dose-response curve and the
+question stops being "did this edit survive" and becomes "at what dose does
+quality break".
+
+**L1 is empty, and that is a result.** Across four model families there was not
+one line all four independently called pure redundancy. The file has no
+uncontested fat.
+
+Two rules keep the ladder honest:
+
+- **Structure is held fixed.** Headings and frontmatter are never cut. The first
+  run cut the H1 and the entire `## Output Format` section at the deepest level,
+  which does not produce a shorter agent, it produces a broken one, and it would
+  have failed the eval for the wrong reason. The question under test is whether
+  the *prose* is load-bearing.
+- **Variants are rejected, not warned about.** `tools/variant.js` fails hard if a
+  variant loses required headings, changes its frontmatter identity, or is not
+  strictly smaller than the rung above it.
+
+L4 through L6 were added after the first run, when L1 came out empty and L2/L3
+landed 13 points apart with L3 and L4 byte-identical: too narrow a span to
+locate a knee. The amendment is recorded in `tools/consensus.js` rather than
+quietly folded into the rules, because moving the rungs after seeing results is
+exactly the failure mode this design is trying to avoid.
+
+```bash
+node evals/tools/consensus.js   # merge inventories -> consensus.json
+node evals/tools/variant.js     # materialize the ladder as agent files
+node evals/tools/smoke.js       # confirm Copilot resolves every agent name
+node evals/tools/compare.js evals/results/ladder.json evals/results/baseline.json
+```
 
 ## Judge panel
 
@@ -64,14 +128,34 @@ judges disagree about is not measuring anything stable yet.
 
 ## Reading a result
 
-Judges cluster in a narrow band, so absolute scores carry less information than
-the gap between two variants on the same case. A shortened variant that holds
-its baseline on every dimension is evidence the removed text was not
-load-bearing. One that drops on hunk-gluing-absence or voice-intensity while
-holding elsewhere is the specific regression this suite exists to catch.
+The reading rule is fixed before the numbers arrive, so it cannot be fitted to
+them.
+
+At n=1 per case, a dimension moving a few hundredths is noise. Two dimensions
+are exceptions: `judgment-neutrality` scored 1.00 and `architectural-abstraction`
+scored 0.98 at baseline, so neither has headroom and any drop there is real.
+Elsewhere, a move on one case is noise; the same move in the same direction on
+all three cases is signal.
+
+The baseline is re-run inside every sweep rather than compared against the
+stored one. Run-to-run variance and cut-induced variance are otherwise
+indistinguishable, and the gap between the two baselines is the noise floor that
+every ladder delta has to clear.
+
+The composite is a summary, not the verdict. A rung that holds its composite
+while collapsing one dimension has still regressed.
 
 A tie is not proof of equivalence. It can also mean the instrument could not
 resolve the difference, which is worth stating plainly when reporting one.
+
+### Known limits of this instrument
+
+- **n=1 per cell.** Three cases, one run each. Enough to see a knee, not enough
+  to put an interval on it.
+- **The judge shares a family with the thing it judges.** Both run on Copilot.
+  `PROMPTLINGS_JUDGE_MODEL` exists so this can be checked rather than assumed.
+- **Three cases is a narrow slice.** Two are from this repository, one from
+  `ollama`. A result here is evidence, not a general claim about the agent.
 
 ## Two harness details that changed the numbers
 
