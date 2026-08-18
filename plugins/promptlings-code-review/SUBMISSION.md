@@ -107,7 +107,7 @@ Where a reviewer will reasonably look, and what to be ready for:
 
 - **Agent-driven network access.** Both agents instruct the host session to make outbound web requests as a mandatory step, and to run `git` and `gh`. This is not plugin telemetry, but it is data-touching behavior a reviewer will see. It is disclosed in the plugin README under "What the agents do at runtime". If a reviewer wants disclosure in the install description instead of the README, move a sentence into the `description` field.
 - **Emphatic instruction language.** Both agents use phrases like "mandatory, not optional" and "This gate is not optional" about their own pipeline steps. These are internal discipline, not attempts to override the host or other instructions, and neither agent tells the model to ignore other instructions or to run first. Expect the phrasing to be read closely anyway.
-- **Artifact writes.** the-nitcracker writes its review to `$COPILOT_ARTIFACTS_DIR` when set, otherwise to the system temp directory. pr-walkthrough writes into the user's repository working tree at `.copilot-tracking/pr/review/<sanitized-branch>/walkthrough.md`. Both are ordinary locations and both are disclosed in the plugin README.
+- **Artifact writes.** the-nitcracker writes its review to `$COPILOT_ARTIFACTS_DIR` when set, otherwise to the system temp directory. pr-walkthrough writes into the user's repository working tree at `.copilot-tracking/pr/review/<sanitized-branch>/walkthrough.md`, and only when it computes the diff itself from a base branch. Both are ordinary locations and both are disclosed in the plugin README.
 
 ## Decisions to make before submitting
 
