@@ -281,6 +281,8 @@ def override_text(path, outputs):
         if not line.lstrip().startswith("[") or line.lstrip().startswith("[["):
             continue
         try:
+            # A real table boundary closes a valid prefix, unlike text inside a string.
+            tomllib.loads(text[:offset])
             node = tomllib.loads(line + "\n" + sentinel + " = true\n")
         except tomllib.TOMLDecodeError:
             continue

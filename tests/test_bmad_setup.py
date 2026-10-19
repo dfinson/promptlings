@@ -156,6 +156,26 @@ class SetupTests(unittest.TestCase):
     def test_unbind_without_binding_has_actionable_error(self):
         self.cli("unbind", "--project", self.code, error="No personal artifact binding")
 
+    def test_header_text_inside_multiline_strings_is_preserved(self):
+        path = self.code / "_bmad" / "custom" / "config.user.toml"
+        path.parent.mkdir()
+        original = ('notes = """\n[core]\nkeep this text\n"""\n'
+                    "literal = '''\n[modules.bmm]\nkeep this too\n'''\n"
+                    '[other]\nitems = [\n"""\n[core]\n"""\n]\n')
+        path.write_text(original)
+        existing = tomllib.loads(original)
+        self.defaults("artifacts=central", f"central_root={self.root / 'central'}")
+        binding = self.apply("bind", "--project", self.code, "--run", "one")
+        parsed = tomllib.loads(path.read_text())
+        for key, value in existing.items():
+            self.assertEqual(parsed[key], value)
+        self.assertEqual(parsed["core"]["output_folder"], binding["paths"]["core.output_folder"])
+        self.assertEqual(parsed["modules"]["bmm"]["planning_artifacts"],
+                         binding["paths"]["modules.bmm.planning_artifacts"])
+        self.apply("bind", "--project", self.code, "--run", "one")
+        self.apply("unbind", "--project", self.code)
+        self.assertEqual(path.read_text(), original)
+
     def test_conflicting_personal_settings_require_reconciliation(self):
         path = self.code / "_bmad" / "custom" / "config.user.toml"
         path.parent.mkdir()

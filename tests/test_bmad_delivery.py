@@ -36,7 +36,6 @@ class DeliveryTests(unittest.TestCase):
                 "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_SYSTEM": os.devnull,
                 "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
                 "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
-                "COPILOT_AUTO_UPDATE": "false",
             })
 
             def run(*args, timeout=180, environment=None):
@@ -95,7 +94,6 @@ class DeliveryTests(unittest.TestCase):
             prompt = "Explicitly invoke bmad-build-auto for the approved unattended task in REQUEST.md."
             # Let the host resolve its normal environment; fixture Git settings are local.
             host_env = os.environ.copy()
-            host_env["COPILOT_AUTO_UPDATE"] = "false"
             output = run(*copilot_command, "-C", code, "--trust-folder", "--allow-all-tools",
                          "--add-dir", personal, "--no-ask-user", "-p", prompt, timeout=900,
                          environment=host_env)
