@@ -39,12 +39,12 @@ class DeliveryTests(unittest.TestCase):
                 "COPILOT_AUTO_UPDATE": "false",
             })
 
-            def run(*args, timeout=180):
+            def run(*args, timeout=180, environment=None):
                 result = subprocess.run(
-                    list(map(str, args)), cwd=code, env=env, text=True,
+                    list(map(str, args)), cwd=code, env=environment or env, text=True,
                     encoding="utf-8", errors="replace", capture_output=True, timeout=timeout,
                 )
-                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(result.returncode, 0, f"{args!r}\n{result.stdout}{result.stderr}")
                 return result.stdout
 
             def helper(*args):
@@ -55,6 +55,9 @@ class DeliveryTests(unittest.TestCase):
             run("git", "init", "--quiet", "--initial-branch=feature-trim-name")
             run("git", "config", "commit.gpgsign", "false")
             run("git", "config", "core.autocrlf", "false")
+            run("git", "config", "core.hooksPath", ".git/fixture-no-hooks")
+            run("git", "config", "user.name", "Fixture")
+            run("git", "config", "user.email", "fixture@example.invalid")
             (code / "greeting.py").write_text(
                 'def greet(name):\n    return "Hello, " + name\n', encoding="utf-8",
             )
@@ -64,6 +67,17 @@ class DeliveryTests(unittest.TestCase):
                 '    def test_normal_name(self):\n'
                 '        self.assertEqual(greet("Ada"), "Hello, Ada")\n',
                 encoding="utf-8",
+            )
+            (code / "REQUEST.md").write_text(
+                "Update greeting.greet to strip surrounding whitespace from the supplied name, "
+                "preserving existing behavior for ordinary names. Add a regression test for "
+                "greet('  Ada  ') == 'Hello, Ada'. No dependencies, no remote operations. "
+                "Run python -B -m unittest test_greeting.py. Complete bmad-build-auto using "
+                "the configured external artifact paths, including review and a local code commit. "
+                "This is an approved unattended task in an isolated disposable checkout. "
+                "All fixture implementation, tests, and configured external artifact writes "
+                "are approved. Do not change global configuration or files outside this "
+                "checkout and its configured external artifact directory.\n", encoding="utf-8",
             )
             # Personal exclusions precede install; no committed ignore rules are needed.
             exclude = code / ".git" / "info" / "exclude"
@@ -78,20 +92,13 @@ class DeliveryTests(unittest.TestCase):
                    "--set", "exclusions=local", "--set", f"central_root={personal}")
             binding = helper("bind", "--project", code, "--run", "delivery-check")
             self.assertEqual(run("git", "status", "--porcelain").strip(), "")
-            prompt = (
-                "Explicitly invoke bmad-build-auto for this approved, unattended fixture task. "
-                "Update greeting.greet to strip surrounding whitespace from the supplied name, "
-                "preserving existing behavior for ordinary names. Add a regression test for "
-                "greet('  Ada  ') == 'Hello, Ada'. No dependencies, no remote operations. "
-                "Run python -B -m unittest test_greeting.py. Complete the installed workflow "
-                "using its configured external artifact paths, including review and a local "
-                "code commit. This is an isolated disposable repository and all fixture "
-                "implementation, test, and external personal artifact writes are approved. "
-                "Do not install or modify global configuration. Do not change any files "
-                "outside this disposable checkout and its configured artifact directory."
-            )
+            prompt = "Explicitly invoke bmad-build-auto for the approved unattended task in REQUEST.md."
+            # Let the host resolve its normal environment; fixture Git settings are local.
+            host_env = os.environ.copy()
+            host_env["COPILOT_AUTO_UPDATE"] = "false"
             output = run(*copilot_command, "-C", code, "--trust-folder", "--allow-all-tools",
-                         "--add-dir", personal, "--no-ask-user", "-p", prompt, timeout=900)
+                         "--add-dir", personal, "--no-ask-user", "-p", prompt, timeout=900,
+                         environment=host_env)
             self.assertIn("Ada", output)
             run(sys.executable, "-B", "-m", "unittest", "test_greeting.py")
             value = run(sys.executable, "-B", "-c",

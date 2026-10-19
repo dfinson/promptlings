@@ -257,16 +257,53 @@ def runtime(checkout):
 
 def managed_text(path, body):
     text = path.read_text(encoding="utf-8") if path.exists() else ""
-    if text.count(BEGIN) != text.count(END) or text.count(BEGIN) > 1:
+    count = text.count(BEGIN)
+    if count != text.count(END):
         raise SetupError(f"Invalid managed markers: {path}")
-    if BEGIN in text:
-        start, end = text.index(BEGIN), text.index(END)
-        if end < start:
-            raise SetupError(f"Invalid managed markers: {path}")
-        text = text[:start] + text[end + len(END):].lstrip("\r\n")
+    pattern = rf"(?m)^{re.escape(BEGIN)}\r?\n(?:(?!{re.escape(BEGIN)}).)*?^{re.escape(END)}(?:\r?\n|$)"
+    text, removed = re.subn(pattern, "", text, flags=re.DOTALL)
+    if removed != count:
+        raise SetupError(f"Invalid managed markers: {path}")
     if body:
         text = text.rstrip("\r\n") + ("\n\n" if text.strip() else "")
         text += f"{BEGIN}\n{body}\n{END}\n"
+    return text
+
+
+def override_text(path, outputs):
+    """Place assignments in their nearest explicit table without rewriting user text."""
+    text = managed_text(path, "")
+    headers = []
+    offset = 0
+    sentinel = "__promptlings_header_probe__"
+    for line in text.splitlines(keepends=True):
+        offset += len(line)
+        if not line.lstrip().startswith("[") or line.lstrip().startswith("[["):
+            continue
+        try:
+            node = tomllib.loads(line + "\n" + sentinel + " = true\n")
+        except tomllib.TOMLDecodeError:
+            continue
+        parts = []
+        while isinstance(node, dict) and sentinel not in node and len(node) == 1:
+            name, node = next(iter(node.items()))
+            parts.append(name)
+        if isinstance(node, dict) and node.get(sentinel) is True:
+            headers.append((parts, offset))
+    groups = {}
+    for dotted, value in outputs.items():
+        parts = dotted.split(".")
+        parent, position = [], 0
+        for header, end in headers:
+            if parts[:len(header)] == header and len(header) > len(parent):
+                parent, position = header, end
+        key = ".".join(parts[len(parent):])
+        groups.setdefault(position, []).append(f"{key} = {toml_value(value)}")
+    for position, assignments in sorted(groups.items(), reverse=True):
+        prefix = "\n" if position and text[position - 1] != "\n" else ""
+        block = f"{prefix}{BEGIN}\n" + "\n".join(assignments) + f"\n{END}\n"
+        text = text[:position] + block + text[position:]
+    tomllib.loads(text)
     return text
 
 
@@ -310,16 +347,8 @@ def build_binding(args, config):
                 node = node.get(part, {})
             if field in node:
                 raise SetupError(f"Existing personal setting conflicts: {dotted}. Reconcile before binding.")
-    body = []
-    for dotted, value in outputs.items():
-        # TOML dotted keys avoid reopening tables already present in the user's file.
-        body.append(f"{dotted} = {toml_value(value)}")
     original_text = own.read_text(encoding="utf-8") if own.exists() else ""
-    # Prepending a managed block ensures dotted assignments start at the TOML root.
-    unmanaged = managed_text(own, "")
-    managed = f"{BEGIN}\n" + "\n".join(body) + f"\n{END}\n" if body else ""
-    content = managed + unmanaged
-    tomllib.loads(content)
+    content = override_text(own, outputs)
     writes = []
     if content != original_text:
         writes.append(change(own, content))
@@ -441,6 +470,8 @@ def unbind(args, config):
     checkout, _ = identity(args.project)
     root = checkout / "_bmad"
     marker = root / "custom" / "promptlings-binding.json"
+    if not marker.is_file():
+        raise SetupError("No personal artifact binding exists for this checkout")
     json.loads(marker.read_text(encoding="utf-8"))
     own = root / "custom" / "config.user.toml"
     plan = {

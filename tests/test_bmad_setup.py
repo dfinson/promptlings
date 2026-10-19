@@ -136,6 +136,26 @@ class SetupTests(unittest.TestCase):
         self.apply("unbind", "--project", self.code)
         self.assertEqual(path.read_text(), '# personal comment\n[core]\nuser_name = "Example"\n')
 
+    def test_central_binding_preserves_existing_same_tables_and_comments(self):
+        path = self.code / "_bmad" / "custom" / "config.user.toml"
+        path.parent.mkdir()
+        original = ('# keep these comments\n[ "core" ] # quoted header\nuser_name = "Example"\n'
+                    '[modules.bmm]\nuser_skill_level = "expert"\n'
+                    '[other]\nitems = ["untouched"]\n')
+        path.write_text(original)
+        self.defaults("artifacts=central", f"central_root={self.root / 'central'}")
+        self.apply("bind", "--project", self.code, "--run", "one")
+        parsed = tomllib.loads(path.read_text())
+        self.assertEqual(parsed["core"]["user_name"], "Example")
+        self.assertEqual(parsed["modules"]["bmm"]["user_skill_level"], "expert")
+        self.assertIn("planning_artifacts", parsed["modules"]["bmm"])
+        self.apply("bind", "--project", self.code, "--run", "one")
+        self.apply("unbind", "--project", self.code)
+        self.assertEqual(path.read_text(), original)
+
+    def test_unbind_without_binding_has_actionable_error(self):
+        self.cli("unbind", "--project", self.code, error="No personal artifact binding")
+
     def test_conflicting_personal_settings_require_reconciliation(self):
         path = self.code / "_bmad" / "custom" / "config.user.toml"
         path.parent.mkdir()
