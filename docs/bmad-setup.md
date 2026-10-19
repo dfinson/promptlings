@@ -70,3 +70,20 @@ python -B -m unittest discover -s tests -p test_bmad_copilot.py -v
 That check uses isolated host configuration and synthetic skills. It does not
 change the user's real skill state. There is no custom setup runtime, approval
 token protocol, or transaction engine to install or maintain.
+
+## Observed end-to-end verification
+
+On 2026-10-19, an independent context exercised the actual orchestrator using
+Copilot CLI 1.0.100-1 and official BMAD 6.12.1 in an isolated Windows fixture.
+Central artifacts with local private exclusions worked through installation,
+saved-binding reuse, a future-default change without artifact movement, a fresh
+ordinary code request without BMAD activation, and actual BMAD delivery.
+The delivery produced an external spec with status `done`, a context-separated
+same-model review, a code commit, and a passing whitespace regression.
+
+Execution exposed home-resolution, path-hashing, and self-acceptance-reporting
+defects. The instructions were corrected and the affected real entry-point
+journeys rerun. Final resume evidence showed canonical IDs, unchanged settings
+and artifacts, and no false acceptance claim. All 29 fixture workflow skills
+were restored disabled. This verifies the exercised Windows central/local
+journeys, not every host, storage combination, or the user's live installation.

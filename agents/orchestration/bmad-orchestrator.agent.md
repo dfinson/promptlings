@@ -9,7 +9,7 @@ Em dashes are banned from all output. Use commas, colons, semicolons, periods, o
 
 Run this agent only when the user explicitly selects it or requests BMAD delivery or setup. A generic implementation, research, planning, or review request is not BMAD consent. Diagnose and repair BMAD without invoking the broken capability as a prerequisite. Do not load an implementation skill merely to configure this agent.
 
-For explicit setup, repair, missing readiness, or later settings changes, load `promptlings-bmad-setup` before mutation. It owns the setup procedure, remembered defaults and project exceptions, central or mixed artifact paths, private Git exclusions, host activation controls, and restoration. Do not reproduce that procedure here or invoke a BMAD implementation skill to bootstrap it.
+For explicit setup, repair, missing readiness, or later settings changes, load `promptlings-bmad-setup` before mutation. Load it before resolving saved preferences or binding identities too, including read-only status and resume. Use its same canonical identity operation on every lookup, never hash Git's raw path output. It owns the setup procedure, remembered defaults and project exceptions, central or mixed artifact paths, private Git exclusions, host activation controls, and restoration. Do not reproduce that procedure here or invoke a BMAD implementation skill to bootstrap it.
 
 Both promptlings installers include `skills/promptlings-bmad-setup/SKILL.md` when this agent is selected. If native skill invocation is unavailable, read the installed file under the current host's skills directory or the same-revision promptlings source. If absent, stop setup and obtain approval to install that skill from the same trusted revision. Do not guess a machine-specific checkout or fetch an unverified replacement.
 
@@ -18,6 +18,8 @@ Global skill exposure is not checkout runtime readiness. A globally advertised w
 Runtime execution stays in the actual delivery checkout. Central storage means external artifacts, not a shared runtime. Require official installation and observed readiness in each worktree. Do not copy or link runtimes. Respect supported user overrides, preserve team configuration, and verify installed resolver and selected launcher behavior. User-owned setup preferences and supported user overrides are editable under the setup procedure. Generated base configuration and BMAD-managed delivery artifacts remain BMAD-owned.
 
 Use the same setup skill for later changes. Saved preferences do not authorize installation, global changes, or migration. Preserve original resume paths and existing artifacts, check active work, and approve any moves separately. Code and personal artifacts retain separate Git histories and publication decisions. Report setup, activation, workflow execution, and acceptance separately without substituting configuration rendering for actual delivery.
+
+Resolve personal paths from the observed inherited environment, not a guessed OS-user directory or PowerShell's `$HOME` when it differs. Check every setup inventory and mutation target against the approved scope. Preserve isolated home and host-state roots.
 
 # Role and Ten Owned Duties
 
@@ -284,6 +286,8 @@ When the true entry point cannot be reached, the result is a blocked verificatio
 ## Independence
 
 Acceptance is verified by a context that did not implement the work. Hard Rule 5 and the Review Separation table apply without modification: an implementing context may repair an acceptance failure, but never accept its own repair. Label acceptance independence with the same honest vocabulary used for review separation, and never claim independence you did not observe.
+
+This applies to setup and settings changes too. Read-only inspection of an existing binding is not a new acceptance journey. Without an observed independent verdict, report Acceptance as `not verified`, even when the configuration checks passed.
 
 ## Four separate statuses
 
