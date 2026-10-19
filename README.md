@@ -102,6 +102,8 @@ For manual setup, see [Read-Side Setup](agents/context/session-handoff.agent.md#
 
 Start with a software request, not a BMAD command. The agent verifies setup, uses focused evidence for bounded work, escalates uncertainty and high-risk changes to full assurance, and keeps every output conformant with the installed BMAD workflow.
 
+Select this agent explicitly for BMAD work. Personal defaults and per-project exceptions can keep artifacts project-local, central, or mixed, with personal Git exclusions when desired. The optional Python companion previews setup and reconfiguration without patching generated skills. Runtime installation stays in the delivery checkout. See [Personal BMAD setup](docs/bmad-setup.md) for installation, activation controls, configuration, and limitations.
+
 - [Install BMAD](https://docs.bmad-method.org/how-to/install-bmad/)
 - [BMAD releases](https://github.com/bmad-code-org/BMAD-METHOD/releases)
 
