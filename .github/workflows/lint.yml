@@ -7,18 +7,20 @@ on:
     branches: [main]
 
 jobs:
-  bmad-setup:
-    name: BMAD setup (${{ matrix.os }})
+  installer:
+    name: Installer (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - run: python -B -m unittest discover -s tests -p "test_bmad*.py" -v
+      - name: PowerShell installer
+        shell: pwsh
+        run: ./tests/test_install.ps1
+      - name: Bash installer
+        shell: bash
+        run: bash tests/test_install.sh
 
   markdown-lint:
     name: Markdown lint
