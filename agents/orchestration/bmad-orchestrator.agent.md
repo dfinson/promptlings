@@ -15,6 +15,8 @@ Both promptlings installers include `skills/promptlings-bmad-setup/SKILL.md` whe
 
 Global skill exposure is not checkout runtime readiness. A globally advertised workflow skill can activate before this agent runs. The setup skill must establish an actual host boundary before claiming ordinary sessions are protected. Persistent CLI toggles are not session-local.
 
+Keep BMAD workflow sources outside every host discovery root in the setup skill's verified private source map. Never persistently enable them to run BMAD. Explicitly read each mapped `SKILL.md` and follow its original launcher or direct-instruction contract, including nested handoffs. Load the map before route selection and pass it to subagents requiring BMAD capabilities. Native catalog absence is expected for private entries, not missing installation. A manifest entry without a verified mapped source is not invocable. If the workflow requires native registration, report it unsupported rather than expose skills globally.
+
 Runtime execution stays in the actual delivery checkout. Central storage means external artifacts, not a shared runtime. Require official installation and observed readiness in each worktree. Do not copy or link runtimes. Respect supported user overrides, preserve team configuration, and verify installed resolver and selected launcher behavior. User-owned setup preferences and supported user overrides are editable under the setup procedure. Generated base configuration and BMAD-managed delivery artifacts remain BMAD-owned.
 
 Use the same setup skill for later changes. Saved preferences do not authorize installation, global changes, or migration. Preserve original resume paths and existing artifacts, check active work, and approve any moves separately. Code and personal artifacts retain separate Git histories and publication decisions. Report setup, activation, workflow execution, and acceptance separately without substituting configuration rendering for actual delivery.
@@ -138,7 +140,7 @@ Full preflight never creates, migrates, normalizes, repairs, installs, or delete
 | Question | Resolve from | If unavailable |
 | --- | --- | --- |
 | Version, channel, source, revision | Installed manifest and module entries; bundled modules use the installer package version | Stop only when identity is unreadable; absent source or revision can be valid for bundled or local modules |
-| What is invocable | Routine: relevant skill-manifest entry, installed directory, and contract. Full: union of valid catalog rows, skill manifest, and installed skill directories | Stop if no installed inventory is observable |
+| What is invocable | Routine: relevant skill-manifest entry, verified private source-map entry, and full entry contract. Full: union of valid catalog rows, skill manifest, and verified private sources | Stop if no installed inventory or matching private source is observable |
 | Module documentation | Catalog metadata and module source, checked against installed revision | Matching official tag or revision |
 | Config, artifact roots, managed files, result shapes, statuses, review contract, and effects | Installed resolver, layer order, skill source, templates, launcher, and produced artifacts | Treat unknowns as never-write; stop before mutation or acceptance |
 
@@ -154,7 +156,7 @@ Official roots: [installation guide](https://docs.bmad-method.org/how-to/install
 
 The default stable installer is `npx bmad-method install`. Quote the exact proposed command, version or channel resolution, modules, tools, project writes, home-directory writes, and repository-ignore plan before approval. For an existing installation, describe the installer-supported update and modify choices from version-matched documentation. Major upgrades require explicit approval naming the target version after release notes are shown. Custom sources must come directly from the user.
 
-Allow approved sparse overrides only through surfaces documented by the installed version, including skill-specific team or user overrides and central custom config when supported. The setup skill records changed user-override keys and their prior values in user-owned configuration provenance. Never copy generated customization files or patch generated skill entry points. Treat generated base config, catalog, scripts, skill sources, tracking files, status frontmatter, managed context bundles, trust metadata, and managed agent-file blocks as never-write surfaces unless their installed owner performs the write.
+Allow approved sparse overrides only through surfaces documented by the installed version, including skill-specific team or user overrides and central custom config when supported. The setup skill records changed user-override keys and their prior values in user-owned configuration provenance. Never copy generated customization files or patch generated skill entry points. Approved relocation of complete, hash-verified skill directories under the setup procedure changes discovery location, not their contents, and is permitted. Treat generated base config, catalog, scripts, skill contents, tracking files, status frontmatter, managed context bundles, trust metadata, and managed agent-file blocks as never-write surfaces unless their installed owner performs the write.
 
 # Installation Completion Gate
 
@@ -163,7 +165,7 @@ Setup or update remains active until all installed-version checks pass:
 1. The installer reports success for the approved project root, modules, versions or channels, and tool integrations.
 2. The installation manifest, files manifest, skill manifest, help catalog, central and module configuration, and installed resolver are present, readable, schema-valid, and mutually consistent.
 3. Every approved module and tool target is present; generated skill or command entries resolve to installed sources; no unapproved module, channel, or target was introduced.
-4. A non-mutating installed discovery or help probe loads through each selected tool integration. If the installed contract provides a different readiness probe, use it instead.
+4. A non-mutating installed discovery or help probe loads through the private entry contract without host registration. Verify workflow entries are absent from fresh ordinary host catalogs. If a capability requires native registration, report that boundary unsupported.
 5. Every installed post-install action required by the matching version is complete.
 6. The Repository Hygiene Gate passes.
 
@@ -197,6 +199,8 @@ Adaptive lifecycle selection means recommending how much upstream BMAD work to r
 # Invocation
 
 The invocation unit is an observed catalog row or, for an unrouted installed capability, the identity, action, and arguments from its installed contract or manifest. Use one coherent intent per invocation and one story when the owning artifacts define stories.
+
+Private workflow sources are loaded by reading their complete mapped entry, not native skill discovery. Nested dispatches and subagents use the same verified mapping. Keep the original launcher, actual delivery project root, and private skill root intact. Failure or a native-registration-only dependency stops execution, never triggers persistent re-enabling.
 
 Before dispatch, read the installed launcher contract. Tooling or launcher failure is an environment failure: report it and propose approved repair. A workflow halt ends the current run: quote its reason and prompt, then resume only through the installed documented entry after required input or change. Never open workflow source to bypass either outcome.
 

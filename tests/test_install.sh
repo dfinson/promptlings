@@ -5,6 +5,7 @@ source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/promptlings-install.XXXXXX")"
 trap 'rm -rf -- "$fixture_root"' EXIT
 export HOME="$fixture_root/home"
+unset COPILOT_HOME
 export PROMPTLINGS_TEST_SOURCE="$source_root"
 mkdir -p "$HOME/.copilot" "$HOME/.claude" "$fixture_root/bin"
 
@@ -32,4 +33,13 @@ for host in .copilot .claude; do
   [ ! -e "$HOME/$host/copilot-instructions.md" ]
   [ ! -e "$HOME/$host/CLAUDE.md" ]
 done
-echo "Installer dry-run, selection, paired installation, and content checks passed."
+export COPILOT_HOME="$fixture_root/alternate host"
+bash "$source_root/install.sh" --agents bmad-orchestrator --dry-run
+[ ! -e "$COPILOT_HOME" ]
+bash "$source_root/install.sh" --agents bmad-orchestrator --yes
+cmp "$source_root/agents/orchestration/bmad-orchestrator.agent.md" \
+  "$COPILOT_HOME/agents/bmad-orchestrator.agent.md"
+cmp "$source_root/skills/promptlings-bmad-setup/SKILL.md" \
+  "$COPILOT_HOME/skills/promptlings-bmad-setup/SKILL.md"
+[ ! -e "$COPILOT_HOME/copilot-instructions.md" ]
+echo "Installer dry-run, selection, paired installation, custom host root, and content checks passed."

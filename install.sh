@@ -64,6 +64,7 @@ Files written by default: one .agent.md per selected agent, under ~/.copilot/age
 ~/.claude/agents/. Selecting bmad-orchestrator also installs its setup SKILL.md under each
 host's skills/promptlings-bmad-setup directory. No global instruction file is changed
 unless --with-readside is given or you confirm the read-side prompt.
+COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.
 EOF
 }
 
@@ -194,12 +195,17 @@ fi
 # ----- detect targets -----
 
 targets=""
-copilot_dir="$HOME/.copilot/agents"
+copilot_root="${COPILOT_HOME:-$HOME/.copilot}"
+case "$copilot_root" in
+  /*|[A-Za-z]:[\\/]* ) ;;
+  *) copilot_root="$PWD/$copilot_root" ;;
+esac
+copilot_dir="$copilot_root/agents"
 claude_dir="$HOME/.claude/agents"
 copilot_selected=0
 claude_selected=0
 
-if [ -d "$HOME/.copilot" ] || command -v copilot >/dev/null 2>&1 \
+if [ -n "${COPILOT_HOME:-}" ] || [ -d "$copilot_root" ] || command -v copilot >/dev/null 2>&1 \
   || { command -v gh >/dev/null 2>&1 && gh copilot --version >/dev/null 2>&1; }; then
   targets="set"
   copilot_selected=1
@@ -220,7 +226,7 @@ fi
 readside_copilot=0
 readside_claude=0
 readside_each() {
-  if [ "$readside_copilot" -eq 1 ]; then printf '%s\n' "$HOME/.copilot/copilot-instructions.md"; fi
+  if [ "$readside_copilot" -eq 1 ]; then printf '%s\n' "$copilot_root/copilot-instructions.md"; fi
   if [ "$readside_claude" -eq 1 ]; then printf '%s\n' "$HOME/.claude/CLAUDE.md"; fi
 }
 if [ "$want_readside" -eq 1 ] || { [ "$selection_has_session_handoff" -eq 1 ] && [ "$interactive" -eq 1 ]; }; then

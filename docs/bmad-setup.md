@@ -24,6 +24,10 @@ Refresh or restart the host and inspect its catalog. The orchestrator can read
 the same skill file directly when native invocation is unavailable. It must
 report a missing skill rather than reconstructing the procedure.
 
+Both installers honor `COPILOT_HOME` for Copilot agent and skill destinations.
+Without it, the default remains `~/.copilot`. The displayed plan shows the
+effective paths before any write, including a separately opted-in read-side file.
+
 ## Choices and timing
 
 On first setup, the orchestrator inspects existing settings, asks only for
@@ -50,12 +54,34 @@ exclusions implicitly. Moving existing artifacts is a separate approved action.
 
 ## Activation and acceptance
 
-The orchestrator cannot stop globally exposed workflow skills from activating
-before it runs. Setup must inspect and use actual host controls. Copilot CLI
-toggles are persistent across sessions. App session controls are separate.
-Filesystem relocation is a scoped fallback only when all discovery sources
-are known. Unsupported boundaries stop setup instead of receiving invented
-patches. Installers and updates require exposure checks again.
+BMAD workflow directories are moved unchanged outside all observed host
+discovery roots. Each immutable source set has its own version-and-content
+address under `bmad-sources/<installation-id>/<source-set-id>`. Its `sources.toml` records exact entry
+paths, canonical IDs, installation identity, and file hashes. The orchestrator
+reads those entries explicitly and follows their original launcher contracts.
+Nested handoffs use the same map. Ordinary agents do not receive BMAD's broad
+trigger descriptions, even during delivery. Workflow skills are never globally
+re-enabled. This is discovery isolation, not an access-control sandbox against
+an agent explicitly instructed to read arbitrary files.
+
+Bindings pin an exact map. An update creates a different source set without
+changing existing runs, and rebinding requires approval. Runtime updates still
+require all affected runs to be inactive. A maintenance window is an explicitly
+confirmed operational prerequisite, not an automatic lock over unrelated agents.
+If sessions cannot be stopped or new starts withheld, setup stops before exposure.
+
+Installation and updates can recreate discoverable files. Setup therefore
+requires approved native suppression before exposure, or a quiescent maintenance
+window, then relocation and fresh catalog checks before delivery. Unsupported
+plugin sources, incomplete inventories, or workflows requiring native catalog
+registration stop setup. Existing sessions need refresh or restart. The current
+distribution does not configure your live machine merely by being installed.
+
+Each worktree still needs its own official runtime installation on first BMAD
+use. The selected orchestrator checks readiness and performs approved setup,
+not a Git hook or worktree-manager automation. A shared runtime is not supported.
+Private skill source storage is separate from central artifact placement and
+does not share mutable runtime configuration or render snapshots.
 
 The setup skill specifies verification, including fresh ordinary-session
 nonactivation and real orchestrator-driven delivery with actual artifacts.
@@ -71,7 +97,7 @@ That check uses isolated host configuration and synthetic skills. It does not
 change the user's real skill state. There is no custom setup runtime, approval
 token protocol, or transaction engine to install or maintain.
 
-## Observed end-to-end verification
+## Earlier end-to-end verification
 
 On 2026-10-19, an independent context exercised the actual orchestrator using
 Copilot CLI 1.0.100-1 and official BMAD 6.12.1 in an isolated Windows fixture.
@@ -87,3 +113,7 @@ journeys rerun. Final resume evidence showed canonical IDs, unchanged settings
 and artifacts, and no false acceptance claim. All 29 fixture workflow skills
 were restored disabled. This verifies the exercised Windows central/local
 journeys, not every host, storage combination, or the user's live installation.
+That earlier test used disabled skills and temporary delivery activation. It
+does not establish the new private-source loading or concurrent-session boundary.
+Those require their own real delivery, nested-handoff, and concurrent ordinary
+session evidence before being reported as verified.

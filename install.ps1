@@ -79,6 +79,7 @@ Files written by default: one .agent.md per selected agent, under %USERPROFILE%\
 and/or %USERPROFILE%\.claude\agents\. Selecting bmad-orchestrator also installs its setup
 SKILL.md under each host's skills\promptlings-bmad-setup directory. No global instruction
 file is changed unless -WithReadSide is given or you confirm the read-side prompt.
+COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.
 '@
 }
 
@@ -181,12 +182,18 @@ if ($WithReadSide -and (-not $selectionHasSessionHandoff)) {
 # ----- detect targets -----
 
 $targets = @()
-$copilotDir = Join-Path $env:USERPROFILE ".copilot\agents"
+$copilotRoot = if ([string]::IsNullOrWhiteSpace($env:COPILOT_HOME)) {
+    Join-Path $env:USERPROFILE ".copilot"
+} else {
+    [IO.Path]::GetFullPath($env:COPILOT_HOME)
+}
+$copilotDir = Join-Path $copilotRoot "agents"
 $claudeDir = Join-Path $env:USERPROFILE ".claude\agents"
 $copilotSelected = $false
 $claudeSelected = $false
 
-$copilotDetected = (Test-Path (Join-Path $env:USERPROFILE ".copilot")) -or
+$copilotDetected = (-not [string]::IsNullOrWhiteSpace($env:COPILOT_HOME)) -or
+                   (Test-Path $copilotRoot) -or
                    ($null -ne (Get-Command copilot -ErrorAction SilentlyContinue))
 if ((-not $copilotDetected) -and ($null -ne (Get-Command gh -ErrorAction SilentlyContinue))) {
     $copilotDetected = $null -ne (& gh copilot --version 2>$null)
@@ -212,7 +219,7 @@ if ($targets.Count -eq 0) {
 
 $readSideFiles = @()
 if ($WithReadSide -or ($selectionHasSessionHandoff -and $interactive)) {
-    if ($copilotSelected) { $readSideFiles += Join-Path $env:USERPROFILE ".copilot\copilot-instructions.md" }
+    if ($copilotSelected) { $readSideFiles += Join-Path $copilotRoot "copilot-instructions.md" }
     if ($claudeSelected) { $readSideFiles += Join-Path $env:USERPROFILE ".claude\CLAUDE.md" }
 }
 
