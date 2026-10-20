@@ -117,3 +117,68 @@ That earlier test used disabled skills and temporary delivery activation. It
 does not establish the new private-source loading or concurrent-session boundary.
 Those require their own real delivery, nested-handoff, and concurrent ordinary
 session evidence before being reported as verified.
+
+## Private-source verification
+
+On 2026-10-20, an independent executor exercised the private-source design with
+Copilot CLI 1.0.100-1 and official BMAD 6.12.1 in isolated Windows profiles.
+All 29 workflow skills were absent from fresh effective catalogs. All 214
+official skill files matched the package, and all 219 pre/post-relocation files
+were unchanged.
+
+The original private Build entry completed actual delivery with an external
+`done` spec, context-separated review, and committed code. Nine unit tests and
+seven independently invoked public API journeys passed. Separately, an original
+private Help quick-start handed off to the original private QA skill through
+the same exact map. That was a genuine Help-owned handoff, not a nested
+requirement of the small Build route.
+
+An ordinary read session in the same checkout and an ordinary implementation
+session in a linked worktree overlapped actual BMAD delivery. They shared the
+isolated host configuration but made no BMAD skill calls or private-source
+reads. The linked worktree had no BMAD runtime and completed its own committed
+implementation with four passing tests. Source tampering caused explicit
+refusal before another launcher or delivery, without protected-file changes.
+Normal completion left workflow sources outside discovery.
+
+Initial setup incorrectly transcribed a 21-character project ID. Explicit
+recovery preserved existing artifact paths, so the initial bootstrap result
+remains qualified rather than being reported as an uninterrupted success.
+Instructions now emit sliced identity JSON and require exact parsed-value
+comparisons before application and after writes. A fresh, unsteered setup
+preview produced the correct 20/12-character IDs and derived paths. A fresh
+existing-binding resume preserved all 491 protected files and accepted the
+exact map without a false mismatch. Those narrow checks did not apply a new
+setup or exercise the new post-write assertions.
+
+A separate fresh application exposed a PowerShell installer argument defect:
+the `npx.ps1` wrapper received unquoted `core,bmm` as an array, and BMAD reported
+the nonexistent module `core bmm`. Installation exited 1 with 78 partial runtime
+files but no preferences, binding, exclusions, or source relocation. The actor
+stopped rather than retrying silently. Setup now requires quoted list/path
+arguments, installer-selection verification, and an inventory of partial effects
+before proposing an approved retry.
+
+The approved retry succeeded with the correct modules and tool integration.
+Independent inspection verified persisted 20/12-character IDs, derived paths,
+native post-write identity assertions, and 29 private skills with 214 matching
+file hashes. Readiness then incorrectly required 21 obsolete manifest source
+paths to exist despite their valid private entries. Both the setup skill and
+orchestrator completion gate now resolve skill identity through the private map,
+not those provenance paths, without recreating discovery entries or weakening
+runtime-file verification.
+
+A fresh independent read-only resume then passed the corrected readiness gate.
+It reverified persisted identities, the exact map, all private skill hashes,
+catalog absence, and Git visibility. The original Help entry's configuration
+probe exited 0 with the saved destinations, and all 318 protected files remained
+unchanged. No obsolete paths were recreated and no generated inventories were
+edited. This was a discovery/configuration check, not another delivery or
+concurrency run. Apply-time post-write assertions remain separate evidence.
+
+These results cover the exercised routes, not every host, storage combination,
+upgrade, plugin, or native-registration-only workflow. Installation exposure was
+contained in an explicitly approved isolated maintenance window. A later wording
+clarification distinguishes non-skill command targets from private skill-map
+entries. Those non-skill integrations were not exercised. The user's live
+installation was not changed.
