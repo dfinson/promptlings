@@ -7,6 +7,21 @@ on:
     branches: [main]
 
 jobs:
+  installer:
+    name: Installer (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: PowerShell installer
+        shell: pwsh
+        run: ./tests/test_install.ps1
+      - name: Bash installer
+        shell: bash
+        run: bash tests/test_install.sh
+
   markdown-lint:
     name: Markdown lint
     runs-on: ubuntu-latest
@@ -15,4 +30,3 @@ jobs:
       - uses: DavidAnson/markdownlint-cli2-action@v19
         with:
           globs: "**/*.md"
-

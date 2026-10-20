@@ -20,6 +20,7 @@ BRANCH="main"
 BASE_URL="https://raw.githubusercontent.com/$REPO/$BRANCH"
 READSIDE_PATH="agents/context/session-handoff-read-side.md"
 READSIDE_MARKER="session-handoff-read-side-start"
+BMAD_SETUP_PATH="skills/promptlings-bmad-setup/SKILL.md"
 
 ALL_AGENTS="the-nitcracker pr-walkthrough session-handoff technical-demo bmad-orchestrator speckit-flow"
 REVIEW_AGENTS="the-nitcracker pr-walkthrough"
@@ -60,8 +61,10 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 (a piped one-liner) installs the two code-review agents and prints how to ask for more.
 
 Files written by default: one .agent.md per selected agent, under ~/.copilot/agents/ and/or
-~/.claude/agents/. Nothing outside those directories is touched unless --with-readside is
-given or you confirm the read-side prompt.
+~/.claude/agents/. Selecting bmad-orchestrator also installs its setup SKILL.md under each
+host's skills/promptlings-bmad-setup directory. No global instruction file is changed
+unless --with-readside is given or you confirm the read-side prompt.
+COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.
 EOF
 }
 
@@ -175,8 +178,12 @@ if [ -z "$selection" ]; then
 fi
 
 selection_has_session_handoff=0
+selection_has_bmad=0
 case " $selection " in
   *" session-handoff "*) selection_has_session_handoff=1 ;;
+esac
+case " $selection " in
+  *" bmad-orchestrator "*) selection_has_bmad=1 ;;
 esac
 
 if [ "$want_readside" -eq 1 ] && [ "$selection_has_session_handoff" -eq 0 ]; then
@@ -188,12 +195,17 @@ fi
 # ----- detect targets -----
 
 targets=""
-copilot_dir="$HOME/.copilot/agents"
+copilot_root="${COPILOT_HOME:-$HOME/.copilot}"
+case "$copilot_root" in
+  /*|[A-Za-z]:[\\/]* ) ;;
+  *) copilot_root="$PWD/$copilot_root" ;;
+esac
+copilot_dir="$copilot_root/agents"
 claude_dir="$HOME/.claude/agents"
 copilot_selected=0
 claude_selected=0
 
-if [ -d "$HOME/.copilot" ] || command -v copilot >/dev/null 2>&1 \
+if [ -n "${COPILOT_HOME:-}" ] || [ -d "$copilot_root" ] || command -v copilot >/dev/null 2>&1 \
   || { command -v gh >/dev/null 2>&1 && gh copilot --version >/dev/null 2>&1; }; then
   targets="set"
   copilot_selected=1
@@ -214,7 +226,7 @@ fi
 readside_copilot=0
 readside_claude=0
 readside_each() {
-  if [ "$readside_copilot" -eq 1 ]; then printf '%s\n' "$HOME/.copilot/copilot-instructions.md"; fi
+  if [ "$readside_copilot" -eq 1 ]; then printf '%s\n' "$copilot_root/copilot-instructions.md"; fi
   if [ "$readside_claude" -eq 1 ]; then printf '%s\n' "$HOME/.claude/CLAUDE.md"; fi
 }
 if [ "$want_readside" -eq 1 ] || { [ "$selection_has_session_handoff" -eq 1 ] && [ "$interactive" -eq 1 ]; }; then
@@ -244,6 +256,9 @@ plan_files() {
   for a in $selection; do
     echo "  $1/$a.agent.md"
   done
+  if [ "$selection_has_bmad" -eq 1 ]; then
+    echo "  $(dirname "$1")/skills/promptlings-bmad-setup/SKILL.md"
+  fi
 }
 if [ "$copilot_selected" -eq 1 ]; then plan_files "$copilot_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then plan_files "$claude_dir"; fi
@@ -314,6 +329,12 @@ install_to() {
     echo "  $a.agent.md"
     download "$(agent_path "$a")" "$1/$a.agent.md"
   done
+  if [ "$selection_has_bmad" -eq 1 ]; then
+    local skill_dir
+    skill_dir="$(dirname "$1")/skills/promptlings-bmad-setup"
+    mkdir -p "$skill_dir"
+    download "$BMAD_SETUP_PATH" "$skill_dir/SKILL.md"
+  fi
 }
 if [ "$copilot_selected" -eq 1 ]; then install_to "$copilot_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then install_to "$claude_dir"; fi

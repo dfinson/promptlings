@@ -31,6 +31,7 @@ $Branch = "main"
 $BaseUrl = "https://raw.githubusercontent.com/$Repo/$Branch"
 $ReadSidePath = "agents/context/session-handoff-read-side.md"
 $ReadSideMarker = "session-handoff-read-side-start"
+$BmadSetupPath = "skills/promptlings-bmad-setup/SKILL.md"
 
 $AllAgents = @(
     "the-nitcracker"
@@ -75,8 +76,10 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 (a piped one-liner) installs the two code-review agents and prints how to ask for more.
 
 Files written by default: one .agent.md per selected agent, under %USERPROFILE%\.copilot\agents\
-and/or %USERPROFILE%\.claude\agents\. Nothing outside those directories is touched unless
--WithReadSide is given or you confirm the read-side prompt.
+and/or %USERPROFILE%\.claude\agents\. Selecting bmad-orchestrator also installs its setup
+SKILL.md under each host's skills\promptlings-bmad-setup directory. No global instruction
+file is changed unless -WithReadSide is given or you confirm the read-side prompt.
+COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.
 '@
 }
 
@@ -168,6 +171,7 @@ if ($selection.Count -eq 0) {
 }
 
 $selectionHasSessionHandoff = $selection -contains "session-handoff"
+$selectionHasBmad = $selection -contains "bmad-orchestrator"
 
 if ($WithReadSide -and (-not $selectionHasSessionHandoff)) {
     Write-Fail "-WithReadSide only makes sense alongside the session-handoff agent."
@@ -178,12 +182,18 @@ if ($WithReadSide -and (-not $selectionHasSessionHandoff)) {
 # ----- detect targets -----
 
 $targets = @()
-$copilotDir = Join-Path $env:USERPROFILE ".copilot\agents"
+$copilotRoot = if ([string]::IsNullOrWhiteSpace($env:COPILOT_HOME)) {
+    Join-Path $env:USERPROFILE ".copilot"
+} else {
+    [IO.Path]::GetFullPath($env:COPILOT_HOME)
+}
+$copilotDir = Join-Path $copilotRoot "agents"
 $claudeDir = Join-Path $env:USERPROFILE ".claude\agents"
 $copilotSelected = $false
 $claudeSelected = $false
 
-$copilotDetected = (Test-Path (Join-Path $env:USERPROFILE ".copilot")) -or
+$copilotDetected = (-not [string]::IsNullOrWhiteSpace($env:COPILOT_HOME)) -or
+                   (Test-Path $copilotRoot) -or
                    ($null -ne (Get-Command copilot -ErrorAction SilentlyContinue))
 if ((-not $copilotDetected) -and ($null -ne (Get-Command gh -ErrorAction SilentlyContinue))) {
     $copilotDetected = $null -ne (& gh copilot --version 2>$null)
@@ -209,7 +219,7 @@ if ($targets.Count -eq 0) {
 
 $readSideFiles = @()
 if ($WithReadSide -or ($selectionHasSessionHandoff -and $interactive)) {
-    if ($copilotSelected) { $readSideFiles += Join-Path $env:USERPROFILE ".copilot\copilot-instructions.md" }
+    if ($copilotSelected) { $readSideFiles += Join-Path $copilotRoot "copilot-instructions.md" }
     if ($claudeSelected) { $readSideFiles += Join-Path $env:USERPROFILE ".claude\CLAUDE.md" }
 }
 
@@ -225,6 +235,9 @@ Write-Host ""
 Write-Host "Files written ($($selection.Count) agent(s) per directory, overwritten if present):"
 foreach ($t in $targets) {
     foreach ($a in $selection) { Write-Host "  $t\$a.agent.md" }
+    if ($selectionHasBmad) {
+        Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-setup\SKILL.md')"
+    }
 }
 Write-Host ""
 
@@ -280,6 +293,11 @@ foreach ($t in $targets) {
     foreach ($a in $selection) {
         Write-Host "  $a.agent.md"
         Get-Remote -Remote $AgentPaths[$a] -Dest (Join-Path $t "$a.agent.md")
+    }
+    if ($selectionHasBmad) {
+        $skillDir = Join-Path (Split-Path $t -Parent) "skills\promptlings-bmad-setup"
+        New-Item -ItemType Directory -Force -Path $skillDir | Out-Null
+        Get-Remote -Remote $BmadSetupPath -Dest (Join-Path $skillDir "SKILL.md")
     }
 }
 
