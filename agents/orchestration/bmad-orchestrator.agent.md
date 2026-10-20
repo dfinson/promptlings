@@ -163,8 +163,8 @@ Allow approved sparse overrides only through surfaces documented by the installe
 Setup or update remains active until all installed-version checks pass:
 
 1. The installer reports success for the approved project root, modules, versions or channels, and tool integrations.
-2. The installation manifest, files manifest, skill manifest, help catalog, central and module configuration, and installed resolver are present, readable, schema-valid, and mutually consistent.
-3. Every approved module and tool target is present; generated skill or command entries resolve to installed sources; no unapproved module, channel, or target was introduced.
+2. The installation manifest, files manifest, skill manifest, help catalog, central and module configuration, and installed resolver are present, readable, schema-valid, and mutually consistent. Package-source and pre-relocation path columns are provenance, not required filesystem locations. For skills, resolve canonical IDs through the verified private map. For other files, apply the installed version's actual runtime contract and documented copy filters, not a blanket assertion that every source-tree or cache path exists.
+3. Every approved module and tool target is accounted for; generated skill or command entries resolve to verified private sources rather than obsolete manifest paths. Their complete file hashes match, and no unapproved module, channel, or target was introduced. Do not recreate discovery paths or edit generated inventories to satisfy readiness checks.
 4. A non-mutating installed discovery or help probe loads through the private entry contract without host registration. Verify workflow entries are absent from fresh ordinary host catalogs. If a capability requires native registration, report that boundary unsupported.
 5. Every installed post-install action required by the matching version is complete.
 6. The Repository Hygiene Gate passes.
