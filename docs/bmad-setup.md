@@ -79,9 +79,53 @@ distribution does not configure your live machine merely by being installed.
 
 Each worktree still needs its own official runtime installation on first BMAD
 use. The selected orchestrator checks readiness and performs approved setup,
-not a Git hook or worktree-manager automation. A shared runtime is not supported.
+not a Git hook or worktree-manager automation. This distribution does not support
+a shared execution runtime.
 Private skill source storage is separate from central artifact placement and
 does not share mutable runtime configuration or render snapshots.
+
+## Delivery continuity
+
+For multi-dispatch delivery, the orchestrator keeps a personal continuation file
+at an approved path, normally
+`~/.config/promptlings/continuations/<checkout-id>/<run-id>.md`.
+Setup previews this location separately from the configuration binding.
+The file points to the checkout, exact source map, owning workflow artifacts,
+outstanding child assignments, and next required gate. It also records the scope
+and return condition of a user-approved departure from BMAD.
+
+Before dispatch after restart or compaction, the orchestrator rereads those
+references and reconciles actual artifacts and child results. It does not
+reconstruct progress from a conversation summary, repeat completed work, or
+restart an assignment with uncertain liveness. Missing or conflicting recovery
+information stops dispatch for reconciliation. The continuation is not a second
+story tracker: BMAD artifacts retain their own tasks, statuses, and verdicts.
+
+Generic implementation children are expected when the installed workflow uses
+them. The parent owns spec-backed dispatch, result verification, and advancement
+through the workflow gates. Reviewers whose contract forbids skills do not
+invoke them. External tracker tasks and freeform requests need not acquire a
+parallel epic or sprint graph, but they must enter through the installed
+workflow's artifact contract.
+
+A failed launcher cannot silently switch delivery to ordinary tools. An explicit
+user-approved bypass applies only to its recorded scope. A decision to abandon
+BMAD remains in effect until the user changes it, not until an agent decides to
+restore it.
+
+### Research basis
+
+BMAD 6.12.1's [autonomous-loop contract](https://github.com/bmad-code-org/BMAD-METHOD/blob/790dae9c8e2a1d73575cb2d40b14dd4963391f29/docs/build/autonomous-development-loops.md)
+assigns backlog dispatch and terminal-result handling to the caller. Its renderer
+produces workflow instructions, not a scheduler.
+The separate upstream [bmad-loop](https://github.com/bmad-code-org/bmad-loop)
+implements coded transitions and persisted execution state. It is not installed
+or integrated by this PR: its inspected worktree provisioning copies discoverable
+skills and runtime surfaces, and native Windows support is experimental.
+Current Copilot [hook contracts](https://docs.github.com/en/copilot/reference/hooks-reference)
+also have concrete coverage and failure limits, including fail-open timeouts
+and no subagent lifecycle events for the built-in `general-purpose` agent.
+No hook or controller is added here.
 
 The setup skill specifies verification, including fresh ordinary-session
 nonactivation and real orchestrator-driven delivery with actual artifacts.

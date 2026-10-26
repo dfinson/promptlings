@@ -106,6 +106,8 @@ Append only missing, inventory-confirmed BMAD integration patterns, preserving e
 
 Keep a user-owned record beside the preferences, under `bindings/<checkout-id>.toml`, of the checkout, run ID, exact destinations, changed user-override keys with prior presence and values, added exclusion rules, private source-map path, and activation state changes. Preserve the existing record on resume. This is configuration provenance for restoration, not a BMAD lifecycle ledger. If applying changes fails, report completed and remaining effects from observed state. Do not claim rollback without verifying it.
 
+For multi-dispatch delivery, preview the orchestrator's separate personal continuation location, `continuations/<checkout-id>/<run-id>.md`, alongside the binding and obtain approval for its writes. The binding pins setup provenance. The continuation points to owning workflow artifacts, outstanding assignments, the next gate, and scoped user mode decisions. Neither duplicates BMAD task or status state. Do not silently create this location during read-only status inspection or change its recorded path when resuming a binding. The orchestrator still updates the existing record's contents as delivery progresses.
+
 ## 5. Reconfigure and verify
 
 For later changes, read the same preferences and provenance, inspect active work, and preview only the requested differences. A new default affects future bindings, not an active run. Before retiring a binding, record resume paths and obtain approval. Remove or restore only owned override values still matching the recorded values. External edits require reconciliation. Leave artifacts and shared exclusion rules in place unless their removal was separately approved.

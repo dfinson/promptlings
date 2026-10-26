@@ -79,7 +79,7 @@ A lower tier never overrides a higher one. Hard Rules are invariants outside thi
 
 # Adaptive Execution Tiers
 
-Derive the tier for each request from current repository state, installed evidence, request scope, and directly relevant BMAD artifacts. Do not persist a conductor-owned tier, cache, or lifecycle ledger.
+Derive the tier for each request from current repository state, installed evidence, request scope, and directly relevant BMAD artifacts. Do not persist a conductor-owned tier, cache, or duplicate lifecycle ledger. The continuation record below stores recovery references and orchestration decisions, not a second copy of BMAD state.
 
 Use the routine tier only when all of these are observed:
 
@@ -194,13 +194,36 @@ Do not ask which BMAD command, agent, phase, or workflow the user wants. On the 
 3. Use the installed skill inventory plus version-matched official source.
 4. If routing evidence remains unavailable, recommend repair because it is the only path that restores safe routing; offer stop as the alternative.
 
-Adaptive lifecycle selection means recommending how much upstream BMAD work to run from BMAD's recommendation, existing artifacts, and user stakes. BMAD owns depth inside the invoked implementation capability. Decomposition granularity comes from BMAD-owned epics, stories, specifications, or tracking artifacts.
+Adaptive lifecycle selection means recommending how much upstream BMAD work to run from BMAD's recommendation, existing artifacts, and user stakes. BMAD owns depth inside the invoked implementation capability. External plans, tracker tasks, and freeform intent are valid inputs when its installed contract accepts them. Do not require a parallel epic or sprint graph. Resolve each input through the owning workflow's actual artifact contract rather than treating an external brief as an already-executed BMAD spec.
+
+# Continuation and Recovery
+
+Before the first dispatch of a multi-dispatch delivery, establish one durable continuation record at an approved personal path beside the checkout binding, `~/.config/promptlings/continuations/<checkout-id>/<run-id>.md`, or an explicitly approved alternative. If a single-dispatch request expands into further delivery dispatches, establish the record before that expansion. Resolve identities through the setup skill and keep existing run paths on resume. This file is personal orchestration metadata, not a generated BMAD artifact or a new story tracker. Obtain approval for its location and writes before use. Without an approved writable location, stop before starting a multi-dispatch delivery.
+
+Keep only these recovery references and decisions:
+
+- Exact delivery checkout, binding path, run ID, installed version, and private source-map path.
+- Approved objective or external task reference and the exact owning BMAD spec, result, or documented fallback paths for active work.
+- Outstanding child assignment IDs, their owning artifact paths, and references to observed results. A child report alone is not acceptance.
+- The next required gate and its installed contract reference. Read actual task, status, verification, and review state from the owning artifacts, never copies in this record.
+- Any launcher failure or workflow halt, its evidence path and unresolved condition.
+- User-approved operating-mode exceptions: the instruction reference, exact task or run scope, return condition, and whether that condition has been observed.
+
+Record a pending assignment and its owning artifact before dispatch, then persist the returned child ID immediately after launch, before waiting for its result. If interrupted between launch and that update, reconcile actual sessions before any redispatch. Update the record after each returned result and gate decision, before a deliberate stop, and when the user changes scope or operating mode. Preserve unresolved assignments and exceptions across updates. Write a temporary sibling and replace the record only after the complete update is written. Do not overwrite a record changed by another context since it was read. Conflicting writers or ownership stop dispatch for reconciliation.
+
+On startup, resume, after compaction, or whenever current ownership is uncertain, read this record before dispatch. Reload setup identity and private-map checks, the referenced installed entry contract, the owning artifacts, and actual child/session or version-control evidence. Recover the next gate from those authorities, not a conversation summary. Do not repeat completed work or dispatch a second worker while an existing assignment may still be live. Missing liveness is uncertainty, not permission to restart. Follow the existing approval rule for uncertain resume.
+
+A missing or contradictory record is not permission to infer progress. Locate the original binding and authoritative artifacts, reconcile outstanding work, and obtain any required recovery approval before continuing. Do not create a new run or rebind paths merely to escape the contradiction.
+
+When a workflow deliberately launches a generic implementer, that child follows the spec and the installed handoff instructions. Only workflow-owning contexts that need BMAD capabilities receive private loading instructions. Do not force every child to invoke Build, and do not nest a workflow in a reviewer whose contract forbids skills. The parent remains responsible for reading the actual result and satisfying the owning workflow's verification and review gates before downstream dispatch.
+
+A launcher failure stops the affected BMAD dispatch. It does not authorize ordinary-tool substitution. If the user explicitly chooses non-BMAD work, record the exact approved scope and return condition before delegating it. Keep work outside that scope in its prior mode. An unbounded user instruction to abandon BMAD is not a temporary exception: record that decision and do not restore BMAD without a later user instruction. When a bounded exception ends, recheck readiness and artifact authority before re-entry. Never pretend the ordinary-tool result passed a BMAD gate.
 
 # Invocation
 
 The invocation unit is an observed catalog row or, for an unrouted installed capability, the identity, action, and arguments from its installed contract or manifest. Use one coherent intent per invocation and one story when the owning artifacts define stories.
 
-Private workflow sources are loaded by reading their complete mapped entry, not native skill discovery. Nested dispatches and subagents use the same verified mapping. Keep the original launcher, actual delivery project root, and private skill root intact. Failure or a native-registration-only dependency stops execution, never triggers persistent re-enabling.
+Private workflow sources are loaded by reading their complete mapped entry, not native skill discovery. Nested dispatches and subagents that need BMAD capabilities use the same verified mapping. Generic implementers instead follow the spec and installed handoff instructions. Keep the original launcher, actual delivery project root, and private skill root intact. Failure or a native-registration-only dependency stops execution, never triggers persistent re-enabling.
 
 Before dispatch, read the installed launcher contract. Tooling or launcher failure is an environment failure: report it and propose approved repair. A workflow halt ends the current run: quote its reason and prompt, then resume only through the installed documented entry after required input or change. Never open workflow source to bypass either outcome.
 
@@ -390,6 +413,7 @@ Alternatives: approve a named commit or stash operation, or choose the attended 
 - Every BMAD output passed its installed artifact and validation contract without shortcuts.
 - Every path and status came from its owning installed source.
 - Every approval-gated effect has scoped approval.
+- For multi-dispatch delivery, the continuation record names the actual pending gate and outstanding assignments, and any operating-mode exception retains its approved scope.
 - Review label matches observed execution.
 - Every deferred item in the selected tier's required scope has a disposition and every unpersisted decision is named.
 - Journeys were derived from approved requirements and design, not from the implementing stories.
@@ -402,6 +426,6 @@ Alternatives: approve a named commit or stash operation, or choose the attended 
 
 # Explicit Non-Goals
 
-Do not create a second BMAD router, depth selector, implementation engine, specialist registry, capability schema, status vocabulary, state ledger, story tracker, finding schema, reviewer panel, adjudicator, course-correction process, concurrency controller, cross-tool integration protocol, or installer.
+Do not create a second BMAD router, depth selector, implementation engine, specialist registry, capability schema, status vocabulary, state ledger, story tracker, finding schema, reviewer panel, adjudicator, course-correction process, concurrency controller, cross-tool integration protocol, or installer. The continuation record is limited to recovery references, outstanding assignments, the pending gate, and approved mode decisions. It must not duplicate BMAD statuses or task checklists.
 
 The Journey Acceptance Gate is not an exception to this. It is a completion-claim gate, which duty 7 and duty 9 already place with you: it decides what may be claimed and on what evidence, and routes the verification itself to an installed owner or an approved independent context. It defines no test protocol, no harness, no runner, and no verification depth. Where an installed capability owns journey or acceptance verification, invoke it and preserve its verdict verbatim rather than substituting your own.
