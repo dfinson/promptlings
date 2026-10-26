@@ -13,7 +13,7 @@ Focused custom agents for code review, session continuity, technical demos, and 
 | --- | --- |
 | [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | A full PR review with inline defects, separate design judgments, and a candid narrative walkthrough. |
 | [PR Walkthrough](agents/code-review/pr-walkthrough.agent.md) | A narrative map of a PR before reviewing it: architecture, important files, design forks, and implicit bets. |
-| [Session Handoff](agents/context/session-handoff.agent.md) | Durable context across chats: current state, environment facts, decisions, and a verified restart prompt. |
+| [Memory Manager](agents/context/memory-manager.agent.md) | Capture a session's purpose, reasoning, decisions, and continuation state in Basic Memory, then recall and maintain scoped knowledge. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
 | [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Adaptive BMAD delivery through one interface, from verified setup and bounded fixes to full-assurance initiatives. |
 | [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | Anchor every change in Spec-Kit specification, plan, and tasks, then use only the additional phases and Fleet capabilities that add value. |
@@ -59,7 +59,7 @@ Windows PowerShell 5.1 defaults to the `Restricted` execution policy, which bloc
 | `--agents a,b` / `-Agents a,b` | Install by name |
 | `--list` / `-List` | Print available agent names and exit |
 | `--dry-run` / `-DryRun` | Print every path that would be written, write nothing |
-| `--with-readside` / `-WithReadSide` | Opt in to the Session Handoff read-side instruction |
+| `--with-readside` / `-WithReadSide` | Opt in to installing or replacing the managed Basic Memory read-side instruction |
 
 By default the script writes only to your agents directory. It does not touch `~/.copilot/copilot-instructions.md`, `~/.claude/CLAUDE.md`, your shell profile, or your PATH.
 
@@ -86,15 +86,48 @@ The agent is forbidden from rendering judgment in the second and third channels.
 
 Unedited output from both agents on a real PR is in [`examples/`](examples/), along with how to reproduce it. Worth knowing before you rely on either: no codebase index, no memory between runs, no GitHub App, no CI integration. Run twice on a change that matters, since the severity floor is reproducible but which finding surfaces is not.
 
-### Session Handoff
+### Memory Manager
 
-Requires a companion read-side instruction so future sessions load the persisted context. That instruction is appended to your global instruction file and applies to **every future session in every repository**, so the installer never adds it unless you ask:
+Replaces Session Handoff with one session-first agent using [Basic Memory](https://docs.basicmemory.com/). Invoking it without a narrower request captures the available conversation's purpose, evolving reasoning, decisions and rationale, discoveries, failed approaches, outcome, and continuation state. It saves a coherent session checkpoint and reconciles reusable knowledge into canonical notes. Setup, recall, ingestion, and broader maintenance are explicit operations, not a mandatory full audit on every save.
+
+Requires a configured Basic Memory MCP server. Install the relevant Basic Memory skills through your assistant's supported skill installation mechanism: `memory-notes` for note operations, `memory-tasks` for resumable work, and reflection, ingestion, lifecycle, schema, or defrag skills as needed. The agent discovers capabilities rather than assuming every optional skill exists. This installer installs the agent only, not Basic Memory or its skills.
 
 ```bash
-bash install.sh --agents session-handoff --with-readside
+bash install.sh --agents memory-manager
 ```
 
-For manual setup, see [Read-Side Setup](agents/context/session-handoff.agent.md#read-side-setup).
+```powershell
+.\install.ps1 -Agents memory-manager
+```
+
+Ask Memory Manager to set up routing. It reuses an existing repository/domain project or proposes one, keyed by canonical repository identity across branches and worktrees. A shared `agent-environment` project replaces machine-global handoff notes, with host-specific facts scoped under an approved stable host key. It can be the configured default if approved, but every memory operation still uses an explicit project identifier. Project knowledge never falls back into the environment project.
+
+Setup requires approval for new projects, stable storage paths outside disposable worktrees, and global configuration changes. Record approved routing **outside the managed read-side block** in the chosen user/repository instructions:
+
+```text
+Environment project ID: <actual Basic Memory project ID>
+Host key: <approved stable machine key>
+Repository/domain project ID: <actual Basic Memory project ID>
+Canonical repository identity: <credential-free remote identity, if applicable>
+```
+
+The companion [read-side instruction](agents/context/memory-manager-read-side.md) makes future sessions retrieve relevant context and use session capture. It affects **every future session in every repository**, so the installer never adds or replaces it without `--with-readside`, `-WithReadSide`, or interactive confirmation:
+
+```bash
+bash install.sh --agents memory-manager --with-readside
+```
+
+```powershell
+.\install.ps1 -Agents memory-manager -WithReadSide
+```
+
+This installs or replaces complete `memory-manager-read-side` and legacy `session-handoff-read-side` marked blocks, collapsing duplicates while preserving unrelated instructions. Malformed or nested markers cause an error without rewriting that instruction file. Download failures also fail explicitly. Installation does not create memory projects or migrate their data.
+
+**Upgrading from Session Handoff:** install Memory Manager without the read-side flag first. Ask it to migrate `~/.session-handoff/environment.md` and the repository's git-common-dir handoff records and referenced artifacts into the approved Basic Memory projects. It preserves provenance and history, screens secrets, avoids duplicate imports, and verifies retrieval before retiring the old read-side contract. Then enable the new block using the commands above. Original handoff data is not deleted.
+
+The deprecated installer selection `session-handoff` resolves to `memory-manager` and installs only the canonical agent. Previously installed Session Handoff, Context Manager, and Memory Maintainer files are not deleted or overwritten. After migration, review and retire those obsolete agents manually. Manual installations of the old read-side instruction should replace the entire marked block, not append the new one beside it.
+
+Saving requires invoking Memory Manager unless a supported host hook has actually been configured and verified. Delegated capture must receive the relevant conversation or an accessible source reference. An agent cannot recover conversation that was never supplied or saved.
 
 ### BMAD Orchestrator
 

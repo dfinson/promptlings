@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Installs selected agent files into your assistant's agents directory.
 #
-# This script does NOT modify any global instruction file by default. The session-handoff
+# This script does NOT modify any global instruction file by default. The memory-manager
 # read-side block changes how your assistant behaves in every future session in every
 # repository, so it is opt-in only, via --with-readside or an explicit interactive
 # confirmation. See --help.
@@ -18,17 +18,16 @@ set -euo pipefail
 REPO="dfinson/promptlings"
 BRANCH="main"
 BASE_URL="https://raw.githubusercontent.com/$REPO/$BRANCH"
-READSIDE_PATH="agents/context/session-handoff-read-side.md"
-READSIDE_MARKER="session-handoff-read-side-start"
+READSIDE_PATH="agents/context/memory-manager-read-side.md"
 
-ALL_AGENTS="the-nitcracker pr-walkthrough session-handoff technical-demo bmad-orchestrator speckit-flow"
+ALL_AGENTS="the-nitcracker pr-walkthrough memory-manager technical-demo bmad-orchestrator speckit-flow"
 REVIEW_AGENTS="the-nitcracker pr-walkthrough"
 
 agent_path() {
   case "$1" in
     pr-walkthrough)    echo "agents/code-review/pr-walkthrough.agent.md" ;;
     the-nitcracker)    echo "agents/code-review/the-nitcracker.agent.md" ;;
-    session-handoff)   echo "agents/context/session-handoff.agent.md" ;;
+    memory-manager)    echo "agents/context/memory-manager.agent.md" ;;
     technical-demo)    echo "agents/media/technical-demo.agent.md" ;;
     bmad-orchestrator) echo "agents/orchestration/bmad-orchestrator.agent.md" ;;
     speckit-flow)      echo "agents/orchestration/speckit-flow.agent.md" ;;
@@ -51,9 +50,10 @@ Selection (pick at most one):
 Behavior:
   --dry-run             Print every path that would be written, write nothing
   --yes                 Skip the confirmation prompt
-  --with-readside       Also append the session-handoff read-side block to your GLOBAL
-                        instruction file. Requires the session-handoff agent. This changes
+  --with-readside       Install or replace the managed memory read-side block in your GLOBAL
+                        instruction file. Requires memory-manager. This changes
                         assistant behavior in every future session in every repository.
+                        Migrate legacy handoff data before replacing its read-side block.
   --help                Print this message and exit
 
 With no selection flag, an interactive run asks which set you want. A non-interactive run
@@ -62,6 +62,9 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 Files written by default: one .agent.md per selected agent, under ~/.copilot/agents/ and/or
 ~/.claude/agents/. Nothing outside those directories is touched unless --with-readside is
 given or you confirm the read-side prompt.
+
+session-handoff is a deprecated selection alias for memory-manager. Existing agent files
+and legacy handoff data are never deleted. Basic Memory setup is performed by the agent.
 EOF
 }
 
@@ -158,6 +161,10 @@ fi
 # validate and de-duplicate
 resolved=""
 for a in $selection; do
+  if [ "$a" = "session-handoff" ]; then
+    echo "session-handoff is now memory-manager. Installing the canonical agent only."
+    a="memory-manager"
+  fi
   if ! agent_path "$a" >/dev/null 2>&1; then
     echo "Error: unknown agent '$a'. Run with --list to see valid names." >&2
     exit 2
@@ -174,14 +181,14 @@ if [ -z "$selection" ]; then
   exit 2
 fi
 
-selection_has_session_handoff=0
+selection_has_memory_manager=0
 case " $selection " in
-  *" session-handoff "*) selection_has_session_handoff=1 ;;
+  *" memory-manager "*) selection_has_memory_manager=1 ;;
 esac
 
-if [ "$want_readside" -eq 1 ] && [ "$selection_has_session_handoff" -eq 0 ]; then
-  echo "Error: --with-readside only makes sense alongside the session-handoff agent." >&2
-  echo "Try: bash install.sh --agents session-handoff --with-readside" >&2
+if [ "$want_readside" -eq 1 ] && [ "$selection_has_memory_manager" -eq 0 ]; then
+  echo "Error: --with-readside only makes sense alongside the memory-manager agent." >&2
+  echo "Try: bash install.sh --agents memory-manager --with-readside" >&2
   exit 2
 fi
 
@@ -217,7 +224,7 @@ readside_each() {
   if [ "$readside_copilot" -eq 1 ]; then printf '%s\n' "$HOME/.copilot/copilot-instructions.md"; fi
   if [ "$readside_claude" -eq 1 ]; then printf '%s\n' "$HOME/.claude/CLAUDE.md"; fi
 }
-if [ "$want_readside" -eq 1 ] || { [ "$selection_has_session_handoff" -eq 1 ] && [ "$interactive" -eq 1 ]; }; then
+if [ "$want_readside" -eq 1 ] || { [ "$selection_has_memory_manager" -eq 1 ] && [ "$interactive" -eq 1 ]; }; then
   if [ "$copilot_selected" -eq 1 ]; then
     readside_copilot=1
   fi
@@ -250,19 +257,18 @@ if [ "$claude_selected" -eq 1 ]; then plan_files "$claude_dir"; fi
 echo ""
 
 if [ "$want_readside" -eq 1 ]; then
-  echo "Global instruction files appended to (opt-in via --with-readside):"
+  echo "Global instruction files updated (opt-in via --with-readside):"
   readside_each | while IFS= read -r f; do
     echo "  $f"
   done
   echo ""
-  echo "  The appended block instructs EVERY future session in EVERY repository to read your"
-  echo "  session-handoff files before doing anything else, including before answering a"
-  echo "  question or searching the codebase. It is added once, marked with"
-  echo "  '$READSIDE_MARKER', and nothing existing is removed."
+  echo "  The block enables scoped Basic Memory recall and session capture in future sessions."
+  echo "  Existing memory-manager or legacy session-handoff marked blocks are replaced."
+  echo "  Unrelated instructions and handoff data are preserved. Migrate legacy data first."
   echo ""
 elif [ -n "$(readside_each)" ]; then
   echo "Global instruction files: you will be asked, after the agents are installed, whether to"
-  echo "append the session-handoff read-side block to:"
+  echo "install or replace the managed memory read-side block in:"
   readside_each | while IFS= read -r f; do
     echo "  $f"
   done
@@ -323,51 +329,100 @@ echo "Installed $agent_count agent(s). Restart your assistant to pick them up."
 
 # ----- read-side block, opt-in only -----
 
-append_readside() {
+set_readside() {
   local instr_file="$1"
   local block="$2"
-  if [ -f "$instr_file" ] && grep -qF "$READSIDE_MARKER" "$instr_file" 2>/dev/null; then
-    echo "  Already present in $instr_file. Skipping."
-    return 0
+  local first last marker_count tmp
+  first="$(printf '%s\n' "$block" | sed -n '1{s/\r$//;p;}')"
+  last="$(printf '%s\n' "$block" | sed -n '${s/\r$//;p;}')"
+  marker_count="$(printf '%s\n' "$block" | awk '/^<!-- (session-handoff|memory-manager)-read-side-(start|end) -->\r?$/ { n++ } END { print n+0 }')"
+  if [ "$first" != "<!-- memory-manager-read-side-start -->" ] \
+    || [ "$last" != "<!-- memory-manager-read-side-end -->" ] || [ "$marker_count" -ne 2 ]; then
+    echo "Error: invalid downloaded memory read-side block. $instr_file was not changed." >&2
+    return 1
   fi
   mkdir -p "$(dirname "$instr_file")"
-  printf '\n%s\n' "$block" >> "$instr_file"
-  echo "  Appended to $instr_file"
+  tmp="$(mktemp "${instr_file}.XXXXXX")"
+  # Feed the block as data, not an awk -v value that interprets backslash escapes.
+  if { printf '%s\n' "$block"; if [ -f "$instr_file" ]; then cat "$instr_file"; fi; } | awk -v BINMODE=3 '
+    function fail() { bad=1; exit 1 }
+    !block_done {
+      line=$0; sub(/\r$/, "", line)
+      block = block line ORS
+      if (line == "<!-- memory-manager-read-side-end -->") block_done=1
+      next
+    }
+    {
+      line=$0; sub(/\r$/, "", line)
+      if (line ~ /^<!-- (session-handoff|memory-manager)-read-side-start -->$/) {
+        if (open != "") fail()
+        open = (line ~ /session-handoff/) ? "session-handoff" : "memory-manager"
+        if (!inserted) { printf "%s", block; inserted=1 }
+        next
+      }
+      if (line ~ /^<!-- (session-handoff|memory-manager)-read-side-end -->$/) {
+        family = (line ~ /session-handoff/) ? "session-handoff" : "memory-manager"
+        if (open != family) fail()
+        open=""
+        next
+      }
+      if (open == "") print
+    }
+    END {
+      if (bad || open != "") exit 1
+      if (!inserted) printf "%s", block
+    }
+  ' > "$tmp"; then
+    if [ -f "$instr_file" ] && cmp -s "$tmp" "$instr_file"; then
+      rm -f "$tmp"
+      echo "  Already current in $instr_file."
+    else
+      if [ -f "$instr_file" ]; then chmod "$(stat -c '%a' "$instr_file" 2>/dev/null || stat -f '%Lp' "$instr_file")" "$tmp"; fi
+      mv "$tmp" "$instr_file"
+      echo "  Updated managed memory instructions in $instr_file."
+    fi
+  else
+    rm -f "$tmp"
+    echo "Error: unmatched or nested memory markers in $instr_file. Original instructions were not changed." >&2
+    return 1
+  fi
 }
 
 readside_enable_hint() {
   echo "To enable it later, run:"
   echo "  curl -fsSL $BASE_URL/install.sh -o install.sh"
-  echo "  bash install.sh --agents session-handoff --with-readside"
-  echo "Or add it by hand: see the Read-Side Setup section of"
-  echo "  $BASE_URL/agents/context/session-handoff.agent.md"
+  echo "  bash install.sh --agents memory-manager --with-readside"
+  echo "Or add it by hand: see Completion and setup instructions in"
+  echo "  $BASE_URL/agents/context/memory-manager.agent.md"
 }
 
-if [ "$selection_has_session_handoff" -eq 1 ]; then
+if [ "$selection_has_memory_manager" -eq 1 ]; then
+  echo "Legacy Session Handoff, Context Manager, or Memory Maintainer agent files are not removed."
+  echo "After migration, review and retire obsolete agents manually. Run Memory Manager setup"
+  echo "to configure Basic Memory projects and routing. The installer does not create them."
   echo ""
   proceed_readside=0
 
   if [ "$want_readside" -eq 1 ]; then
     proceed_readside=1
   elif [ "$interactive" -eq 1 ]; then
-    echo "session-handoff needs a companion read-side instruction so that future sessions load"
-    echo "the context it persisted. Enabling it appends a block to:"
+    echo "Memory Manager has a companion read-side instruction for future sessions."
+    echo "Enabling it installs or replaces managed memory blocks in:"
     readside_each | while IFS= read -r f; do
       echo "  $f"
     done
     echo ""
     echo "That block applies to EVERY future session in EVERY repository, not just this one. It"
-    echo "instructs your assistant to read the session-handoff files before doing anything else,"
-    echo "including before answering a question or searching the codebase."
+    echo "replaces legacy handoff instructions, not the data. Migrate that data first."
     echo ""
-    printf 'Append it now? [y/N]: '
+    printf 'Update it now? [y/N]: '
     read -r reply || reply=""
     case "$reply" in
       y|Y|yes|Yes|YES) proceed_readside=1 ;;
       *) proceed_readside=0 ;;
     esac
   else
-    echo "Skipping the session-handoff read-side block: it modifies a global instruction file"
+    echo "Skipping the memory-manager read-side block: it modifies a global instruction file"
     echo "that affects every future session in every repository, and there is no terminal here"
     echo "to confirm on."
     readside_enable_hint
@@ -377,13 +432,16 @@ if [ "$selection_has_session_handoff" -eq 1 ]; then
   if [ "$proceed_readside" -eq 1 ]; then
     echo ""
     echo "Fetching $READSIDE_PATH ..."
-    readside_block="$(curl -fsSL "$BASE_URL/$READSIDE_PATH" || true)"
+    if ! readside_block="$(curl -fsSL "$BASE_URL/$READSIDE_PATH")"; then
+      echo "Error: failed to fetch $READSIDE_PATH. Global instructions were not changed." >&2
+      exit 1
+    fi
     if [ -z "$readside_block" ]; then
-      echo "Warning: failed to fetch $READSIDE_PATH. Nothing was appended." >&2
-      readside_enable_hint
+      echo "Error: empty download for $READSIDE_PATH. Global instructions were not changed." >&2
+      exit 1
     else
       readside_each | while IFS= read -r f; do
-        append_readside "$f" "$readside_block"
+        set_readside "$f" "$readside_block"
       done
     fi
   elif [ "$interactive" -eq 1 ] && [ "$want_readside" -eq 0 ]; then
