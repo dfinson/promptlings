@@ -226,3 +226,31 @@ contained in an explicitly approved isolated maintenance window. A later wording
 clarification distinguishes non-skill command targets from private skill-map
 entries. Those non-skill integrations were not exercised. The user's live
 installation was not changed.
+
+## Continuation recovery verification
+
+On 2026-10-26, an independent executor ran five fresh Copilot CLI 1.0.101-0
+processes with the complete updated orchestrator and setup skill. The source
+hashes matched commit `92ac6c1`. The isolated fixture contained an existing real
+BMAD 6.12.1 completed result, private sources, and seeded continuation records.
+
+| Case | Observed result |
+| --- | --- |
+| Completed implementation with pending acceptance | Read the real spec and result, recovered independent consumer-journey acceptance as the next gate, and did not restart implementation |
+| Unresolved child plus contradictory authority | Retained the assignment and stopped for reconciliation rather than treating missing visibility as permission to redispatch |
+| Bounded ordinary-tool exception | Observed the exact return-condition marker, recorded expiry, and did not extend the exception to the next task |
+| Unbounded user abandonment | Retained the decision without inventing an automatic return to BMAD |
+| Linked worktree without runtime or continuation | Requested approved official setup and recovery reconciliation, without copying runtime, creating a binding, or inventing continuation authority |
+
+Three cases updated existing continuation records through guarded sibling-file
+replacement. All 555 protected original-fixture and parent-source hashes matched.
+The fresh catalog exposed no BMAD workflow skill entries.
+
+These were recovery decisions from seeded records. The case prompts prohibited
+nested dispatch and delivery mutations. No live child, interrupted multi-unit
+delivery, launch-admission crash, or conflicting-writer race was exercised.
+The recovered independent acceptance gate remained pending, not passed.
+
+The PowerShell and Git Bash installer checks and changed-file Markdown lint
+passed locally. GitHub CI for `92ac6c1` passed Ubuntu installer, Windows installer,
+and Markdown lint jobs.
