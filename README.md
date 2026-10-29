@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-Focused custom agents for code review, session continuity, technical demos, and spec-driven delivery. Each promptling is one portable `.agent.md` file: YAML frontmatter, a Markdown body, no runtime.
+Focused custom agents and skills for code review, session continuity, technical demos, narration, and spec-driven delivery. An agent is one portable `.agent.md` file. A skill is one `SKILL.md` in its own folder. Both use YAML frontmatter and a Markdown body, with no runtime.
 
 ## Pick an Agent
 
@@ -18,27 +18,37 @@ Focused custom agents for code review, session continuity, technical demos, and 
 | [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Adaptive BMAD delivery through one interface, from verified setup and bounded fixes to full-assurance initiatives. |
 | [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | Anchor every change in Spec-Kit specification, plan, and tasks, then use only the additional phases and Fleet capabilities that add value. |
 
+## Pick a Skill
+
+| Skill | Use it when you need |
+| --- | --- |
+| [Reasoning-First Narration](skills/reasoning-first-narration/SKILL.md) | Natural spoken technical explanations that preserve reasoning, evidence, meaning, and attribution, for human delivery, teleprompters, or TTS. |
+
 ## Install
 
-Copy any `.agent.md` file into the directory for your tool:
+Copy an agent file or a skill folder into the location for your tool:
 
-| Tool | Directory |
-| --- | --- |
-| GitHub Copilot CLI, user-wide | `~/.copilot/agents/` |
-| GitHub Copilot CLI, per-project | `.github/agents/` |
-| Claude Code | `~/.claude/agents/` |
+| Tool | Agent directory | Skill file |
+| --- | --- | --- |
+| GitHub Copilot CLI, user-wide | `~/.copilot/agents/` | `~/.copilot/skills/<name>/SKILL.md` |
+| GitHub Copilot CLI, per-project | `.github/agents/` | `.github/skills/<name>/SKILL.md` |
+| Claude Code | `~/.claude/agents/` | `~/.claude/skills/<name>/SKILL.md` |
 
 ```bash
 mkdir -p ~/.copilot/agents
 curl -fsSL -o ~/.copilot/agents/the-nitcracker.agent.md \
   https://raw.githubusercontent.com/dfinson/promptlings/main/agents/code-review/the-nitcracker.agent.md
+
+mkdir -p ~/.copilot/skills/reasoning-first-narration
+curl -fsSL -o ~/.copilot/skills/reasoning-first-narration/SKILL.md \
+  https://raw.githubusercontent.com/dfinson/promptlings/main/skills/reasoning-first-narration/SKILL.md
 ```
 
 Restart your assistant to pick it up. For other frameworks, parse the YAML frontmatter and use the Markdown body as the system prompt.
 
 ### Installer script
 
-Handles tool detection and multiple targets. It downloads only the agents you select and prints every path it will write before writing anything.
+Handles tool detection and multiple targets. It downloads only the agents and skills you select and prints every path it will write before writing anything.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dfinson/promptlings/main/install.sh -o install.sh
@@ -54,14 +64,17 @@ Windows PowerShell 5.1 defaults to the `Restricted` execution policy, which bloc
 
 | Flag | Effect |
 | --- | --- |
-| `--all` / `-All` | Install all six agents |
+| `--all` / `-All` | Install all agents and skills |
 | `--review` / `-Review` | The two code-review agents only |
-| `--agents a,b` / `-Agents a,b` | Install by name |
-| `--list` / `-List` | Print available agent names and exit |
+| `--agents a,b` / `-Agents a,b` | Install agents by name |
+| `--skills a,b` / `-Skills a,b` | Install skills by name (Bash also accepts `--skills=a,b`) |
+| `--list` / `-List` | Print available agent and skill names and exit |
 | `--dry-run` / `-DryRun` | Print every path that would be written, write nothing |
 | `--with-readside` / `-WithReadSide` | Opt in to the Session Handoff read-side instruction |
 
-By default the script writes only to your agents directory. It does not touch `~/.copilot/copilot-instructions.md`, `~/.claude/CLAUDE.md`, your shell profile, or your PATH.
+Choose at most one selection flag: `--review`, `--all`, `--agents`, or `--skills` (or its PowerShell equivalent). With no selection flag, a non-interactive run installs only the two code-review agents.
+
+By default the script writes only to your agents and skills directories, according to your selection. It does not touch `~/.copilot/copilot-instructions.md`, `~/.claude/CLAUDE.md`, your shell profile, or your PATH.
 
 Also available as a Claude Code plugin, currently carrying the two code-review agents:
 

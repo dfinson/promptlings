@@ -1,6 +1,6 @@
 # promptlings installer (Windows PowerShell)
 #
-# Installs selected agent files into your assistant's agents directory.
+# Installs selected agents and skills into your assistant's agents and skills directories.
 #
 # This script does NOT modify any global instruction file by default. The session-handoff
 # read-side block changes how your assistant behaves in every future session in every
@@ -17,6 +17,7 @@ param(
     [switch]$Review,
     [switch]$All,
     [string]$Agents,
+    [string[]]$Skills,
     [switch]$List,
     [switch]$DryRun,
     [switch]$Yes,
@@ -41,6 +42,7 @@ $AllAgents = @(
     "speckit-flow"
 )
 $ReviewAgents = @("the-nitcracker", "pr-walkthrough")
+$AllSkills = @("reasoning-first-narration")
 
 $AgentPaths = @{
     "pr-walkthrough"    = "agents/code-review/pr-walkthrough.agent.md"
@@ -51,6 +53,10 @@ $AgentPaths = @{
     "speckit-flow"      = "agents/orchestration/speckit-flow.agent.md"
 }
 
+$SkillPaths = @{
+    "reasoning-first-narration" = "skills/reasoning-first-narration/SKILL.md"
+}
+
 function Show-Usage {
     Write-Host @'
 promptlings installer
@@ -59,9 +65,10 @@ Usage: .\install.ps1 [options]
 
 Selection (pick at most one):
   -Review               Install the two code-review agents (the-nitcracker, pr-walkthrough)
-  -All                  Install all six agents
+  -All                  Install all agents and skills
   -Agents a,b,c         Install agents by name (comma separated)
-  -List                 Print available agent names and exit
+  -Skills a,b           Install skills by name (comma separated)
+  -List                 Print available agent and skill names and exit
 
 Behavior:
   -DryRun               Print every path that would be written, write nothing
@@ -75,8 +82,9 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 (a piped one-liner) installs the two code-review agents and prints how to ask for more.
 
 Files written by default: one .agent.md per selected agent, under %USERPROFILE%\.copilot\agents\
-and/or %USERPROFILE%\.claude\agents\. Nothing outside those directories is touched unless
--WithReadSide is given or you confirm the read-side prompt.
+and/or %USERPROFILE%\.claude\agents\, and one <name>\SKILL.md per selected skill, under
+%USERPROFILE%\.copilot\skills\ and/or %USERPROFILE%\.claude\skills\. Nothing outside those
+directories is touched unless -WithReadSide is given or you confirm the read-side prompt.
 '@
 }
 
@@ -87,11 +95,19 @@ function Write-Fail {
 }
 
 if ($Help) { Show-Usage; return }
-if ($List) { $AllAgents | ForEach-Object { Write-Host $_ }; return }
+if ($List) {
+    Write-Host "Agents:"
+    $AllAgents | ForEach-Object { Write-Host $_ }
+    Write-Host ""
+    Write-Host "Skills:"
+    $AllSkills | ForEach-Object { Write-Host $_ }
+    return
+}
 
 # ----- resolve the selection flags -----
 
 $selection = @()
+$skillSelection = @()
 $selectionSource = $null
 
 if ($Review) {
@@ -105,14 +121,23 @@ if ($All) {
     }
     $selectionSource = "-All"
     $selection = $AllAgents
+    $skillSelection = $AllSkills
 }
-if ($Agents) {
+if ($PSBoundParameters.ContainsKey("Agents")) {
     if ($selectionSource) {
         Write-Fail "-Agents conflicts with $selectionSource. Pick one selection flag."
         exit 2
     }
     $selectionSource = "-Agents"
     $selection = @($Agents -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" })
+}
+if ($PSBoundParameters.ContainsKey("Skills")) {
+    if ($selectionSource) {
+        Write-Fail "-Skills conflicts with $selectionSource. Pick one selection flag."
+        exit 2
+    }
+    $selectionSource = "-Skills"
+    $skillSelection = @($Skills -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" })
 }
 
 # ----- interactivity -----
@@ -126,17 +151,17 @@ $interactive = $scriptIsFile -and [Environment]::UserInteractive -and (-not [Con
 
 # ----- resolve the selection -----
 
-if ($selection.Count -eq 0) {
+if (-not $selectionSource) {
     if ($interactive) {
-        Write-Host "Which agents do you want?"
+        Write-Host "Which agents and skills do you want?"
         Write-Host "  1) The two code-review agents: the-nitcracker, pr-walkthrough (default)"
-        Write-Host "  2) All six agents"
+        Write-Host "  2) All agents and skills"
         Write-Host "  3) Cancel"
         $choice = Read-Host "Choice [1]"
         switch (("$choice").Trim()) {
             "" { $selection = $ReviewAgents }
             "1" { $selection = $ReviewAgents }
-            "2" { $selection = $AllAgents }
+            "2" { $selection = $AllAgents; $skillSelection = $AllSkills }
             default { Write-Host "Cancelled. Nothing was written."; return }
         }
     }
@@ -145,8 +170,8 @@ if ($selection.Count -eq 0) {
         Write-Host "No selection flag and no console to ask on, so defaulting to the two code-review agents."
         Write-Host "For everything else, download the script and pass a flag:"
         Write-Host "  irm $BaseUrl/install.ps1 -OutFile install.ps1"
-        Write-Host "  .\install.ps1 -All            # all six agents"
-        Write-Host "  .\install.ps1 -List           # available agent names"
+        Write-Host "  .\install.ps1 -All            # all agents and skills"
+        Write-Host "  .\install.ps1 -List           # available agent and skill names"
         Write-Host ""
     }
 }
@@ -162,8 +187,18 @@ foreach ($a in $selection) {
 }
 $selection = $resolved
 
-if ($selection.Count -eq 0) {
-    Write-Fail "No agents selected."
+$resolved = @()
+foreach ($s in $skillSelection) {
+    if (-not $SkillPaths.ContainsKey($s)) {
+        Write-Fail "Unknown skill '$s'. Run with -List to see valid names."
+        exit 2
+    }
+    if ($resolved -notcontains $s) { $resolved += $s }
+}
+$skillSelection = $resolved
+
+if (($selection.Count -eq 0) -and ($skillSelection.Count -eq 0)) {
+    Write-Fail "Nothing selected."
     exit 2
 }
 
@@ -180,6 +215,8 @@ if ($WithReadSide -and (-not $selectionHasSessionHandoff)) {
 $targets = @()
 $copilotDir = Join-Path $env:USERPROFILE ".copilot\agents"
 $claudeDir = Join-Path $env:USERPROFILE ".claude\agents"
+$copilotSkillsDir = Join-Path $env:USERPROFILE ".copilot\skills"
+$claudeSkillsDir = Join-Path $env:USERPROFILE ".claude\skills"
 $copilotSelected = $false
 $claudeSelected = $false
 
@@ -215,16 +252,35 @@ if ($WithReadSide -or ($selectionHasSessionHandoff -and $interactive)) {
 
 # ----- print the plan before writing anything -----
 
+$skillTargets = @()
+if ($copilotSelected) { $skillTargets += $copilotSkillsDir }
+if ($claudeSelected) { $skillTargets += $claudeSkillsDir }
+
 Write-Host "Plan"
 Write-Host "===="
 Write-Host "Source: $BaseUrl"
 Write-Host ""
-Write-Host "Directories created if missing:"
-foreach ($t in $targets) { Write-Host "  $t" }
+Write-Host "Agent directories created if missing ($($selection.Count) agent(s) per directory):"
+if ($selection.Count -gt 0) {
+    foreach ($t in $targets) { Write-Host "  $t" }
+}
 Write-Host ""
-Write-Host "Files written ($($selection.Count) agent(s) per directory, overwritten if present):"
+Write-Host "Agent files written ($($selection.Count) agent(s) per directory, overwritten if present):"
 foreach ($t in $targets) {
     foreach ($a in $selection) { Write-Host "  $t\$a.agent.md" }
+}
+Write-Host ""
+Write-Host "Skill directories created if missing ($($skillSelection.Count) skill(s) per tool):"
+if ($skillSelection.Count -gt 0) {
+    foreach ($t in $skillTargets) {
+        Write-Host "  $t"
+        foreach ($s in $skillSelection) { Write-Host "  $t\$s" }
+    }
+}
+Write-Host ""
+Write-Host "Skill files written ($($skillSelection.Count) skill(s) per tool, overwritten if present):"
+foreach ($t in $skillTargets) {
+    foreach ($s in $skillSelection) { Write-Host "  $t\$s\SKILL.md" }
 }
 Write-Host ""
 
@@ -275,6 +331,7 @@ function Get-Remote {
 }
 
 foreach ($t in $targets) {
+    if ($selection.Count -eq 0) { continue }
     Write-Host "Installing to $t"
     New-Item -ItemType Directory -Force -Path $t | Out-Null
     foreach ($a in $selection) {
@@ -282,9 +339,17 @@ foreach ($t in $targets) {
         Get-Remote -Remote $AgentPaths[$a] -Dest (Join-Path $t "$a.agent.md")
     }
 }
+foreach ($t in $skillTargets) {
+    foreach ($s in $skillSelection) {
+        $skillDir = Join-Path $t $s
+        Write-Host "Installing skill to $skillDir"
+        New-Item -ItemType Directory -Force -Path $skillDir | Out-Null
+        Get-Remote -Remote $SkillPaths[$s] -Dest (Join-Path $skillDir "SKILL.md")
+    }
+}
 
 Write-Host ""
-Write-Host "Installed $($selection.Count) agent(s). Restart your assistant to pick them up."
+Write-Host "Installed $($selection.Count) agent(s) and $($skillSelection.Count) skill(s) per tool. Restart your assistant to pick them up."
 
 # ----- read-side block, opt-in only -----
 

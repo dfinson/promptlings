@@ -1,1 +1,3 @@
 * text=auto eol=lf
+# Preserve the imported skill's source bytes, including CRLF line endings.
+skills/reasoning-first-narration/SKILL.md -text whitespace=cr-at-eol

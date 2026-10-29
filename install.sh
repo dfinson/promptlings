@@ -3,7 +3,7 @@ set -euo pipefail
 
 # promptlings installer (Linux/macOS)
 #
-# Installs selected agent files into your assistant's agents directory.
+# Installs selected agents and skills into your assistant's agents and skills directories.
 #
 # This script does NOT modify any global instruction file by default. The session-handoff
 # read-side block changes how your assistant behaves in every future session in every
@@ -22,6 +22,7 @@ READSIDE_PATH="agents/context/session-handoff-read-side.md"
 READSIDE_MARKER="session-handoff-read-side-start"
 
 ALL_AGENTS="the-nitcracker pr-walkthrough session-handoff technical-demo bmad-orchestrator speckit-flow"
+ALL_SKILLS="reasoning-first-narration"
 REVIEW_AGENTS="the-nitcracker pr-walkthrough"
 
 agent_path() {
@@ -36,6 +37,13 @@ agent_path() {
   esac
 }
 
+skill_path() {
+  case "$1" in
+    reasoning-first-narration) echo "skills/reasoning-first-narration/SKILL.md" ;;
+    *) return 1 ;;
+  esac
+}
+
 usage() {
   cat <<'EOF'
 promptlings installer
@@ -44,9 +52,10 @@ Usage: bash install.sh [options]
 
 Selection (pick at most one):
   --review              Install the two code-review agents (the-nitcracker, pr-walkthrough)
-  --all                 Install all six agents
+  --all                 Install all agents and skills
   --agents a,b,c        Install agents by name (comma separated)
-  --list                Print available agent names and exit
+  --skills a,b          Install skills by name (comma separated, also --skills=a,b)
+  --list                Print available agent and skill names and exit
 
 Behavior:
   --dry-run             Print every path that would be written, write nothing
@@ -60,7 +69,8 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 (a piped one-liner) installs the two code-review agents and prints how to ask for more.
 
 Files written by default: one .agent.md per selected agent, under ~/.copilot/agents/ and/or
-~/.claude/agents/. Nothing outside those directories is touched unless --with-readside is
+~/.claude/agents/, and one <name>/SKILL.md per selected skill, under ~/.copilot/skills/ and/or
+~/.claude/skills/. Nothing outside those directories is touched unless --with-readside is
 given or you confirm the read-side prompt.
 EOF
 }
@@ -68,6 +78,7 @@ EOF
 # ----- argument parsing -----
 
 selection=""
+skill_selection=""
 selection_source=""
 dry_run=0
 assume_yes=0
@@ -79,13 +90,17 @@ set_selection() {
     exit 2
   fi
   selection_source="$1"
-  selection="$2"
+  if [ "$1" = "--skills" ]; then
+    skill_selection="$2"
+  else
+    selection="$2"
+  fi
 }
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --review) set_selection "--review" "$REVIEW_AGENTS" ;;
-    --all)    set_selection "--all" "$ALL_AGENTS" ;;
+    --all)    set_selection "--all" "$ALL_AGENTS"; skill_selection="$ALL_SKILLS" ;;
     --agents)
       if [ "$#" -lt 2 ]; then
         echo "Error: --agents requires a comma separated list of agent names." >&2
@@ -97,8 +112,23 @@ while [ "$#" -gt 0 ]; do
     --agents=*)
       set_selection "--agents" "$(echo "${1#--agents=}" | tr ',' ' ')"
       ;;
+    --skills)
+      if [ "$#" -lt 2 ]; then
+        echo "Error: --skills requires a comma separated list of skill names." >&2
+        exit 2
+      fi
+      set_selection "--skills" "$(echo "$2" | tr ',' ' ')"
+      shift
+      ;;
+    --skills=*)
+      set_selection "--skills" "$(echo "${1#--skills=}" | tr ',' ' ')"
+      ;;
     --list)
+      echo "Agents:"
       for a in $ALL_AGENTS; do echo "$a"; done
+      echo ""
+      echo "Skills:"
+      for s in $ALL_SKILLS; do echo "$s"; done
       exit 0
       ;;
     --dry-run) dry_run=1 ;;
@@ -131,17 +161,17 @@ fi
 
 # ----- resolve the selection -----
 
-if [ -z "$selection" ]; then
+if [ -z "$selection_source" ]; then
   if [ "$interactive" -eq 1 ]; then
-    echo "Which agents do you want?"
+    echo "Which agents and skills do you want?"
     echo "  1) The two code-review agents: the-nitcracker, pr-walkthrough (default)"
-    echo "  2) All six agents"
+    echo "  2) All agents and skills"
     echo "  3) Cancel"
     printf 'Choice [1]: '
     read -r choice || choice=""
     case "${choice:-1}" in
       1|"") selection="$REVIEW_AGENTS" ;;
-      2)    selection="$ALL_AGENTS" ;;
+      2)    selection="$ALL_AGENTS"; skill_selection="$ALL_SKILLS" ;;
       *)    echo "Cancelled. Nothing was written."; exit 0 ;;
     esac
   else
@@ -149,8 +179,8 @@ if [ -z "$selection" ]; then
     echo "No selection flag and no terminal to ask on, so defaulting to the two code-review agents."
     echo "For everything else, download the script and pass a flag:"
     echo "  curl -fsSL $BASE_URL/install.sh -o install.sh"
-    echo "  bash install.sh --all          # all six agents"
-    echo "  bash install.sh --list         # available agent names"
+    echo "  bash install.sh --all          # all agents and skills"
+    echo "  bash install.sh --list         # available agent and skill names"
     echo ""
   fi
 fi
@@ -169,8 +199,21 @@ for a in $selection; do
 done
 selection="$(echo "$resolved" | sed 's/^ *//;s/ *$//')"
 
-if [ -z "$selection" ]; then
-  echo "Error: no agents selected." >&2
+resolved=""
+for s in $skill_selection; do
+  if ! skill_path "$s" >/dev/null 2>&1; then
+    echo "Error: unknown skill '$s'. Run with --list to see valid names." >&2
+    exit 2
+  fi
+  case " $resolved " in
+    *" $s "*) ;;
+    *) resolved="$resolved $s" ;;
+  esac
+done
+skill_selection="$(echo "$resolved" | sed 's/^ *//;s/ *$//')"
+
+if [ -z "$selection" ] && [ -z "$skill_selection" ]; then
+  echo "Error: Nothing selected." >&2
   exit 2
 fi
 
@@ -190,6 +233,8 @@ fi
 targets=""
 copilot_dir="$HOME/.copilot/agents"
 claude_dir="$HOME/.claude/agents"
+copilot_skills_dir="$HOME/.copilot/skills"
+claude_skills_dir="$HOME/.claude/skills"
 copilot_selected=0
 claude_selected=0
 
@@ -230,16 +275,20 @@ fi
 
 agent_count=0
 for a in $selection; do agent_count=$((agent_count + 1)); done
+skill_count=0
+for s in $skill_selection; do skill_count=$((skill_count + 1)); done
 
 echo "Plan"
 echo "===="
 echo "Source: $BASE_URL"
 echo ""
-echo "Directories created if missing:"
-if [ "$copilot_selected" -eq 1 ]; then echo "  $copilot_dir"; fi
-if [ "$claude_selected" -eq 1 ]; then echo "  $claude_dir"; fi
+echo "Agent directories created if missing ($agent_count agent(s) per directory):"
+if [ "$agent_count" -gt 0 ]; then
+  if [ "$copilot_selected" -eq 1 ]; then echo "  $copilot_dir"; fi
+  if [ "$claude_selected" -eq 1 ]; then echo "  $claude_dir"; fi
+fi
 echo ""
-echo "Files written ($agent_count agent(s) per directory, overwritten if present):"
+echo "Agent files written ($agent_count agent(s) per directory, overwritten if present):"
 plan_files() {
   for a in $selection; do
     echo "  $1/$a.agent.md"
@@ -247,6 +296,23 @@ plan_files() {
 }
 if [ "$copilot_selected" -eq 1 ]; then plan_files "$copilot_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then plan_files "$claude_dir"; fi
+echo ""
+echo "Skill directories created if missing ($skill_count skill(s) per tool):"
+plan_skill_dirs() {
+  if [ "$skill_count" -gt 0 ]; then
+    echo "  $1"
+    for s in $skill_selection; do echo "  $1/$s"; done
+  fi
+}
+if [ "$copilot_selected" -eq 1 ]; then plan_skill_dirs "$copilot_skills_dir"; fi
+if [ "$claude_selected" -eq 1 ]; then plan_skill_dirs "$claude_skills_dir"; fi
+echo ""
+echo "Skill files written ($skill_count skill(s) per tool, overwritten if present):"
+plan_skill_files() {
+  for s in $skill_selection; do echo "  $1/$s/SKILL.md"; done
+}
+if [ "$copilot_selected" -eq 1 ]; then plan_skill_files "$copilot_skills_dir"; fi
+if [ "$claude_selected" -eq 1 ]; then plan_skill_files "$claude_skills_dir"; fi
 echo ""
 
 if [ "$want_readside" -eq 1 ]; then
@@ -308,6 +374,7 @@ download() {
 }
 
 install_to() {
+  if [ "$agent_count" -eq 0 ]; then return 0; fi
   echo "Installing to $1"
   mkdir -p "$1"
   for a in $selection; do
@@ -317,9 +384,20 @@ install_to() {
 }
 if [ "$copilot_selected" -eq 1 ]; then install_to "$copilot_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then install_to "$claude_dir"; fi
+install_skills_to() {
+  if [ "$skill_count" -eq 0 ]; then return 0; fi
+  echo "Installing skills to $1"
+  for s in $skill_selection; do
+    mkdir -p "$1/$s"
+    echo "  $s/SKILL.md"
+    download "$(skill_path "$s")" "$1/$s/SKILL.md"
+  done
+}
+if [ "$copilot_selected" -eq 1 ]; then install_skills_to "$copilot_skills_dir"; fi
+if [ "$claude_selected" -eq 1 ]; then install_skills_to "$claude_skills_dir"; fi
 
 echo ""
-echo "Installed $agent_count agent(s). Restart your assistant to pick them up."
+echo "Installed $agent_count agent(s) and $skill_count skill(s) per tool. Restart your assistant to pick them up."
 
 # ----- read-side block, opt-in only -----
 
