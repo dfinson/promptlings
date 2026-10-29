@@ -42,7 +42,8 @@ $AllAgents = @(
     "speckit-flow"
 )
 $ReviewAgents = @("the-nitcracker", "pr-walkthrough")
-$AllSkills = @("reasoning-first-narration")
+$AllSkills = @("reasoning-first-narration", "tts-setup", "cue-synced-demo")
+$DemoSkills = @("reasoning-first-narration", "tts-setup", "cue-synced-demo")
 
 $AgentPaths = @{
     "pr-walkthrough"    = "agents/code-review/pr-walkthrough.agent.md"
@@ -55,6 +56,14 @@ $AgentPaths = @{
 
 $SkillPaths = @{
     "reasoning-first-narration" = "skills/reasoning-first-narration/SKILL.md"
+    "tts-setup" = "skills/tts-setup/SKILL.md"
+    "cue-synced-demo" = "skills/cue-synced-demo/SKILL.md"
+}
+
+$SkillFiles = @{
+    "reasoning-first-narration" = @("SKILL.md")
+    "tts-setup" = @("SKILL.md")
+    "cue-synced-demo" = @("SKILL.md", "scripts/record.mjs", "scripts/assemble.py")
 }
 
 function Show-Usage {
@@ -83,7 +92,8 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 
 Files written by default: one .agent.md per selected agent, under %USERPROFILE%\.copilot\agents\
 and/or %USERPROFILE%\.claude\agents\, and one <name>\SKILL.md per selected skill, under
-%USERPROFILE%\.copilot\skills\ and/or %USERPROFILE%\.claude\skills\. Nothing outside those
+%USERPROFILE%\.copilot\skills\ and/or %USERPROFILE%\.claude\skills\, including bundled helpers.
+technical-demo also selects its three companion skills. Nothing outside those
 directories is touched unless -WithReadSide is given or you confirm the read-side prompt.
 '@
 }
@@ -187,6 +197,10 @@ foreach ($a in $selection) {
 }
 $selection = $resolved
 
+if ($selection -contains "technical-demo") {
+    $skillSelection += $DemoSkills
+}
+
 $resolved = @()
 foreach ($s in $skillSelection) {
     $s = $s.ToLowerInvariant()
@@ -256,6 +270,8 @@ if ($WithReadSide -or ($selectionHasSessionHandoff -and $interactive)) {
 $skillTargets = @()
 if ($copilotSelected) { $skillTargets += $copilotSkillsDir }
 if ($claudeSelected) { $skillTargets += $claudeSkillsDir }
+$skillFileCount = 0
+foreach ($s in $skillSelection) { $skillFileCount += $SkillFiles[$s].Count }
 
 Write-Host "Plan"
 Write-Host "===="
@@ -275,13 +291,20 @@ Write-Host "Skill directories created if missing ($($skillSelection.Count) skill
 if ($skillSelection.Count -gt 0) {
     foreach ($t in $skillTargets) {
         Write-Host "  $t"
-        foreach ($s in $skillSelection) { Write-Host "  $t\$s" }
+        foreach ($s in $skillSelection) {
+            Write-Host "  $t\$s"
+            $subdirs = @($SkillFiles[$s] | ForEach-Object { Split-Path $_ -Parent } |
+                Where-Object { $_ } | Select-Object -Unique)
+            foreach ($dir in $subdirs) { Write-Host "  $t\$s\$dir" }
+        }
     }
 }
 Write-Host ""
-Write-Host "Skill files written ($($skillSelection.Count) skill(s) per tool, overwritten if present):"
+Write-Host "Skill files written ($($skillSelection.Count) skill(s), $skillFileCount file(s) per tool, overwritten if present):"
 foreach ($t in $skillTargets) {
-    foreach ($s in $skillSelection) { Write-Host "  $t\$s\SKILL.md" }
+    foreach ($s in $skillSelection) {
+        foreach ($file in $SkillFiles[$s]) { Write-Host "  $(Join-Path $t "$s\$file")" }
+    }
 }
 Write-Host ""
 
@@ -344,8 +367,11 @@ foreach ($t in $skillTargets) {
     foreach ($s in $skillSelection) {
         $skillDir = Join-Path $t $s
         Write-Host "Installing skill to $skillDir"
-        New-Item -ItemType Directory -Force -Path $skillDir | Out-Null
-        Get-Remote -Remote $SkillPaths[$s] -Dest (Join-Path $skillDir "SKILL.md")
+        foreach ($file in $SkillFiles[$s]) {
+            $dest = Join-Path $skillDir $file
+            New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
+            Get-Remote -Remote "skills/$s/$file" -Dest $dest
+        }
     }
 }
 

@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-Focused custom agents and skills for code review, session continuity, technical demos, narration, and spec-driven delivery. An agent is one portable `.agent.md` file. A skill is one `SKILL.md` in its own folder. Both use YAML frontmatter and a Markdown body, with no runtime.
+Focused custom agents and skills for code review, session continuity, technical demos, narration, and spec-driven delivery. An agent is one portable `.agent.md` file. A skill has a `SKILL.md` entry point and may bundle helpers. Both use YAML frontmatter and a Markdown body. Optional production helpers use existing Playwright, Python, and FFmpeg.
 
 ## Pick an Agent
 
@@ -23,6 +23,8 @@ Focused custom agents and skills for code review, session continuity, technical 
 | Skill | Use it when you need |
 | --- | --- |
 | [Reasoning-First Narration](skills/reasoning-first-narration/SKILL.md) | Natural spoken technical explanations that preserve reasoning, evidence, meaning, and attribution, for human delivery, teleprompters, or TTS. |
+| [TTS Setup](skills/tts-setup/SKILL.md) | Local/cloud/reuse choice, current hardware-aware research, selected-path setup and representative sample approval. |
+| [Cue-Synced Demo](skills/cue-synced-demo/SKILL.md) | Real event capture, per-line audio reuse, pre-event holds, disclosed wait cuts and final encoded-audio checks. |
 
 ## Install
 
@@ -48,7 +50,7 @@ Restart your assistant to pick it up. For other frameworks, parse the YAML front
 
 ### Installer script
 
-Handles tool detection and multiple targets. It downloads only the agents and skills you select and prints every path it will write before writing anything.
+Handles tool detection and multiple targets. It downloads selected agents, their declared companion skills, and every bundled skill file. It prints every path and separate agent/skill/file counts before writing anything.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dfinson/promptlings/main/install.sh -o install.sh
@@ -66,13 +68,27 @@ Windows PowerShell 5.1 defaults to the `Restricted` execution policy, which bloc
 | --- | --- |
 | `--all` / `-All` | Install all agents and skills |
 | `--review` / `-Review` | The two code-review agents only |
-| `--agents a,b` / `-Agents a,b` | Install agents by name |
+| `--agents a,b` / `-Agents a,b` | Install agents by name, including declared companion skills |
 | `--skills a,b` / `-Skills a,b` | Install skills by name (Bash also accepts `--skills=a,b`) |
 | `--list` / `-List` | Print available agent and skill names and exit |
 | `--dry-run` / `-DryRun` | Print every path that would be written, write nothing |
 | `--with-readside` / `-WithReadSide` | Opt in to the Session Handoff read-side instruction |
 
 Choose at most one selection flag: `--review`, `--all`, `--agents`, or `--skills` (or its PowerShell equivalent). With no selection flag, a non-interactive run installs only the two code-review agents.
+
+`technical-demo` installs `reasoning-first-narration`, `tts-setup`, and `cue-synced-demo` once per detected tool. `--all` / `-All` deduplicates those companions. Skills-only selection remains independent:
+
+```bash
+bash install.sh --agents technical-demo --dry-run
+bash install.sh --skills tts-setup,cue-synced-demo
+```
+
+```powershell
+.\install.ps1 -Agents technical-demo -DryRun
+.\install.ps1 -Skills tts-setup,cue-synced-demo
+```
+
+Copy complete skill folders for manual installation, including `cue-synced-demo/scripts/record.mjs` and `cue-synced-demo/scripts/assemble.py`. Downloads use per-file replacement protection: a failed fetch does not truncate that installed file. A multi-file install is not a transaction, so rerun after a partial failure. New files are available through the main-branch installer only after merge; local fixture checks do not prove pre-merge main availability.
 
 By default the script writes only to your agents and skills directories, according to your selection. It does not touch `~/.copilot/copilot-instructions.md`, `~/.claude/CLAUDE.md`, your shell profile, or your PATH.
 
@@ -117,6 +133,14 @@ Start with a software request, not a BMAD command. The agent verifies setup, use
 
 - [Install BMAD](https://docs.bmad-method.org/how-to/install-bmad/)
 - [BMAD releases](https://github.com/bmad-code-org/BMAD-METHOD/releases)
+
+### Technical Demo
+
+The director supports technical explainers, verified hands-on demos, and hybrids. It owns audience, story, evidence, script approval, semantic coverage, readiness and final acceptance. It explicitly invokes Reasoning-First Narration for explanation writing, TTS Setup for approved synthetic speech, and Cue-Synced Demo for production. Existing HyperFrames, browser/window capture, audio and synthesis skills retain their specialized roles.
+
+The repository agent is named `technical-demo`. An existing user installation named `technical-demo-producer` can adopt the same contract while preserving its name; the installer does not overwrite that separate identity. Fixed provider/tool assignments are replaced by evidence-fit capture and a user-approved speech recipe. No voice provider, personal clone, cloud upload, account setup, paid synthesis, model installation, or global Git configuration is implied by installing these instruction files.
+
+The optional helpers require Python 3.10+, FFmpeg/ffprobe on PATH, and caller-supplied Playwright/browser configuration. The recorder produces unmarked viewport footage and timestamped events. The assembler measures narration, schedules holds/cuts, checks final encoded audio and produces scene/event frames for inspection. Its event-to-video clock is an inspected recording assumption, with an explicit offset when needed, not automatic visual proof. Captions and mastering are delivery choices. Checks do not replace a human listen-through or semantic acceptance. See the skill for commands and the small audio-index/joined-check schemas. The legacy `local-technical-video-production` skill is not removed or silently migrated.
 
 ### Spec-Kit Flow
 

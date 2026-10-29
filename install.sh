@@ -22,7 +22,8 @@ READSIDE_PATH="agents/context/session-handoff-read-side.md"
 READSIDE_MARKER="session-handoff-read-side-start"
 
 ALL_AGENTS="the-nitcracker pr-walkthrough session-handoff technical-demo bmad-orchestrator speckit-flow"
-ALL_SKILLS="reasoning-first-narration"
+ALL_SKILLS="reasoning-first-narration tts-setup cue-synced-demo"
+DEMO_SKILLS="reasoning-first-narration tts-setup cue-synced-demo"
 REVIEW_AGENTS="the-nitcracker pr-walkthrough"
 
 agent_path() {
@@ -40,6 +41,16 @@ agent_path() {
 skill_path() {
   case "$1" in
     reasoning-first-narration) echo "skills/reasoning-first-narration/SKILL.md" ;;
+    tts-setup) echo "skills/tts-setup/SKILL.md" ;;
+    cue-synced-demo) echo "skills/cue-synced-demo/SKILL.md" ;;
+    *) return 1 ;;
+  esac
+}
+
+skill_files() {
+  case "$1" in
+    reasoning-first-narration|tts-setup) echo "SKILL.md" ;;
+    cue-synced-demo) printf '%s\n' "SKILL.md" "scripts/record.mjs" "scripts/assemble.py" ;;
     *) return 1 ;;
   esac
 }
@@ -70,7 +81,8 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 
 Files written by default: one .agent.md per selected agent, under ~/.copilot/agents/ and/or
 ~/.claude/agents/, and one <name>/SKILL.md per selected skill, under ~/.copilot/skills/ and/or
-~/.claude/skills/. Nothing outside those directories is touched unless --with-readside is
+~/.claude/skills/, including bundled helpers. technical-demo also selects its three
+companion skills. Nothing outside those directories is touched unless --with-readside is
 given or you confirm the read-side prompt.
 EOF
 }
@@ -199,6 +211,10 @@ for a in $selection; do
 done
 selection="$(echo "$resolved" | sed 's/^ *//;s/ *$//')"
 
+case " $selection " in
+  *" technical-demo "*) skill_selection="$skill_selection $DEMO_SKILLS" ;;
+esac
+
 resolved=""
 for s in $skill_selection; do
   if ! skill_path "$s" >/dev/null 2>&1; then
@@ -277,6 +293,10 @@ agent_count=0
 for a in $selection; do agent_count=$((agent_count + 1)); done
 skill_count=0
 for s in $skill_selection; do skill_count=$((skill_count + 1)); done
+skill_file_count=0
+for s in $skill_selection; do
+  for f in $(skill_files "$s"); do skill_file_count=$((skill_file_count + 1)); done
+done
 
 echo "Plan"
 echo "===="
@@ -301,15 +321,22 @@ echo "Skill directories created if missing ($skill_count skill(s) per tool):"
 plan_skill_dirs() {
   if [ "$skill_count" -gt 0 ]; then
     echo "  $1"
-    for s in $skill_selection; do echo "  $1/$s"; done
+    for s in $skill_selection; do
+      echo "  $1/$s"
+      for f in $(skill_files "$s"); do
+        case "$f" in */*) echo "  $1/$s/${f%/*}" ;; esac
+      done
+    done | awk '!seen[$0]++'
   fi
 }
 if [ "$copilot_selected" -eq 1 ]; then plan_skill_dirs "$copilot_skills_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then plan_skill_dirs "$claude_skills_dir"; fi
 echo ""
-echo "Skill files written ($skill_count skill(s) per tool, overwritten if present):"
+echo "Skill files written ($skill_count skill(s), $skill_file_count file(s) per tool, overwritten if present):"
 plan_skill_files() {
-  for s in $skill_selection; do echo "  $1/$s/SKILL.md"; done
+  for s in $skill_selection; do
+    for f in $(skill_files "$s"); do echo "  $1/$s/$f"; done
+  done
 }
 if [ "$copilot_selected" -eq 1 ]; then plan_skill_files "$copilot_skills_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then plan_skill_files "$claude_skills_dir"; fi
@@ -388,9 +415,11 @@ install_skills_to() {
   if [ "$skill_count" -eq 0 ]; then return 0; fi
   echo "Installing skills to $1"
   for s in $skill_selection; do
-    mkdir -p "$1/$s"
-    echo "  $s/SKILL.md"
-    download "$(skill_path "$s")" "$1/$s/SKILL.md"
+    for f in $(skill_files "$s"); do
+      mkdir -p "$(dirname "$1/$s/$f")"
+      echo "  $s/$f"
+      download "skills/$s/$f" "$1/$s/$f"
+    done
   done
 }
 if [ "$copilot_selected" -eq 1 ]; then install_skills_to "$copilot_skills_dir"; fi
