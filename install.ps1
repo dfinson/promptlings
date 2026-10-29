@@ -21,6 +21,7 @@ param(
     [switch]$DryRun,
     [switch]$Yes,
     [switch]$WithReadSide,
+    [switch]$WithBmadBootstrap,
     [switch]$Help
 )
 
@@ -32,6 +33,8 @@ $BaseUrl = "https://raw.githubusercontent.com/$Repo/$Branch"
 $ReadSidePath = "agents/context/session-handoff-read-side.md"
 $ReadSideMarker = "session-handoff-read-side-start"
 $BmadSetupPath = "skills/promptlings-bmad-setup/SKILL.md"
+$BmadBootstrapPath = "skills/promptlings-bmad-bootstrap"
+$BmadBootstrapMarker = "promptlings-bmad-bootstrap-start"
 
 $AllAgents = @(
     "the-nitcracker"
@@ -70,6 +73,8 @@ Behavior:
   -WithReadSide         Also append the session-handoff read-side block to your GLOBAL
                         instruction file. Requires the session-handoff agent. This changes
                         assistant behavior in every future session in every repository.
+  -WithBmadBootstrap    Append the BMAD startup block to selected hosts' GLOBAL instruction
+                        files, once. Requires bmad-orchestrator. No additional opt-in prompt.
   -Help                 Print this message and exit
 
 With no selection flag, an interactive run asks which set you want. A non-interactive run
@@ -77,8 +82,9 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 
 Files written by default: one .agent.md per selected agent, under %USERPROFILE%\.copilot\agents\
 and/or %USERPROFILE%\.claude\agents\. Selecting bmad-orchestrator also installs its setup
-SKILL.md under each host's skills\promptlings-bmad-setup directory. No global instruction
-file is changed unless -WithReadSide is given or you confirm the read-side prompt.
+SKILL.md under each host's skills\promptlings-bmad-setup directory, plus SKILL.md and
+startup.md under skills\promptlings-bmad-bootstrap. No global instruction file is changed
+unless -WithBmadBootstrap or -WithReadSide is given or you confirm the read-side prompt.
 COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.
 '@
 }
@@ -178,6 +184,10 @@ if ($WithReadSide -and (-not $selectionHasSessionHandoff)) {
     [Console]::Error.WriteLine("Try: .\install.ps1 -Agents session-handoff -WithReadSide")
     exit 2
 }
+if ($WithBmadBootstrap -and (-not $selectionHasBmad)) {
+    Write-Fail "-WithBmadBootstrap requires the bmad-orchestrator agent."
+    exit 2
+}
 
 # ----- detect targets -----
 
@@ -218,6 +228,11 @@ if ($targets.Count -eq 0) {
 }
 
 $readSideFiles = @()
+$bmadBootstrapFiles = @()
+if ($WithBmadBootstrap) {
+    if ($copilotSelected) { $bmadBootstrapFiles += Join-Path $copilotRoot "copilot-instructions.md" }
+    if ($claudeSelected) { $bmadBootstrapFiles += Join-Path $env:USERPROFILE ".claude\CLAUDE.md" }
+}
 if ($WithReadSide -or ($selectionHasSessionHandoff -and $interactive)) {
     if ($copilotSelected) { $readSideFiles += Join-Path $copilotRoot "copilot-instructions.md" }
     if ($claudeSelected) { $readSideFiles += Join-Path $env:USERPROFILE ".claude\CLAUDE.md" }
@@ -237,6 +252,8 @@ foreach ($t in $targets) {
     foreach ($a in $selection) { Write-Host "  $t\$a.agent.md" }
     if ($selectionHasBmad) {
         Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-setup\SKILL.md')"
+        Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-bootstrap\SKILL.md')"
+        Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-bootstrap\startup.md')"
     }
 }
 Write-Host ""
@@ -251,8 +268,14 @@ if ($WithReadSide) {
     Write-Host "  '$ReadSideMarker', and nothing existing is removed."
     Write-Host ""
 }
-else {
+elseif (-not $WithBmadBootstrap) {
     Write-Host "Global instruction files modified: none."
+    Write-Host ""
+}
+if ($WithBmadBootstrap) {
+    Write-Host "Global instruction files appended to (opt-in via -WithBmadBootstrap):"
+    foreach ($f in $bmadBootstrapFiles) { Write-Host "  $f" }
+    Write-Host "  Appends startup.md once, marked with '$BmadBootstrapMarker'; preserves existing contents."
     Write-Host ""
 }
 
@@ -298,6 +321,28 @@ foreach ($t in $targets) {
         $skillDir = Join-Path (Split-Path $t -Parent) "skills\promptlings-bmad-setup"
         New-Item -ItemType Directory -Force -Path $skillDir | Out-Null
         Get-Remote -Remote $BmadSetupPath -Dest (Join-Path $skillDir "SKILL.md")
+        $bootstrapDir = Join-Path (Split-Path $t -Parent) "skills\promptlings-bmad-bootstrap"
+        New-Item -ItemType Directory -Force -Path $bootstrapDir | Out-Null
+        foreach ($file in @("SKILL.md", "startup.md")) {
+            Get-Remote -Remote "$BmadBootstrapPath/$file" -Dest (Join-Path $bootstrapDir $file)
+        }
+    }
+}
+
+if ($WithBmadBootstrap) {
+    foreach ($f in $bmadBootstrapFiles) {
+        if ((Test-Path -LiteralPath $f) -and
+            [IO.File]::ReadAllText($f).Contains($BmadBootstrapMarker)) {
+            Write-Host "  Already present in $f. Skipping."
+            continue
+        }
+        $startup = Join-Path (Split-Path $f -Parent) "skills\promptlings-bmad-bootstrap\startup.md"
+        $block = [IO.File]::ReadAllText($startup)
+        if ([string]::IsNullOrWhiteSpace($block) -or -not $block.Contains($BmadBootstrapMarker)) {
+            throw "Invalid BMAD startup block: $startup. Nothing was appended to $f."
+        }
+        [IO.File]::AppendAllText($f, "`n$block`n", [Text.UTF8Encoding]::new($false))
+        Write-Host "  Appended to $f"
     }
 }
 

@@ -60,8 +60,9 @@ Windows PowerShell 5.1 defaults to the `Restricted` execution policy, which bloc
 | `--list` / `-List` | Print available agent names and exit |
 | `--dry-run` / `-DryRun` | Print every path that would be written, write nothing |
 | `--with-readside` / `-WithReadSide` | Opt in to the Session Handoff read-side instruction |
+| `--with-bmad-bootstrap` / `-WithBmadBootstrap` | With BMAD Orchestrator, opt in to the global BMAD checkout-readiness instruction |
 
-By default the script writes only to your agents directory. It does not touch `~/.copilot/copilot-instructions.md`, `~/.claude/CLAUDE.md`, your shell profile, or your PATH.
+By default the script writes selected agents and their companion skills. It does not touch `~/.copilot/copilot-instructions.md`, `~/.claude/CLAUDE.md`, your shell profile, or your PATH.
 
 Also available as a Claude Code plugin, currently carrying the two code-review agents:
 
@@ -101,6 +102,12 @@ For manual setup, see [Read-Side Setup](agents/context/session-handoff.agent.md#
 [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD), short for Breakthrough Method of Agile AI-driven Development, carries software work from clarification and planning through implementation and review.
 
 Start with a software request, not a BMAD command. The agent verifies setup, uses focused evidence for bounded work, escalates uncertainty and high-risk changes to full assurance, and keeps every output conformant with the installed BMAD workflow.
+
+For personal use, keep normal BMAD files out of delivery commits with private Git
+exclusions. The orchestrator provisions each child worktree from its explicitly
+identified parent before work starts. A standalone bootstrap skill validates the
+copy and child-local outputs without needing BMAD already installed.
+See [personal setup and worktree provisioning](docs/bmad-setup.md).
 
 - [Install BMAD](https://docs.bmad-method.org/how-to/install-bmad/)
 - [BMAD releases](https://github.com/bmad-code-org/BMAD-METHOD/releases)

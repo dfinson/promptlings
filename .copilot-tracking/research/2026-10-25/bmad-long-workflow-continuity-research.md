@@ -1,6 +1,13 @@
 <!-- markdownlint-disable-file -->
 # Task Research: bmad-long-workflow-continuity
 
+**Historical research, superseded implementation direction:** On 2026-10-29 the
+user selected normal native BMAD with parent-first copy provisioning and private
+Git exclusions, replacing the private-map approach discussed here.
+The pinned source findings remain evidence. Earlier compatibility objections
+describe the retired private-map policy, not a current prohibition on copying.
+Current behavior is documented in docs/bmad-setup.md.
+
 | Field | Value |
 | --- | --- |
 | Date | 2026-10-25 |
