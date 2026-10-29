@@ -189,6 +189,7 @@ $selection = $resolved
 
 $resolved = @()
 foreach ($s in $skillSelection) {
+    $s = $s.ToLowerInvariant()
     if (-not $SkillPaths.ContainsKey($s)) {
         Write-Fail "Unknown skill '$s'. Run with -List to see valid names."
         exit 2
