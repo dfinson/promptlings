@@ -21,6 +21,18 @@ jobs:
       - name: Bash installer
         shell: bash
         run: bash tests/test_install.sh
+  memory-installers:
+    name: Memory installer integration
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests -p "test_memory_installers.py" -v
 
   markdown-lint:
     name: Markdown lint

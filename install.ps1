@@ -2,7 +2,7 @@
 #
 # Installs selected agent files into your assistant's agents directory.
 #
-# This script does NOT modify any global instruction file by default. The session-handoff
+# This script does NOT modify any global instruction file by default. The memory-manager
 # read-side block changes how your assistant behaves in every future session in every
 # repository, so it is opt-in only, via -WithReadSide or an explicit interactive
 # confirmation. See -Help.
@@ -30,8 +30,7 @@ $ErrorActionPreference = "Stop"
 $Repo = "dfinson/promptlings"
 $Branch = "main"
 $BaseUrl = "https://raw.githubusercontent.com/$Repo/$Branch"
-$ReadSidePath = "agents/context/session-handoff-read-side.md"
-$ReadSideMarker = "session-handoff-read-side-start"
+$ReadSidePath = "agents/context/memory-manager-read-side.md"
 $BmadSetupPath = "skills/promptlings-bmad-setup/SKILL.md"
 $BmadBootstrapPath = "skills/promptlings-bmad-bootstrap"
 $BmadBootstrapMarker = "promptlings-bmad-bootstrap-start"
@@ -39,7 +38,7 @@ $BmadBootstrapMarker = "promptlings-bmad-bootstrap-start"
 $AllAgents = @(
     "the-nitcracker"
     "pr-walkthrough"
-    "session-handoff"
+    "memory-manager"
     "technical-demo"
     "bmad-orchestrator"
     "speckit-flow"
@@ -49,7 +48,7 @@ $ReviewAgents = @("the-nitcracker", "pr-walkthrough")
 $AgentPaths = @{
     "pr-walkthrough"    = "agents/code-review/pr-walkthrough.agent.md"
     "the-nitcracker"    = "agents/code-review/the-nitcracker.agent.md"
-    "session-handoff"   = "agents/context/session-handoff.agent.md"
+    "memory-manager"    = "agents/context/memory-manager.agent.md"
     "technical-demo"    = "agents/media/technical-demo.agent.md"
     "bmad-orchestrator" = "agents/orchestration/bmad-orchestrator.agent.md"
     "speckit-flow"      = "agents/orchestration/speckit-flow.agent.md"
@@ -70,9 +69,10 @@ Selection (pick at most one):
 Behavior:
   -DryRun               Print every path that would be written, write nothing
   -Yes                  Skip the confirmation prompt
-  -WithReadSide         Also append the session-handoff read-side block to your GLOBAL
-                        instruction file. Requires the session-handoff agent. This changes
+  -WithReadSide         Install or replace the managed memory read-side block in your GLOBAL
+                        instruction file. Requires memory-manager. This changes
                         assistant behavior in every future session in every repository.
+                        Migrate legacy handoff data before replacing its read-side block.
   -WithBmadBootstrap    Append the BMAD startup block to selected hosts' GLOBAL instruction
                         files, once. Requires bmad-orchestrator. No additional opt-in prompt.
   -Help                 Print this message and exit
@@ -86,6 +86,9 @@ SKILL.md under each host's skills\promptlings-bmad-setup directory, plus SKILL.m
 startup.md under skills\promptlings-bmad-bootstrap. No global instruction file is changed
 unless -WithBmadBootstrap or -WithReadSide is given or you confirm the read-side prompt.
 COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.
+
+session-handoff is a deprecated selection alias for memory-manager. Existing agent files
+and legacy handoff data are never deleted. Basic Memory setup is performed by the agent.
 '@
 }
 
@@ -163,6 +166,10 @@ if ($selection.Count -eq 0) {
 # validate and de-duplicate
 $resolved = @()
 foreach ($a in $selection) {
+    if ($a -eq "session-handoff") {
+        Write-Host "session-handoff is now memory-manager. Installing the canonical agent only."
+        $a = "memory-manager"
+    }
     if (-not $AgentPaths.ContainsKey($a)) {
         Write-Fail "Unknown agent '$a'. Run with -List to see valid names."
         exit 2
@@ -176,12 +183,12 @@ if ($selection.Count -eq 0) {
     exit 2
 }
 
-$selectionHasSessionHandoff = $selection -contains "session-handoff"
 $selectionHasBmad = $selection -contains "bmad-orchestrator"
+$selectionHasMemoryManager = $selection -contains "memory-manager"
 
-if ($WithReadSide -and (-not $selectionHasSessionHandoff)) {
-    Write-Fail "-WithReadSide only makes sense alongside the session-handoff agent."
-    [Console]::Error.WriteLine("Try: .\install.ps1 -Agents session-handoff -WithReadSide")
+if ($WithReadSide -and (-not $selectionHasMemoryManager)) {
+    Write-Fail "-WithReadSide only makes sense alongside the memory-manager agent."
+    [Console]::Error.WriteLine("Try: .\install.ps1 -Agents memory-manager -WithReadSide")
     exit 2
 }
 if ($WithBmadBootstrap -and (-not $selectionHasBmad)) {
@@ -233,7 +240,7 @@ if ($WithBmadBootstrap) {
     if ($copilotSelected) { $bmadBootstrapFiles += Join-Path $copilotRoot "copilot-instructions.md" }
     if ($claudeSelected) { $bmadBootstrapFiles += Join-Path $env:USERPROFILE ".claude\CLAUDE.md" }
 }
-if ($WithReadSide -or ($selectionHasSessionHandoff -and $interactive)) {
+if ($WithReadSide -or ($selectionHasMemoryManager -and $interactive)) {
     if ($copilotSelected) { $readSideFiles += Join-Path $copilotRoot "copilot-instructions.md" }
     if ($claudeSelected) { $readSideFiles += Join-Path $env:USERPROFILE ".claude\CLAUDE.md" }
 }
@@ -249,7 +256,7 @@ foreach ($t in $targets) { Write-Host "  $t" }
 Write-Host ""
 Write-Host "Files written ($($selection.Count) agent(s) per directory, overwritten if present):"
 foreach ($t in $targets) {
-    foreach ($a in $selection) { Write-Host "  $t\$a.agent.md" }
+    foreach ($a in $selection) { Write-Host "  $(Join-Path $t "$a.agent.md")" }
     if ($selectionHasBmad) {
         Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-setup\SKILL.md')"
         Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-bootstrap\SKILL.md')"
@@ -259,13 +266,18 @@ foreach ($t in $targets) {
 Write-Host ""
 
 if ($WithReadSide) {
-    Write-Host "Global instruction files appended to (opt-in via -WithReadSide):"
+    Write-Host "Global instruction files updated (opt-in via -WithReadSide):"
     foreach ($f in $readSideFiles) { Write-Host "  $f" }
     Write-Host ""
-    Write-Host "  The appended block instructs EVERY future session in EVERY repository to read your"
-    Write-Host "  session-handoff files before doing anything else, including before answering a"
-    Write-Host "  question or searching the codebase. It is added once, marked with"
-    Write-Host "  '$ReadSideMarker', and nothing existing is removed."
+    Write-Host "  The block enables scoped Basic Memory recall and session capture in future sessions."
+    Write-Host "  Existing memory-manager or legacy session-handoff marked blocks are replaced."
+    Write-Host "  Unrelated instructions and handoff data are preserved. Migrate legacy data first."
+    Write-Host ""
+}
+elseif ($selectionHasMemoryManager -and $interactive) {
+    Write-Host "After installation you will be asked whether to update the memory read-side block in:"
+    foreach ($f in $readSideFiles) { Write-Host "  $f" }
+    Write-Host "Answering no leaves those files untouched."
     Write-Host ""
 }
 elseif (-not $WithBmadBootstrap) {
@@ -351,28 +363,85 @@ Write-Host "Installed $($selection.Count) agent(s). Restart your assistant to pi
 
 # ----- read-side block, opt-in only -----
 
-function Add-ReadSide {
+function Set-ReadSide {
     param([string]$InstructionFile, [string]$Block)
-    if ((Test-Path $InstructionFile) -and
-        ((Get-Content $InstructionFile -Raw) -match [regex]::Escape($ReadSideMarker))) {
-        Write-Host "  Already present in $InstructionFile. Skipping."
+
+    $start = '<!-- memory-manager-read-side-start -->'
+    $end = '<!-- memory-manager-read-side-end -->'
+    $blockText = $Block.Replace("`r`n", "`n").TrimEnd("`r", "`n")
+    $blockLines = $blockText -split '\r?\n'
+    $markerPattern = '(?m)^<!-- (session-handoff|memory-manager)-read-side-(start|end) -->\r?$'
+    $blockMarkers = [regex]::Matches($blockText, $markerPattern)
+    if ($blockLines[0] -ne $start -or $blockLines[-1] -ne $end -or $blockMarkers.Count -ne 2) {
+        throw "Invalid downloaded memory read-side block. $InstructionFile was not changed."
+    }
+
+    $original = ""
+    if (Test-Path -LiteralPath $InstructionFile) {
+        $original = [System.IO.File]::ReadAllText($InstructionFile)
+    }
+    $markers = [regex]::Matches($original, $markerPattern)
+    $openFamily = $null
+    foreach ($marker in $markers) {
+        $family = $marker.Groups[1].Value
+        if ($marker.Groups[2].Value -eq "start") {
+            if ($null -ne $openFamily) { throw "Nested memory markers in $InstructionFile. Repair them manually." }
+            $openFamily = $family
+        }
+        else {
+            if ($openFamily -ne $family) { throw "Unmatched memory markers in $InstructionFile. Repair them manually." }
+            $openFamily = $null
+        }
+    }
+    if ($null -ne $openFamily) { throw "Unclosed memory marker in $InstructionFile. Repair it manually." }
+
+    $regions = [regex]::Matches($original, '(?ms)^<!-- (session-handoff|memory-manager)-read-side-start -->\r?\n.*?^<!-- \1-read-side-end -->\r?$(?:\n)?')
+    $result = New-Object System.Text.StringBuilder
+    $cursor = 0
+    $inserted = $false
+    foreach ($region in $regions) {
+        [void]$result.Append($original.Substring($cursor, $region.Index - $cursor))
+        if (-not $inserted) {
+            [void]$result.Append($blockText + "`n")
+            $inserted = $true
+        }
+        $cursor = $region.Index + $region.Length
+    }
+    [void]$result.Append($original.Substring($cursor))
+    if ($regions.Count -eq 0) {
+        if ($result.Length -gt 0 -and -not $original.EndsWith("`n")) { [void]$result.Append("`n") }
+        [void]$result.Append($blockText + "`n")
+    }
+    $updated = $result.ToString()
+    if ($updated -ceq $original) {
+        Write-Host "  Already current in $InstructionFile."
         return
     }
     $dir = Split-Path $InstructionFile -Parent
     if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    Add-Content -Path $InstructionFile -Value "`n$Block" -Encoding UTF8
-    Write-Host "  Appended to $InstructionFile"
+    $tmp = "$InstructionFile.$([System.IO.Path]::GetRandomFileName())"
+    try {
+        [System.IO.File]::WriteAllText($tmp, $updated, (New-Object System.Text.UTF8Encoding($false)))
+        Move-Item -LiteralPath $tmp -Destination $InstructionFile -Force
+    }
+    finally {
+        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force }
+    }
+    Write-Host "  Updated managed memory instructions in $InstructionFile."
 }
 
 function Show-ReadSideEnableHint {
     Write-Host "To enable it later, run:"
     Write-Host "  irm $BaseUrl/install.ps1 -OutFile install.ps1"
-    Write-Host "  .\install.ps1 -Agents session-handoff -WithReadSide"
-    Write-Host "Or add it by hand: see the Read-Side Setup section of"
-    Write-Host "  $BaseUrl/agents/context/session-handoff.agent.md"
+    Write-Host "  .\install.ps1 -Agents memory-manager -WithReadSide"
+    Write-Host "Or add it by hand: see Completion and setup instructions in"
+    Write-Host "  $BaseUrl/agents/context/memory-manager.agent.md"
 }
 
-if ($selectionHasSessionHandoff) {
+if ($selectionHasMemoryManager) {
+    Write-Host "Legacy Session Handoff, Context Manager, or Memory Maintainer agent files are not removed."
+    Write-Host "After migration, review and retire obsolete agents manually. Run Memory Manager setup"
+    Write-Host "to configure Basic Memory projects and routing. The installer does not create them."
     Write-Host ""
     $proceedReadSide = $false
 
@@ -380,19 +449,18 @@ if ($selectionHasSessionHandoff) {
         $proceedReadSide = $true
     }
     elseif ($interactive) {
-        Write-Host "session-handoff needs a companion read-side instruction so that future sessions load"
-        Write-Host "the context it persisted. Enabling it appends a block to:"
+        Write-Host "Memory Manager has a companion read-side instruction for future sessions."
+        Write-Host "Enabling it installs or replaces managed memory blocks in:"
         foreach ($f in $readSideFiles) { Write-Host "  $f" }
         Write-Host ""
         Write-Host "That block applies to EVERY future session in EVERY repository, not just this one. It"
-        Write-Host "instructs your assistant to read the session-handoff files before doing anything else,"
-        Write-Host "including before answering a question or searching the codebase."
+        Write-Host "replaces legacy handoff instructions, not the data. Migrate that data first."
         Write-Host ""
-        $reply = Read-Host "Append it now? [y/N]"
+        $reply = Read-Host "Update it now? [y/N]"
         $proceedReadSide = ("$reply").Trim() -match '^(y|Y|yes|Yes|YES)$'
     }
     else {
-        Write-Host "Skipping the session-handoff read-side block: it modifies a global instruction file"
+        Write-Host "Skipping the memory-manager read-side block: it modifies a global instruction file"
         Write-Host "that affects every future session in every repository, and there is no console here"
         Write-Host "to confirm on."
         Show-ReadSideEnableHint
@@ -406,15 +474,12 @@ if ($selectionHasSessionHandoff) {
         try {
             $readSideBlock = (Invoke-WebRequest -Uri "$BaseUrl/$ReadSidePath" -UseBasicParsing).Content
         }
-        catch {
-            $readSideBlock = $null
-        }
+        catch { throw "Failed to fetch $ReadSidePath. Global instructions were not changed. $($_.Exception.Message)" }
         if ([string]::IsNullOrWhiteSpace($readSideBlock)) {
-            Write-Warning "Failed to fetch $ReadSidePath. Nothing was appended."
-            Show-ReadSideEnableHint
+            throw "Empty download for $ReadSidePath. Global instructions were not changed."
         }
         else {
-            foreach ($f in $readSideFiles) { Add-ReadSide -InstructionFile $f -Block $readSideBlock }
+            foreach ($f in $readSideFiles) { Set-ReadSide -InstructionFile $f -Block $readSideBlock }
         }
     }
     elseif ($interactive -and (-not $WithReadSide)) {

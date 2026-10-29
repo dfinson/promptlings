@@ -36,7 +36,8 @@ bash install.sh --agents bmad-orchestrator --with-bmad-bootstrap --yes
 ```
 
 The opt-in appends once, preserves existing instructions, and is separate from
-Session Handoff's read-side flag. Without it, global instructions are unchanged.
+Memory Manager's read-side flag. BMAD installation alone leaves global
+instructions unchanged.
 Refresh or restart existing hosts to load new instructions and skills.
 The installed skill's availability alone does not run it.
 
