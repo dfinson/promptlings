@@ -5,43 +5,41 @@ description: 'Record real browser events and assemble approved per-line narratio
 
 # Cue-Synced Demo
 
-Use approved story/evidence from the director and narration from `reasoning-first-narration`; synthetic speech setup belongs to `tts-setup`. Rehearse the real workflow, protect privacy and inspect a short native-viewport capture. Use existing specialists for other capture surfaces or motion design.
+Use approved story and evidence from the director and narration from `reasoning-first-narration`. Synthetic speech setup belongs to `tts-setup`. This skill supplies practice, not a recorder, assembler or required programming language. Inspect tools already available in the target project and choose a suitable approach. If automation is needed, implement it there using the project's conventions, not in this skill or the promptlings repository.
 
-Import `scripts/record.mjs` into a project-local Playwright flow. Supply your own browser configuration, app/auth and selectors. Required failures stop and preserve evidence; only explicitly optional actions may be skipped. Name an `optional(name, action)` after its narrated event: if that event is missing and the action was recorded as skipped, the assembler warns and lists the omitted cue in `timing.json`; `--strict` fails instead. Other missing events always fail. Never overwrite a take.
+## Capture real events
 
-```javascript
-import { chromium } from "playwright";
-import { record } from "<skill>/scripts/record.mjs";
-await record({ chromium, directory: "take-001", viewport: { width: 1280, height: 720 },
-  launchOptions: {}, contextOptions: {}, cursor: true,
-  flow: async ({ page, ev, waitSpan, optional }) => {
-    await page.goto("http://localhost:3000");
-    ev("scene:result");
-    await waitSpan("run", () => page.getByText("Complete", { exact: true }).waitFor());
-    ev("complete"); // Repeated names become complete#2, complete#3.
-  } });
-```
+Rehearse the actual workflow, protect privacy and inspect a short native-viewport capture before a full take. Use existing capture specialists and the project's browser configuration, authentication and selectors. Preserve originals in a new take directory. Stop and retain failure evidence when a required action fails.
 
-Write Markdown `## result`, then `@scene The result is ready.` and `@complete Here is the output.`; plain lines continue the preceding cue. Keep per-line audio in an index compatible with the original `script.json`:
+Record named events against a monotonic clock with a documented recording origin. Mark long waits with start/end times. Number repeated names across the whole take: `complete`, `complete#2`, `complete#3`, including across scenes. Record explicitly skipped optional actions by the exact narrated event name. A missing required event always fails. For an explicitly skipped optional event, warn, list the omitted cue in the timing report and fail if the approved delivery requires every cue.
 
-Event suffixes run across the whole take, not per scene: the second `ev("complete")` is written `@complete#2`, even in another scene. To omit that cue after an optional failure, name the action `optional("complete#2", ...)`, not `optional("complete", ...)`.
+Inspect raw event frames to establish the event-to-video clock. Apply an observed offset when necessary. Do not assume page creation, recorder startup and encoded frame zero coincide. Audio checks alone do not prove visual alignment.
 
-```json
-[{"scene":"result","voice":"chosen-voice","model":"chosen-model","settings":{},"cues":[{"event":"scene","text":"The result is ready.","file":"result.1.wav"},{"event":"complete","text":"Here is the output.","file":"result.2.wav"}]}]
-```
+## Bind narration to events
 
-Reuse only unchanged text/voice/model/settings. The assembler checks text and requested voice, optionally model/settings, and measures clip onset/end rather than trusting cached duration.
+Keep the approved Markdown narration as the source, with scene headings and inline event bindings:
 
 ```text
-python <skill>/scripts/assemble.py take-001 script.md audio/script.json render-001 --voice chosen-voice --dry
-python <skill>/scripts/assemble.py take-001 script.md audio/script.json render-002 --voice chosen-voice --offset 0.04 --fps 30
-python <skill>/scripts/assemble.py --verify-joined final.mp4 join-timeline.json joined-check-001
+## result
+@complete The result is ready.
+This line continues the same cue.
+@complete#2 Here is the result after the revision.
 ```
 
-Joined timeline schema: `{"parts":[{"report":"render-002/timing.json","offset":0.0},{"report":"part2/timing.json","offset":12.5}]}`. Paths resolve from that JSON; offsets are actual starts in the joining timeline, including crossfade overlap, not accumulated source durations. This verifies a joined file; it does not create one.
+Associate each cue with its audio file, exact text and selected voice, model and settings using the project's existing notes or a small index. Reuse only unchanged text and speech settings. Reject mismatched text or voice before rendering. Measure actual clip onset and end rather than trusting cached duration.
 
-All required narrated events must exist in order. Aim for 0.2s voice lead, drift in `[0, 0.3)`, deliberate gaps and no overlapping clips. Hold the frame before the next event instead of stretching speech. Wait compression keeps required cues and carries an on-screen skipped-time badge (`--font font.ttf` overrides the system font). Preserve native dimensions, padding an odd width/height by one pixel for compatible `yuv420p`; output fps may resample variable-frame capture, not prove its original cadence.
+## Schedule and assemble
 
-Each new output directory preserves originals and contains timing, final encoded-audio onset checks with final path/hash, event frames and a scene-start contact sheet. The visual event clock remains a recording assumption: inspect raw/final event frames, apply an observed offset if needed, and never claim RGB-level visual proof from audio checks. Energy checks assume isolated narration above -40 dBFS, not music or ASR.
+Produce a timing-only report before encoding. Required narrated events must exist in order. Target speech onset 0.2 seconds after its visible event, allowing the clip's own initial silence only while total drift stays in `[0, 0.3)` seconds. Leave at least 0.25 seconds between spoken lines and reject overlapping audio. If narration would overrun the next event, freeze the frame immediately before that event. Never stretch speech to fit.
 
-Choose captions/mastering for the delivery using existing tools. Reverify after muxing, joining or mastering. Listen through the final video for pronunciation, pacing, joins, omissions and story/evidence fit; screenshots and timing checks are not human acceptance. On duration, capture or timing changes, reschedule and render from original assets, never splice a stale export as the new master.
+Compress long waits only outside required cues, retaining enough context on either side and showing a skipped-time badge. Preserve native dimensions without upscaling. For compatible H.264 output, pad odd dimensions to even values and use `yuv420p`. Resample variable-frame footage if needed rather than rejecting it for nonuniform timestamps.
+
+## Verify the delivered file
+
+Measure speech onset in the final encoded audio and compare it with each scheduled visible event. Search before the expected onset, back to just after the previous measured speech end, or at least one second before the first event. A search restricted to the expected cue window can falsely pass early audio. Reject negative drift, drift of 0.3 seconds or more, overlap, missing speech and out-of-order cues. Check isolated narration before adding music. Energy detection is not speech recognition or a listening judgment.
+
+For joined parts, use their actual starts in the final timeline, including crossfade overlap, not accumulated source durations. Verify across joins in the joined encoded file. Keep the timing report, final path/hash, inspected event frames and a contact sheet with one frame per scene start.
+
+Choose captions and mastering for the delivery using existing tools. Reverify after muxing, joining or mastering. Listen through the final video with the visuals for pronunciation, pacing, joins, omissions and story/evidence fit. Screenshots and timing checks are not human acceptance.
+
+Reuse audio whose text and voice settings are unchanged. Re-render from original captures after timing or visual changes. Reverify the exact final file.
