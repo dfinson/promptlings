@@ -31,7 +31,12 @@ function Invoke-WebRequest {
         Set-Content -LiteralPath $OutFile -Value "partial download"
         throw "Simulated startup download failure"
     }
-    Copy-Item -LiteralPath (Join-Path $sourceRoot $relative) -Destination $OutFile
+    if ($OutFile) {
+        Copy-Item -LiteralPath (Join-Path $sourceRoot $relative) -Destination $OutFile
+    }
+    else {
+        [pscustomobject]@{ Content = [IO.File]::ReadAllText((Join-Path $sourceRoot $relative)) }
+    }
 }
 
 try {
@@ -154,7 +159,44 @@ try {
     foreach ($file in $instructionFiles) {
         if ([IO.File]::ReadAllText($file) -cne "`n$startup`n") { throw "Missing startup: $file" }
     }
-    Write-Host "Installer asset, plan, selection, custom-root, opt-in, idempotence, and failure checks passed."
+    foreach ($encoding in @(
+        [Text.Encoding]::Unicode, [Text.Encoding]::BigEndianUnicode,
+        [Text.Encoding]::UTF32, [Text.UTF32Encoding]::new($true, $true)
+    )) {
+        foreach ($file in $instructionFiles) {
+            [IO.File]::WriteAllText($file, $existing, $encoding)
+            $hashes[$file] = (Get-FileHash -LiteralPath $file).Hash
+        }
+        for ($attempt = 0; $attempt -lt 2; $attempt++) {
+            $failed = $false
+            try { & $installer -Agents bmad-orchestrator -WithBmadBootstrap -Yes }
+            catch { $failed = $_.ToString().Contains("UTF-16 or UTF-32") }
+            if (-not $failed) { throw "Unsupported instruction encoding was not refused: $($encoding.WebName)" }
+            foreach ($file in $instructionFiles) {
+                if ((Get-FileHash -LiteralPath $file).Hash -ne $hashes[$file]) {
+                    throw "Encoding refusal modified $file"
+                }
+            }
+        }
+    }
+    foreach ($file in $instructionFiles) {
+        [IO.File]::WriteAllText($file, $existing, [Text.UTF8Encoding]::new($true))
+    }
+    & $installer -Agents 'bmad-orchestrator,memory-manager' -WithBmadBootstrap -WithReadSide -Yes
+    foreach ($file in $instructionFiles) {
+        $text = [IO.File]::ReadAllText($file)
+        if (-not $text.StartsWith($existing) -or
+            ([regex]::Matches($text, '<!-- promptlings-bmad-bootstrap-start -->')).Count -ne 1 -or
+            ([regex]::Matches($text, '<!-- memory-manager-read-side-start -->')).Count -ne 1) {
+            throw "Combined flags did not preserve user text and both blocks: $file"
+        }
+        $hashes[$file] = (Get-FileHash -LiteralPath $file).Hash
+    }
+    & $installer -Agents 'bmad-orchestrator,memory-manager' -WithBmadBootstrap -WithReadSide -Yes
+    foreach ($file in $instructionFiles) {
+        if ((Get-FileHash -LiteralPath $file).Hash -ne $hashes[$file]) { throw "Combined flags were not idempotent: $file" }
+    }
+    Write-Host "Installer asset, plan, selection, custom-root, opt-in, encoding, combined-flag and failure checks passed."
 }
 finally {
     $env:USERPROFILE = $previousProfile

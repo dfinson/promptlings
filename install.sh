@@ -372,6 +372,16 @@ if [ "$claude_selected" -eq 1 ]; then install_to "$claude_dir"; fi
 append_bmad_bootstrap() {
   local instr_file="$1"
   local startup="$(dirname "$instr_file")/$BMAD_BOOTSTRAP_PATH/startup.md"
+  if [ -f "$instr_file" ]; then
+    local signature
+    signature="$(od -An -tx1 -N4 "$instr_file" | tr -d '[:space:]')"
+    case "$signature" in
+      fffe*|feff*|0000feff*)
+        echo "Error: UTF-16 or UTF-32 instruction file: $instr_file. Convert it to UTF-8 before enabling BMAD bootstrap. Nothing was appended." >&2
+        return 1
+        ;;
+    esac
+  fi
   if [ -f "$instr_file" ] && grep -qF "$BMAD_BOOTSTRAP_MARKER" "$instr_file"; then
     echo "  Already present in $instr_file. Skipping."
     return 0

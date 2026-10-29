@@ -12,9 +12,14 @@ mkdir -p "$HOME/.copilot" "$HOME/.claude" "$fixture_root/bin"
 cat > "$fixture_root/bin/curl" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail
-[ "$1" = "-fsSL" ] && [ "$3" = "-o" ]
+[ "$1" = "-fsSL" ]
 relative="${2#https://raw.githubusercontent.com/dfinson/promptlings/main/}"
 [ "$relative" != "$2" ]
+if [ "$#" -eq 2 ]; then
+  cat "$PROMPTLINGS_TEST_SOURCE/$relative"
+  exit 0
+fi
+[ "$3" = "-o" ]
 if [ "${PROMPTLINGS_FAIL_STARTUP:-0}" = 1 ] && [ "$relative" = "skills/promptlings-bmad-bootstrap/startup.md" ]; then
   printf 'partial download' > "$4"
   exit 1
@@ -99,4 +104,30 @@ bash "$source_root/install.sh" --agents bmad-orchestrator --with-bmad-bootstrap 
   printf '\n'
 } > "$fixture_root/expected"
 for file in "${instruction_files[@]}"; do cmp "$fixture_root/expected" "$file"; done
-echo "Installer asset, plan, selection, custom-root, opt-in, idempotence, and failure checks passed."
+for encoded in '\xff\xfeX\x00' '\xfe\xff\x00X' '\xff\xfe\x00\x00X\x00\x00\x00' '\x00\x00\xfe\xff\x00\x00\x00X'; do
+  printf '%b' "$encoded" > "$fixture_root/encoded"
+  for file in "${instruction_files[@]}"; do cp "$fixture_root/encoded" "$file"; done
+  for attempt in 1 2; do
+    status=0
+    bash "$source_root/install.sh" --agents bmad-orchestrator --with-bmad-bootstrap --yes \
+      > "$fixture_root/encoding.log" 2>&1 || status=$?
+    [ "$status" -ne 0 ]
+    grep -qF 'UTF-16 or UTF-32' "$fixture_root/encoding.log"
+    for file in "${instruction_files[@]}"; do cmp "$fixture_root/encoded" "$file"; done
+  done
+done
+for file in "${instruction_files[@]}"; do
+  { printf '\xef\xbb\xbf'; cat "$fixture_root/existing"; } > "$file"
+done
+bash "$source_root/install.sh" --agents bmad-orchestrator,memory-manager --with-bmad-bootstrap --with-readside --yes
+for file in "${instruction_files[@]}"; do
+  [ "$(grep -cF '<!-- promptlings-bmad-bootstrap-start -->' "$file")" -eq 1 ]
+  [ "$(grep -cF '<!-- memory-manager-read-side-start -->' "$file")" -eq 1 ]
+  grep -qF 'Existing user instructions: café' "$file"
+done
+cp "${instruction_files[0]}" "$fixture_root/combined-copilot"
+cp "${instruction_files[1]}" "$fixture_root/combined-claude"
+bash "$source_root/install.sh" --agents bmad-orchestrator,memory-manager --with-bmad-bootstrap --with-readside --yes
+cmp "$fixture_root/combined-copilot" "${instruction_files[0]}"
+cmp "$fixture_root/combined-claude" "${instruction_files[1]}"
+echo "Installer asset, plan, selection, custom-root, opt-in, encoding, combined-flag and failure checks passed."

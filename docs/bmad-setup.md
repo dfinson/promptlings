@@ -40,6 +40,11 @@ Memory Manager's read-side flag. BMAD installation alone leaves global
 instructions unchanged.
 Refresh or restart existing hosts to load new instructions and skills.
 The installed skill's availability alone does not run it.
+Both installers refuse UTF-16 or UTF-32 instruction files with a byte-order mark
+without appending. Convert those files to UTF-8 before using the bootstrap flag.
+UTF-8 files with or without a byte-order mark are supported.
+An existing marked bootstrap block is preserved on reinstall. Updating its
+contents requires explicitly editing that block, then refreshing the host.
 
 ## Prepare the parent once
 

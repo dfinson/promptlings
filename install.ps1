@@ -343,6 +343,18 @@ foreach ($t in $targets) {
 
 if ($WithBmadBootstrap) {
     foreach ($f in $bmadBootstrapFiles) {
+        if (Test-Path -LiteralPath $f) {
+            $stream = [IO.File]::OpenRead($f)
+            try {
+                $prefix = New-Object byte[] 4
+                $count = $stream.Read($prefix, 0, $prefix.Length)
+                $signature = [BitConverter]::ToString($prefix, 0, $count)
+            }
+            finally { $stream.Dispose() }
+            if ($signature -match '^(FF-FE|FE-FF|00-00-FE-FF)') {
+                throw "UTF-16 or UTF-32 instruction file: $f. Convert it to UTF-8 before enabling BMAD bootstrap. Nothing was appended."
+            }
+        }
         if ((Test-Path -LiteralPath $f) -and
             [IO.File]::ReadAllText($f).Contains($BmadBootstrapMarker)) {
             Write-Host "  Already present in $f. Skipping."
