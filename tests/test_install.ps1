@@ -68,8 +68,7 @@ try {
         throw "Unrelated agent selection created a skills directory"
     }
     $processInfo = New-Object Diagnostics.ProcessStartInfo
-    $shellName = if ($PSVersionTable.PSEdition -eq "Desktop") { "powershell.exe" } else { "pwsh.exe" }
-    $processInfo.FileName = Join-Path $PSHOME $shellName
+    $processInfo.FileName = [Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
     $processInfo.Arguments = '-NoProfile -File "{0}" -Agents the-nitcracker -WithBmadBootstrap -Yes' -f $installer
     $processInfo.UseShellExecute = $false
     $processInfo.RedirectStandardOutput = $true
