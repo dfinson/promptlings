@@ -7,6 +7,20 @@ on:
     branches: [main]
 
 jobs:
+  installer:
+    name: Installer (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: PowerShell installer
+        shell: pwsh
+        run: ./tests/test_install.ps1
+      - name: Bash installer
+        shell: bash
+        run: bash tests/test_install.sh
   memory-installers:
     name: Memory installer integration
     runs-on: ${{ matrix.os }}

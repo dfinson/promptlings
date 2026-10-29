@@ -19,6 +19,9 @@ REPO="dfinson/promptlings"
 BRANCH="main"
 BASE_URL="https://raw.githubusercontent.com/$REPO/$BRANCH"
 READSIDE_PATH="agents/context/memory-manager-read-side.md"
+BMAD_SETUP_PATH="skills/promptlings-bmad-setup/SKILL.md"
+BMAD_BOOTSTRAP_PATH="skills/promptlings-bmad-bootstrap"
+BMAD_BOOTSTRAP_MARKER="promptlings-bmad-bootstrap-start"
 
 ALL_AGENTS="the-nitcracker pr-walkthrough memory-manager technical-demo bmad-orchestrator speckit-flow"
 REVIEW_AGENTS="the-nitcracker pr-walkthrough"
@@ -54,14 +57,19 @@ Behavior:
                         instruction file. Requires memory-manager. This changes
                         assistant behavior in every future session in every repository.
                         Migrate legacy handoff data before replacing its read-side block.
+  --with-bmad-bootstrap Append the BMAD startup block to selected hosts' GLOBAL instruction
+                        files, once. Requires bmad-orchestrator. No additional opt-in prompt.
   --help                Print this message and exit
 
 With no selection flag, an interactive run asks which set you want. A non-interactive run
 (a piped one-liner) installs the two code-review agents and prints how to ask for more.
 
 Files written by default: one .agent.md per selected agent, under ~/.copilot/agents/ and/or
-~/.claude/agents/. Nothing outside those directories is touched unless --with-readside is
-given or you confirm the read-side prompt.
+~/.claude/agents/. Selecting bmad-orchestrator also installs its setup SKILL.md under each
+host's skills/promptlings-bmad-setup directory, plus SKILL.md and startup.md under
+skills/promptlings-bmad-bootstrap. No global instruction file is changed unless
+--with-bmad-bootstrap or --with-readside is given or you confirm the read-side prompt.
+COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.
 
 session-handoff is a deprecated selection alias for memory-manager. Existing agent files
 and legacy handoff data are never deleted. Basic Memory setup is performed by the agent.
@@ -75,6 +83,7 @@ selection_source=""
 dry_run=0
 assume_yes=0
 want_readside=0
+want_bmad_bootstrap=0
 
 set_selection() {
   if [ -n "$selection_source" ]; then
@@ -107,6 +116,7 @@ while [ "$#" -gt 0 ]; do
     --dry-run) dry_run=1 ;;
     --yes|-y)  assume_yes=1 ;;
     --with-readside) want_readside=1 ;;
+    --with-bmad-bootstrap) want_bmad_bootstrap=1 ;;
     --help|-h) usage; exit 0 ;;
     *)
       echo "Error: unknown option '$1'. Run with --help." >&2
@@ -181,9 +191,13 @@ if [ -z "$selection" ]; then
   exit 2
 fi
 
+selection_has_bmad=0
 selection_has_memory_manager=0
 case " $selection " in
   *" memory-manager "*) selection_has_memory_manager=1 ;;
+esac
+case " $selection " in
+  *" bmad-orchestrator "*) selection_has_bmad=1 ;;
 esac
 
 if [ "$want_readside" -eq 1 ] && [ "$selection_has_memory_manager" -eq 0 ]; then
@@ -191,16 +205,25 @@ if [ "$want_readside" -eq 1 ] && [ "$selection_has_memory_manager" -eq 0 ]; then
   echo "Try: bash install.sh --agents memory-manager --with-readside" >&2
   exit 2
 fi
+if [ "$want_bmad_bootstrap" -eq 1 ] && [ "$selection_has_bmad" -eq 0 ]; then
+  echo "Error: --with-bmad-bootstrap requires the bmad-orchestrator agent." >&2
+  exit 2
+fi
 
 # ----- detect targets -----
 
 targets=""
-copilot_dir="$HOME/.copilot/agents"
+copilot_root="${COPILOT_HOME:-$HOME/.copilot}"
+case "$copilot_root" in
+  /*|[A-Za-z]:[\\/]* ) ;;
+  *) copilot_root="$PWD/$copilot_root" ;;
+esac
+copilot_dir="$copilot_root/agents"
 claude_dir="$HOME/.claude/agents"
 copilot_selected=0
 claude_selected=0
 
-if [ -d "$HOME/.copilot" ] || command -v copilot >/dev/null 2>&1 \
+if [ -n "${COPILOT_HOME:-}" ] || [ -d "$copilot_root" ] || command -v copilot >/dev/null 2>&1 \
   || { command -v gh >/dev/null 2>&1 && gh copilot --version >/dev/null 2>&1; }; then
   targets="set"
   copilot_selected=1
@@ -221,7 +244,7 @@ fi
 readside_copilot=0
 readside_claude=0
 readside_each() {
-  if [ "$readside_copilot" -eq 1 ]; then printf '%s\n' "$HOME/.copilot/copilot-instructions.md"; fi
+  if [ "$readside_copilot" -eq 1 ]; then printf '%s\n' "$copilot_root/copilot-instructions.md"; fi
   if [ "$readside_claude" -eq 1 ]; then printf '%s\n' "$HOME/.claude/CLAUDE.md"; fi
 }
 if [ "$want_readside" -eq 1 ] || { [ "$selection_has_memory_manager" -eq 1 ] && [ "$interactive" -eq 1 ]; }; then
@@ -251,6 +274,11 @@ plan_files() {
   for a in $selection; do
     echo "  $1/$a.agent.md"
   done
+  if [ "$selection_has_bmad" -eq 1 ]; then
+    echo "  $(dirname "$1")/skills/promptlings-bmad-setup/SKILL.md"
+    echo "  $(dirname "$1")/$BMAD_BOOTSTRAP_PATH/SKILL.md"
+    echo "  $(dirname "$1")/$BMAD_BOOTSTRAP_PATH/startup.md"
+  fi
 }
 if [ "$copilot_selected" -eq 1 ]; then plan_files "$copilot_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then plan_files "$claude_dir"; fi
@@ -275,8 +303,15 @@ elif [ -n "$(readside_each)" ]; then
   echo ""
   echo "  Answering no leaves them untouched. Nothing is written without that answer."
   echo ""
-else
+elif [ "$want_bmad_bootstrap" -eq 0 ]; then
   echo "Global instruction files modified: none."
+  echo ""
+fi
+if [ "$want_bmad_bootstrap" -eq 1 ]; then
+  echo "Global instruction files appended to (opt-in via --with-bmad-bootstrap):"
+  if [ "$copilot_selected" -eq 1 ]; then echo "  $copilot_root/copilot-instructions.md"; fi
+  if [ "$claude_selected" -eq 1 ]; then echo "  $HOME/.claude/CLAUDE.md"; fi
+  echo "  Appends startup.md once, marked with '$BMAD_BOOTSTRAP_MARKER'; preserves existing contents."
   echo ""
 fi
 
@@ -320,9 +355,48 @@ install_to() {
     echo "  $a.agent.md"
     download "$(agent_path "$a")" "$1/$a.agent.md"
   done
+  if [ "$selection_has_bmad" -eq 1 ]; then
+    local skill_dir
+    skill_dir="$(dirname "$1")/skills/promptlings-bmad-setup"
+    mkdir -p "$skill_dir"
+    download "$BMAD_SETUP_PATH" "$skill_dir/SKILL.md"
+    skill_dir="$(dirname "$1")/$BMAD_BOOTSTRAP_PATH"
+    mkdir -p "$skill_dir"
+    download "$BMAD_BOOTSTRAP_PATH/SKILL.md" "$skill_dir/SKILL.md"
+    download "$BMAD_BOOTSTRAP_PATH/startup.md" "$skill_dir/startup.md"
+  fi
 }
 if [ "$copilot_selected" -eq 1 ]; then install_to "$copilot_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then install_to "$claude_dir"; fi
+
+append_bmad_bootstrap() {
+  local instr_file="$1"
+  local startup="$(dirname "$instr_file")/$BMAD_BOOTSTRAP_PATH/startup.md"
+  if [ -f "$instr_file" ]; then
+    local signature
+    signature="$(od -An -tx1 -N4 "$instr_file" | tr -d '[:space:]')"
+    case "$signature" in
+      fffe*|feff*|0000feff*)
+        echo "Error: UTF-16 or UTF-32 instruction file: $instr_file. Convert it to UTF-8 before enabling BMAD bootstrap. Nothing was appended." >&2
+        return 1
+        ;;
+    esac
+  fi
+  if [ -f "$instr_file" ] && grep -qF "$BMAD_BOOTSTRAP_MARKER" "$instr_file"; then
+    echo "  Already present in $instr_file. Skipping."
+    return 0
+  fi
+  if [ ! -s "$startup" ] || ! grep -qF "$BMAD_BOOTSTRAP_MARKER" "$startup"; then
+    echo "Error: invalid BMAD startup block: $startup. Nothing was appended to $instr_file." >&2
+    return 1
+  fi
+  { printf '\n'; cat "$startup"; printf '\n'; } >> "$instr_file"
+  echo "  Appended to $instr_file"
+}
+if [ "$want_bmad_bootstrap" -eq 1 ]; then
+  if [ "$copilot_selected" -eq 1 ]; then append_bmad_bootstrap "$copilot_root/copilot-instructions.md"; fi
+  if [ "$claude_selected" -eq 1 ]; then append_bmad_bootstrap "$HOME/.claude/CLAUDE.md"; fi
+fi
 
 echo ""
 echo "Installed $agent_count agent(s). Restart your assistant to pick them up."
