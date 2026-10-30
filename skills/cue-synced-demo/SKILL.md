@@ -5,13 +5,15 @@ description: 'Record real browser events and assemble approved per-line narratio
 
 # Cue-Synced Demo
 
-Use approved story and evidence from the director and narration from `reasoning-first-narration`. Synthetic speech setup belongs to `tts-setup`. This skill supplies practice, not a recorder, assembler or required programming language. Inspect tools already available in the target project and choose a suitable approach. If automation is needed, implement it there using the project's conventions, not in this skill or the promptlings repository.
+Use approved story and evidence from the director and narration from `reasoning-first-narration`. Synthetic speech setup and listening-based voice acceptance belong to `tts-setup`. This skill owns event-bound footage and narration timing, not explainer art direction or composition tooling. The director selects that route.
+
+This skill supplies practice, not a recorder, assembler or required programming language. Inspect tools already available in the target project and choose a suitable approach. If automation is needed, implement it there using the project's conventions, not in this skill or the promptlings repository.
 
 ## Capture real events
 
 Rehearse the actual workflow, protect privacy and inspect a short native-viewport capture before a full take. Use existing capture specialists and the project's browser configuration, authentication and selectors. Preserve originals in a new take directory. Stop and retain failure evidence when a required action fails.
 
-Record named events against a monotonic clock with a documented recording origin. Mark long waits with start/end times. Number repeated names across the whole take: `complete`, `complete#2`, `complete#3`, including across scenes. Record explicitly skipped optional actions by the exact narrated event name. A missing required event always fails. For an explicitly skipped optional event, warn, list the omitted cue in the timing report and fail if the approved delivery requires every cue.
+Record named events against a monotonic clock with a documented recording origin. Log each event when its narrated condition first becomes visible, not after an arbitrary settling delay. Mark long waits with start/end times. Number repeated names across the whole take: `complete`, `complete#2`, `complete#3`, including across scenes. Record explicitly skipped optional actions by the exact narrated event name. A missing required event always fails. For an explicitly skipped optional event, warn, list the omitted cue in the timing report and fail if the approved delivery requires every cue.
 
 Inspect raw event frames to establish the event-to-video clock. Apply an observed offset when necessary. Do not assume page creation, recorder startup and encoded frame zero coincide. Audio checks alone do not prove visual alignment.
 
@@ -38,8 +40,8 @@ Compress long waits only outside required cues, retaining enough context on eith
 
 Measure speech onset in the final encoded audio and compare it with each scheduled visible event. Search before the expected onset, back to just after the previous measured speech end, or at least one second before the first event. A search restricted to the expected cue window can falsely pass early audio. Reject negative drift, drift of 0.3 seconds or more, overlap, missing speech and out-of-order cues. Check isolated narration before adding music. Energy detection is not speech recognition or a listening judgment.
 
-For joined parts, use their actual starts in the final timeline, including crossfade overlap, not accumulated source durations. Verify across joins in the joined encoded file. Keep the timing report, final path/hash, inspected event frames and a contact sheet with one frame per scene start.
+Carry cue times into the final composition timeline, updating them for cuts, holds and transitions. For joined parts, use their actual starts in the final timeline, including crossfade overlap, not accumulated source durations. Verify across joins in the joined encoded file. Keep the timing report, final path/hash, inspected event frames and a contact sheet with one frame per scene start.
 
-Choose captions and mastering for the delivery using existing tools. Reverify after muxing, joining or mastering. Listen through the final video with the visuals for pronunciation, pacing, joins, omissions and story/evidence fit. Screenshots and timing checks are not human acceptance.
+Choose captions and mastering for the delivery using existing tools. Reverify after muxing, joining or mastering. Listen through the final video with the visuals for pronunciation, pacing, joins, omissions and story/evidence fit. Flag silent frozen spans longer than about six seconds for editorial review, preserving deliberate reading or inspection time rather than cutting automatically. Screenshots and timing checks are not human acceptance.
 
 Reuse audio whose text and voice settings are unchanged. Re-render from original captures after timing or visual changes. Reverify the exact final file.
