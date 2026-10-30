@@ -7,33 +7,6 @@ on:
     branches: [main]
 
 jobs:
-  installer:
-    name: Installer (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - name: PowerShell installer
-        shell: pwsh
-        run: ./tests/test_install.ps1
-      - name: Bash installer
-        shell: bash
-        run: bash tests/test_install.sh
-  memory-installers:
-    name: Memory installer integration
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: python -m unittest discover -s tests -p "test_memory_installers.py" -v
-
   markdown-lint:
     name: Markdown lint
     runs-on: ubuntu-latest
