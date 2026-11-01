@@ -85,7 +85,7 @@ Both split their output into three channels and hold each to a different bar, in
 
 The agent is forbidden from rendering judgment in the second and third channels. It surfaces the choice and stops.
 
-Unedited output from both agents on a real PR is in [`examples/`](examples/), along with how to reproduce it. Worth knowing before you rely on either: no codebase index, no memory between runs, no GitHub App, no CI integration. Run twice on a change that matters, since the severity floor is reproducible but which finding surfaces is not.
+Output from both agents on a real PR is in [`examples/`](examples/), along with how to reproduce it and a disclosed wording edit. Worth knowing before you rely on either: no codebase index, no memory between runs, no GitHub App, no CI integration. Run twice on a change that matters, since the severity floor is reproducible but which finding surfaces is not.
 
 ### Memory Manager
 
