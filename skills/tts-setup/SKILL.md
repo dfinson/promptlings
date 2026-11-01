@@ -9,7 +9,7 @@ Own speech setup, not script writing or a new synthesis framework. Use `reasonin
 
 ## Choose upfront
 
-Inspect applicable accepted setups and adopted media-use recipes first. Reuse a listening-accepted choice without repeated onboarding, not merely an installed or operational one. If constraints exclude every accepted option, surface that conflict before proposing an unauditioned replacement. Otherwise ask once: local speech, a cloud service, or an existing setup? Human recording is also valid. A recommendation is not permission to install, spend, transfer private text or clone a voice.
+Inspect applicable accepted setups first: adopted media-use recipes, project production notes and any persistent user or environment memory available to the session, loading that memory if it is available but not yet loaded. Carry forward their recorded resource context, credential references and account, tenant, region or provider restrictions, and verify that they still hold rather than rediscovering them. Reuse a listening-accepted choice without repeated onboarding, not merely an installed or operational one. If constraints exclude every accepted option, surface that conflict before proposing an unauditioned replacement. Otherwise ask once: local speech, a cloud service, or an existing setup? Human recording is also valid. A recommendation is not permission to install, spend, transfer private text or clone a voice.
 
 For first setup, requested alternatives or a material failure, research current official docs, releases and model cards. Inspect actual OS/architecture, runtimes, CPU, available RAM/disk, GPU/backend and available memory, competing load, language, privacy/offline constraints, budget and duration needs. Do not select from a fixed catalog, personal default, GPU brand or parameter count.
 
@@ -19,7 +19,7 @@ Compare two or three suitable options, with dated source URLs, exact runtime/mod
 
 Use the chosen official setup and existing specialist skill/adapter; inspect versions and current invocation schemas. Obtain needed mutation/service approvals. Isolate conflicting dependencies from the app and other media tools, preferably in a reusable user-scope environment. Verify selected assets, voice access, locale, license and official checksums where available. For cloud speech, verify the resource's owning account, tenant/subscription or project, and region as applicable. Use that explicit context rather than assuming CLI defaults.
 
-Keep credentials in the selected integration's secure store or environment. Never print them or copy values into project files. Record only the non-secret invocation, runtime/model revision, voice/settings, rights and credential reference needed to reuse the choice, in the existing recipe or project production notes. Do not invent a profile database or elaborate schema.
+Keep credentials in the selected integration's secure store or environment. Never print them or copy values into project files. Record only the non-secret invocation, runtime/model revision, voice/settings, rights and credential reference needed to reuse the choice, in the existing recipe, project production notes or the persistent memory entry the setup was reused from. Do not invent a profile database or elaborate schema.
 
 ## Audition and reuse
 
