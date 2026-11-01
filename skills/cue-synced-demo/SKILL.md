@@ -11,7 +11,7 @@ This skill supplies practice, not a recorder, assembler or required programming 
 
 ## Capture real events
 
-Rehearse the actual workflow, protect privacy and inspect a short native-viewport capture before a full take. Use existing capture specialists and the project's browser configuration, authentication and selectors. Preserve originals in a new take directory. Stop and retain failure evidence when a required action fails.
+Rehearse the actual workflow, protect privacy and inspect a short native-viewport capture before a full take. Use existing capture specialists and the project's browser configuration, authentication and selectors. Preserve originals in a new take directory. Stop and retain failure evidence when a required action fails. When narration presents a produced file the capture does not show, render its actual pages and show them, narrating only what is visible.
 
 Record named events against a monotonic clock with a documented recording origin. Log each event when its narrated condition first becomes visible, not after an arbitrary settling delay. Mark long waits with start/end times. Number repeated names across the whole take: `complete`, `complete#2`, `complete#3`, including across scenes. Record explicitly skipped optional actions by the exact narrated event name. A missing required event always fails. For an explicitly skipped optional event, warn, list the omitted cue in the timing report and fail if the approved delivery requires every cue.
 
