@@ -7,12 +7,11 @@ description: 'Record real browser events and assemble approved per-line narratio
 
 Use approved story and evidence from the director and narration from `reasoning-first-narration`. Synthetic speech setup and listening-based voice acceptance belong to `tts-setup`. This skill owns event-bound footage and narration timing, not explainer art direction or composition tooling. The director selects that route.
 
-This skill supplies practice, not a recorder, assembler or required programming language. Inspect tools already available in the target project. Build on established capture specialists rather than hand-rolling a browser driver, recorder or document renderer. Keep only flow-specific glue in the target project, following its conventions, never in this skill or the promptlings repository.
+This skill supplies practice, not a recorder, assembler or required programming language. Build on established capture specialists rather than hand-rolling a browser driver, recorder or document renderer. Write glue code only for a step the specialists cannot express, and never in this skill or the promptlings repository.
 
 ## Use established capture specialists
 
-Check the skills available to the session first. A project's existing browser automation is a good fit when it already covers the flow. Otherwise:
-
+Check whether the session already has these skills before offering installs.
 - **Browser capture:** invoke the `playwright-cli` skill from [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli). It handles navigation and input, viewport size, named sessions, saved authentication state, screenshots, and video with chapter markers. If it is missing, give the user `npm install -g @playwright/cli@latest` followed by `playwright-cli install --skills`, and install it only after the user approves.
 - **Produced documents:** convert office files to PDF with LibreOffice headless, or with Word where it is installed for the closest Word layout. Then render the PDF pages to images with Poppler `pdftoppm`, or display them in the browser with pdf.js. Show the real pages as held frames or composed overlays.
 
@@ -20,7 +19,7 @@ If a required specialist is unavailable and the user declines to install it, rep
 
 ## Capture real events
 
-Rehearse the actual workflow, protect privacy and inspect a short native-viewport capture before a full take. Use the project's browser configuration, authentication and selectors with the chosen capture specialist. Preserve originals in a new take directory. Stop and retain failure evidence when a required action fails. When narration presents a produced file the capture does not show, render its actual pages as described above and show them, narrating only what is visible.
+Rehearse the actual workflow, protect privacy and inspect a short native-viewport capture before a full take. Drive the flow with the capture specialist, supplying the app's address and any authentication it needs. Preserve originals in a new take directory. Stop and retain failure evidence when a required action fails. When narration presents a produced file the capture does not show, render its actual pages as described above and show them, narrating only what is visible.
 
 Record named events against a monotonic clock with a documented recording origin. Log each event when its narrated condition first becomes visible, not after an arbitrary settling delay. Mark long waits with start/end times. Number repeated names across the whole take: `complete`, `complete#2`, `complete#3`, including across scenes. Record explicitly skipped optional actions by the exact narrated event name. A missing required event always fails. For an explicitly skipped optional event, warn, list the omitted cue in the timing report and fail if the approved delivery requires every cue.
 
