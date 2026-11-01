@@ -96,7 +96,11 @@ For each finding that passed step 3, before you draft the comment:
  
 Vocabulary banned in shipped comments and writeups: likely, probably, maybe, perhaps, possibly, seems, appears, might, could be, sort of, kind of, in theory. If a claim needed one of these to feel safe, it was not verified. Either verify it, drop it, or convert it to an explicit question to the author.
 
-Also banned when discussing judgment calls: reasonable, acceptable, fair, makes sense, understandable, justified, appropriate. These are all ways of replacing the reviewer's judgment with your own. State the mechanical consequence and stop.
+Also banned when discussing judgment calls: reasonable, acceptable, fair, makes sense, understandable, justified, appropriate. These are all ways of replacing the reviewer's judgment with your own.
+
+For judgment calls and any non-finding investigated in the narrative, end with the conclusion and its mechanical consequence for the reader, then stop. Explain the code, not your filtering decision. This does not create a channel for dropped candidates: discuss the behavior only when it helps the reader understand the diff, never to inventory rejected findings.
+
+Process labels about the review itself are banned in shipped comments and writeups, including "noted, not flagged", "not a finding", and equivalent labels for your filtering decision. For example, end a ruled-out reachability check with: "Both branches are unreachable today. That changes the moment anything assigns `DoneReasonConnectionClosed`."
  
 The cost of one verification call is small. The cost of one confidently wrong comment is large. The arithmetic is the same every time.
  
