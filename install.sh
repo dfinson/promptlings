@@ -23,7 +23,7 @@ BMAD_BOOTSTRAP_PATH="skills/promptlings-bmad-bootstrap"
 BMAD_BOOTSTRAP_MARKER="promptlings-bmad-bootstrap-start"
 
 ALL_AGENTS="the-nitcracker pr-walkthrough memory-manager technical-demo bmad-orchestrator speckit-flow"
-ALL_SKILLS="reasoning-first-narration tts-setup cue-synced-demo promptlings-bmad-setup promptlings-bmad-bootstrap"
+ALL_SKILLS="reasoning-first-narration narrative-transitions tts-setup cue-synced-demo promptlings-bmad-setup promptlings-bmad-bootstrap"
 REVIEW_AGENTS="the-nitcracker pr-walkthrough"
 
 agent_path() {
@@ -41,6 +41,7 @@ agent_path() {
 skill_path() {
   case "$1" in
     reasoning-first-narration) echo "skills/reasoning-first-narration/SKILL.md" ;;
+    narrative-transitions) echo "skills/narrative-transitions/SKILL.md" ;;
     tts-setup) echo "skills/tts-setup/SKILL.md" ;;
     cue-synced-demo) echo "skills/cue-synced-demo/SKILL.md" ;;
     promptlings-bmad-setup) echo "skills/promptlings-bmad-setup/SKILL.md" ;;
@@ -51,7 +52,7 @@ skill_path() {
 
 skill_files() {
   case "$1" in
-    reasoning-first-narration|tts-setup|cue-synced-demo|promptlings-bmad-setup) echo "SKILL.md" ;;
+    reasoning-first-narration|narrative-transitions|tts-setup|cue-synced-demo|promptlings-bmad-setup) echo "SKILL.md" ;;
     promptlings-bmad-bootstrap) printf '%s\n' "SKILL.md" "startup.md" ;;
     *) return 1 ;;
   esac
@@ -59,7 +60,7 @@ skill_files() {
 
 agent_skills() {
   case "$1" in
-    technical-demo) echo "reasoning-first-narration tts-setup cue-synced-demo" ;;
+    technical-demo) echo "reasoning-first-narration narrative-transitions tts-setup cue-synced-demo" ;;
     bmad-orchestrator) echo "promptlings-bmad-setup promptlings-bmad-bootstrap" ;;
   esac
 }

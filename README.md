@@ -23,6 +23,7 @@ Focused custom agents and skills for code review, session continuity, technical 
 | Skill | Use it when you need |
 | --- | --- |
 | [Reasoning-First Narration](skills/reasoning-first-narration/SKILL.md) | Natural spoken technical explanations that preserve reasoning, evidence, meaning, and attribution, for human delivery, teleprompters, or TTS. |
+| [Narrative Transitions](skills/narrative-transitions/SKILL.md) | Section, scene and slide boundaries that follow from what came before, with the transition chosen by medium and every boundary audited together. |
 | [TTS Setup](skills/tts-setup/SKILL.md) | Local/cloud/reuse choice, current hardware-aware research, selected-path setup and representative sample approval. |
 | [Cue-Synced Demo](skills/cue-synced-demo/SKILL.md) | Real event capture, per-line audio reuse, pre-event holds, disclosed wait cuts and final encoded-audio checks. |
 | [BMAD Setup](skills/promptlings-bmad-setup/SKILL.md) | Repository setup and repair for native BMAD workflows. |
@@ -81,7 +82,7 @@ Windows PowerShell 5.1 defaults to the `Restricted` execution policy, which bloc
 
 Choose at most one selection flag: `--review`, `--all`, `--agents`, or `--skills` (or its PowerShell equivalent). With no selection flag, a non-interactive run installs only the two code-review agents.
 
-`technical-demo` installs `reasoning-first-narration`, `tts-setup`, and `cue-synced-demo`. `bmad-orchestrator` installs `promptlings-bmad-setup` and `promptlings-bmad-bootstrap`, including `startup.md`. All skills use the same download path and grouped listing. `--all` / `-All` deduplicates companions once per detected tool. Skills-only selection remains independent:
+`technical-demo` installs `reasoning-first-narration`, `narrative-transitions`, `tts-setup`, and `cue-synced-demo`. `bmad-orchestrator` installs `promptlings-bmad-setup` and `promptlings-bmad-bootstrap`, including `startup.md`. All skills use the same download path and grouped listing. `--all` / `-All` deduplicates companions once per detected tool. Skills-only selection remains independent:
 
 ```bash
 bash install.sh --agents technical-demo --dry-run
@@ -180,7 +181,7 @@ See [personal setup and worktree provisioning](docs/bmad-setup.md).
 
 ### Technical Demo
 
-The director supports technical explainers, verified hands-on demos, and hybrids built around a concrete case and outcome. It owns audience, story, evidence, script approval, semantic coverage, readiness and final acceptance. It invokes Reasoning-First Narration for explanation writing, TTS Setup for listening-accepted synthetic speech, HyperFrames and its specialist skills for authored compositions, and Cue-Synced Demo for event-bound footage and timing. Real browser/window capture supplies runtime evidence and does not require HyperFrames for ordinary editing. Capture runs through Microsoft's [playwright-cli](https://github.com/microsoft/playwright-cli) skill, and produced documents are shown as real pages rendered through LibreOffice or Word, Poppler `pdftoppm` or pdf.js. When a companion is missing, the agent gives you its install command instead of hand-rolling a substitute. Internal production notes do not become narration unless they matter to the viewer. A representative finished scene is judged by someone who watched and listened before full production, and missing listening or visual review leaves a review draft, not an accepted demo.
+The director supports technical explainers, verified hands-on demos, and hybrids built around a concrete case and outcome. It owns audience, story, evidence, script approval, semantic coverage, readiness and final acceptance. It invokes Reasoning-First Narration for explanation writing, Narrative Transitions for joins between scenes, TTS Setup for listening-accepted synthetic speech, HyperFrames and its specialist skills for authored compositions, and Cue-Synced Demo for event-bound footage and timing. Real browser/window capture supplies runtime evidence and does not require HyperFrames for ordinary editing. Capture runs through Microsoft's [playwright-cli](https://github.com/microsoft/playwright-cli) skill, and produced documents are shown as real pages rendered through LibreOffice or Word, Poppler `pdftoppm` or pdf.js. When a companion is missing, the agent gives you its install command instead of hand-rolling a substitute. Internal production notes do not become narration unless they matter to the viewer. A representative finished scene is judged by someone who watched and listened before full production, and missing listening or visual review leaves a review draft, not an accepted demo.
 
 The repository agent is named `technical-demo`. An existing user installation named `technical-demo-producer` can adopt the same contract while preserving its name; the installer does not overwrite that separate identity. Fixed provider/tool assignments are replaced by evidence-fit capture and a user-approved speech recipe. No voice provider, personal clone, cloud upload, account setup, paid synthesis, model installation, or global Git configuration is implied by installing these instruction files.
 
