@@ -20,6 +20,7 @@ $pins = @{
     RULESYNC_PACKAGE = "rulesync@42.0.0"
     RULESYNC_RULE_TARGETS = "antigravity-cli,antigravity-ide,augmentcode,bob,claudecode,cline,codebuddy,copilot,copilotcli,devin,firebender,grokcli,kilo,kiro-cli,kiro-ide,mimocode,omp,opencode,qoder,qwencode,tabnine,zoocode"
     ADD_MCP_PACKAGE = "add-mcp@2.6.0"
+    MCP_REMOTE_PACKAGE = "mcp-remote@0.15.2"
     PLAYWRIGHT_PACKAGE = "@playwright/cli@0.1.22"
     HYPERFRAMES_PACKAGE = "hyperframes@0.8.202"
     DIFF2HTML_PACKAGE = "diff2html-cli@5.2.15"
@@ -464,7 +465,7 @@ try {
         if ($memoryCommand) {
             $server = @(if ($NoStartup) { $memoryCommand, "--args", "mcp" } else { "http://127.0.0.1:$MemoryPort/mcp" })
             $transport = if ($NoStartup) { "stdio" } else { "http" }
-            # add-mcp aborts if any detected client lacks the transport, so pass only the detected clients that support it.
+            # add-mcp aborts if any detected client lacks the transport. Stdio-only clients reach the HTTP server through mcp-remote.
             $addMcp = Join-Path $temporary "add-mcp"
             Invoke-Native npm.cmd install --prefix $addMcp --no-save --no-fund --no-audit $pins.ADD_MCP_PACKAGE
             $detect = Join-Path $temporary "detect-mcp-clients.mjs"
@@ -473,16 +474,21 @@ const [library, transport] = process.argv.slice(2);
 const { pathToFileURL } = await import("node:url");
 const { agents, detectGlobalAgents } = await import(pathToFileURL(library).href);
 for (const agent of await detectGlobalAgents()) {
-  if (agents[agent].supportedTransports.includes(transport)) console.log(agent);
+  const supported = agents[agent].supportedTransports;
+  if (supported.includes(transport)) console.log(`direct ${agent}`);
+  else if (transport === "http" && supported.includes("stdio")) console.log(`bridge ${agent}`);
   else console.error(`Skipping ${agents[agent].displayName}: no ${transport} MCP support.`);
 }
 '@, [Text.UTF8Encoding]::new($false))
             $clients = @(Invoke-Native node $detect (Join-Path $addMcp "node_modules\add-mcp\dist\lib.js") $transport)
-            if ($clients.Count) {
-                $targets = @($clients | ForEach-Object { "-a"; $_ })
-                Invoke-Native node (Join-Path $addMcp "node_modules\add-mcp\dist\index.js") @server -g -y -n basic-memory @targets
+            $addMcpCli = Join-Path $addMcp "node_modules\add-mcp\dist\index.js"
+            $direct = @($clients | Where-Object { $_ -like "direct *" } | ForEach-Object { "-a"; $_.Substring(7) })
+            $bridge = @($clients | Where-Object { $_ -like "bridge *" } | ForEach-Object { "-a"; $_.Substring(7) })
+            if ($direct.Count) { Invoke-Native node $addMcpCli @server -g -y -n basic-memory @direct }
+            if ($bridge.Count) {
+                Invoke-Native node $addMcpCli $pins.MCP_REMOTE_PACKAGE --args "http://127.0.0.1:$MemoryPort/mcp" -g -y -n basic-memory @bridge
             }
-            else { Write-Warning "No MCP client supporting $transport was detected. basic-memory was not registered." }
+            if (-not $clients.Count) { Write-Warning "No supported MCP client was detected. basic-memory was not registered." }
         }
         if ($memoryCommand -and -not $NoStartup) {
             $action = New-ScheduledTaskAction -Execute $memoryCommand -Argument "mcp --transport streamable-http --host 127.0.0.1 --port $MemoryPort"
@@ -494,7 +500,8 @@ for (const agent of await detectGlobalAgents()) {
             Start-ScheduledTask -TaskName $taskName
             $request = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"promptlings-installer","version":"1"}}}'
             $ready = $false
-            $deadline = (Get-Date).AddSeconds(180)
+            # A cold start after reinstalling can take several minutes.
+            $deadline = (Get-Date).AddSeconds(600)
             while (-not $ready -and (Get-Date) -lt $deadline) {
                 try {
                     $response = Invoke-WebRequest "http://127.0.0.1:$MemoryPort/mcp" -Method Post -Body $request -UseBasicParsing -TimeoutSec 2 `

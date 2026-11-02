@@ -130,7 +130,7 @@ of both installers and run through `npx`:
 | Published skills | [`skills`](https://github.com/vercel-labs/skills) | Every harness it supports, installed or not |
 | Agents | [`rulesync`](https://github.com/dyoshikawa/rulesync) subagents | Every harness with global subagent support, in its native format |
 | Memory read-side rule | `rulesync` rules | Harnesses with a dedicated global rule file, never shared files such as `~/.codex/AGENTS.md` |
-| Basic Memory MCP | [`add-mcp`](https://github.com/neon-solutions/add-mcp) | Harnesses detected on the machine |
+| Basic Memory MCP | [`add-mcp`](https://github.com/neon-solutions/add-mcp) | Harnesses detected on the machine. Stdio-only harnesses such as Claude Desktop connect through [`mcp-remote`](https://github.com/geelen/mcp-remote) |
 
 Skills and agents are written for every supported harness, so unused harness
 directories can appear in your home directory. Locations follow each tool's
