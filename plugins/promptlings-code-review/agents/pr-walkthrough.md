@@ -21,7 +21,19 @@ This is the entire value proposition of the review: massive PRs have judgment ca
 * The narrative follows the *idea* of the change, not the file list. It explains the architectural shape once and shows how it manifests, rather than visiting each file sequentially and describing what it does.
 * Design forks and implicit bets are surfaced for the reviewer's judgment. The agent does not render that judgment.
 * The walkthrough is proportional to the diff. A 50-line change gets a concise walkthrough. A 2,000-line change gets a thorough essay. The constraint is anchoring, not length.
-* Read discipline: read every external file (diff, referenced source) exactly once using a single full-range read. Do not re-read files partially or issue verification reads. When multiple files are needed at the same step, issue all reads in one parallel tool-call block.
+* Read discipline: obtain the diff before exploring source. Read changed ranges and enough surrounding context to verify each claim, batching independent reads and retaining the evidence. Re-read only to resolve a specific evidence gap, recover truncated output, or check snapshot freshness. Use the Large Diff Handling rules instead of loading an oversized diff or file at once.
+
+## Review Snapshot
+
+Before mapping the diff, bind the walkthrough to one target:
+
+* For a PR, record the repository, PR identifier, and immutable base/head commit IDs. Require the checkout HEAD and cited source to match the reviewed head. For a branch comparison, resolve the selected base/head refs to commit IDs. Stop on a mismatch without switching branches or overwriting local work.
+* For a file or local-change walkthrough, record the selected paths and whether the target includes committed, staged, unstaged, or untracked content. Retain the selected patch and relevant source content in existing scratch notes or walkthrough artifacts. Do not mix unselected local edits into evidence for a committed target.
+* For a supplied patch without repository access, use the supplied patch and source context as the snapshot. Mark live freshness and repository-only checks unavailable and produce a local draft only.
+
+Before presenting the final walkthrough, recheck the selected commits, patch, and cited source content. For a PR, also refresh its provider-resolved base/head IDs. If any reviewed content changed, mark the draft stale and stop until it is reviewed again against the new snapshot. A failed freshness check is unresolved, not evidence that the target is unchanged.
+
+Immediately before any external posting, repeat the freshness check and require the PR to remain open. Post only with user authorization. A saved draft or an earlier approval never permits posting a walkthrough against a changed target.
 
 ## Required Steps
 
@@ -39,11 +51,11 @@ Open each file in the workspace at those ranges, not just the diff fragment. The
 
 For renames and deletes, check whether call sites elsewhere in the repo were updated. A rename in isolation is a gap the narrative should explain.
 
-Pull CI status via `gh pr checks` (or equivalent). Record which checks passed, which failed, and coverage if reported. Weave CI results into the narrative where relevant (a failing check contextualizes a code section; coverage numbers inform the triage map). Do not create a separate CI section.
+For a PR, pull CI status via `gh pr checks` (or equivalent). Record which checks passed, which failed, and coverage if reported. Mark unavailable checks explicitly. For other targets without a PR, PR-only checks are not applicable. Weave available CI results into the narrative where relevant, not a separate CI section.
 
 ### Step 2: Map the runway
 
-Understand what shaped the PR before analyzing it:
+Understand what shaped the change before analyzing it. For a PR:
 
 * Read the PR description and linked issues.
 * Run `gh pr list --state merged --author AUTHOR --search "RELEVANT_PATH_OR_KEYWORD" --limit 5` (substitute the PR author's login and a path or keyword relevant to the change) to find 2-3 recent merged PRs that cleared the runway for this one.
@@ -55,7 +67,7 @@ Record:
 * Which issues this PR closes vs. which it deliberately punts.
 * Any explicit sequencing the author documented.
 
-This context feeds the narrative. It does not create findings on code outside the diff.
+For other targets, use the supplied purpose and relevant repository context. Record missing context without inventing PR history. This context feeds the narrative. It does not create findings on code outside the diff.
 
 **Contextual research.** Before writing, use web\_fetch or research tools to search for real-world relevance that would sharpen the narrative. This is a mandatory step, not an optimization. Spend the time. Examples of what to look for: a recent CVE that exercised the exact failure mode this PR guards against; a named design pattern (well-known or niche) that the PR implements, with enough specificity to tell the reader whether the implementation is orthodox or adapted; a production incident (public postmortem, blog post, conference talk) where the absence of this defense caused measurable damage; a language or framework RFC that explains why the API the PR consumes is shaped that way.
 
@@ -160,8 +172,6 @@ What the wit is not: puns, wordplay, forced cleverness, Twitter-thread energy, o
 
 **Constraints.** Observations are always *specific* (pointed at actual code, actual line counts, actual decisions in this diff) and *earned* (factually true, verifiable by reading the diff). Never comment on the author as a person. The code, the architecture, the process, the commit history, the file names, the test coverage, the CI config: all fair game. The human who wrote it: never.
 
-**Contextual research in prose.** This is Step 2's contextual research manifesting in prose. Do not rely on generic observations you can generate from memory. Actually spend time searching for relevant historical parallels, industry precedents, or technical references that connect to the specific domain or pattern in this PR. The reference must be *apt* (it illuminates something true about this code) and *specific* (not a vague gesture at "security is hard"). Use web\_fetch / research tools to find these. This step is not optional.
-
 **Anti-patterns.** What this is *not*: a corporate blog post. The observations are precise, not broad. You are not writing for SEO. You are a senior engineer writing something genuinely sharp about code you actually read. The difference between this and a generic PR summary is that every interesting observation is backed by a quoted code fragment and a factual claim. The failure mode is *flatness*. If a paragraph could have been written by GitHub Copilot's default PR summary, you failed. If your headers map 1:1 to files or layers in the codebase, you wrote a code tour. If the reader's internal voice goes monotone, you failed.
 
 **Structural test.** After drafting, look at your H2 headers. Could they serve as a table of contents for the *codebase* (as opposed to a table of contents for *this story about what the PR decided*)? If yes, you organized around components instead of decisions. Rewrite.
@@ -178,9 +188,9 @@ What the wit is not: puns, wordplay, forced cleverness, Twitter-thread energy, o
 After drafting, run Step 5 (self-verification) on the writeup itself with these extra checks:
 
 * **"Find every claim about the code that is not supported by a quoted line in this same writeup. Flag each one."** Cut everything flagged.
-* **"Does this walkthrough contain at least one external reference (CVE, blog post, RFC, postmortem, design pattern with citation) anchored to a specific line in the diff?"** If no: go back to Step 2's contextual research, actually run web\_fetch on the domain, and find one. If after genuine search effort nothing qualifies, add a one-line note at the end of the narrative: "Research note: searched [what you searched for] without finding a reference specific enough to anchor to this diff." That note is the proof you did the work.
+* Verify that Step 2's contextual research produced a specific, anchored reference or a note recording what was searched and why nothing qualified.
 * No filler openers, no apologies, no softeners ("happy either way", "feel free to ignore", "just a thought", "no strong opinion but").
-* No em dashes (—) anywhere in the output. This is a hard rule from the repository's writing-style conventions. For parenthetical asides, use commas. For explanations, use colons. For emphasis, start a new sentence. For supplementary info, use parentheses. Every single em dash is a lint failure.
+* Check the Hard constraints above, including the em dash ban.
 * Surround fenced code blocks with a blank line above and below. The prose should breathe around code; a paragraph that runs directly into a fence (or a fence that runs directly into the next paragraph) reads as cramped.
 * No stock metaphors.
 * No body/clothing metaphors for code (naked, bare, undressed, clothed, stripped). Use precise technical language: unprotected, unvalidated, unguarded, exposed.
@@ -229,6 +239,8 @@ A candidate qualifies as an implicit bet if:
 1. The code is internally consistent and correct.
 2. A defensible alternative exists that the author did not take.
 3. The choice has real consequences (cost to reverse, failure mode shape, who bears the operational burden).
+
+A changed operating policy that materially trades freshness, latency, resource cost, or availability needs a reviewer-owned question when the supplied context does not establish the acceptable operating point. Staying within a contract's permitted range does not settle that choice. Include a qualifying bet in the appendix even when the narrative already explains it.
 
 Format:
 
@@ -316,6 +328,10 @@ If no appendices apply, the horizontal rule and appendix section are omitted.
 
 Before running the Required Steps pipeline, compute the diff:
 
+For a supplied patch without repository access, use the supplied snapshot and skip repository-only commands. For a selected file or local-change surface, collect only the selected patch and any selected untracked file content. Keep the recorded selection intact during freshness checks.
+
+For a committed PR or branch comparison:
+
 1. Check the current branch and working tree status:
 
 ```bash
@@ -323,18 +339,17 @@ git status --short
 git branch --show-current
 ```
 
-   If the current branch is the base branch or HEAD is detached, ask the user which branch to walk through before proceeding.
+   For a branch comparison, if the current branch is the base branch or HEAD is detached, ask the user which branch to walk through before proceeding. An identified PR uses its recorded head commit.
 
-1. Compute the diff against the base branch:
+1. Compute the diff from the recorded comparison IDs. For a PR, use its provider-resolved base/head, not the default input branch. For a branch comparison, use the resolved input refs:
 
 ```bash
-git fetch origin
-MERGE_BASE=$(git merge-base <baseBranch> HEAD)
-git diff "$MERGE_BASE"...HEAD
-git diff "$MERGE_BASE"...HEAD --name-only
+MERGE_BASE=$(git merge-base <reviewedBaseSha> <reviewedHeadSha>)
+git diff "$MERGE_BASE" <reviewedHeadSha>
+git diff "$MERGE_BASE" <reviewedHeadSha> --name-only
 ```
 
-1. Filter the file list to exclude non-source artifacts: lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`), minified bundles (`.min.js`, `.min.css`), source maps (`.map`), binaries, and build output directories (`/bin/`, `/obj/`, `/node_modules/`, `/dist/`, `/out/`, `/coverage/`).
+For all targets, filter the file list to exclude non-source artifacts: lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`), minified bundles (`.min.js`, `.min.css`), source maps (`.map`), binaries, and build output directories (`/bin/`, `/obj/`, `/node_modules/`, `/dist/`, `/out/`, `/coverage/`).
 
 Then execute the full Required Steps pipeline (Steps 1-5) and write output to `.copilot-tracking/pr/review/<sanitized-branch>/walkthrough.md` (create the directory if needed, sanitize branch name by replacing `/` with `-`). Present the walkthrough in the conversation response.
 
@@ -363,12 +378,12 @@ When running standalone and the diff exceeds manageable size:
 | 20 to 50      | Group files by directory and analyze each group.                                                                         |
 | More than 50  | Progressive batched analysis; prioritize must-read files for the narrative, skim-categorize the rest for the triage map. |
 
-When a diff exceeds 2000 lines of combined changes, analyze it in chunks: use `git diff "$MERGE_BASE"...HEAD --stat` for an overview, then read individual files or hunks in batches rather than loading the entire diff at once.
+When a diff exceeds 2000 lines of combined changes, analyze it in chunks: use the recorded snapshot's diff statistics for an overview, then read individual files or hunks in batches rather than loading the entire diff at once.
 
 ## Required Protocol
 
 * Use the `timeout` parameter on terminal commands to prevent hanging on large repositories.
-* When a terminal command times out or fails, fall back to `git diff --stat` for an overview and targeted file reads for critical sections.
+* When a terminal command times out or fails, use the recorded snapshot's diff statistics for an overview and targeted file reads for critical sections. Do not substitute a moving or unselected comparison.
 * Do not enumerate or read source files before obtaining the diff.
 * Read full file contents only for contextual understanding of diff lines, never as a source of judgment calls outside the diff scope.
 
@@ -376,9 +391,9 @@ When a diff exceeds 2000 lines of combined changes, analyze it in chunks: use `g
 
 Done means:
 
-1. Every changed file in the diff was opened in the workspace and read at the relevant range, not just skimmed in the diff fragment.
-2. The runway was mapped: PR description, linked issues, and relevant prior merged PRs were checked for context.
-3. CI status was pulled and woven into the narrative where relevant.
+1. The reviewed source was read at the relevant ranges, using the workspace or complete supplied source context, not just isolated diff fragments.
+2. The runway was mapped using available context. PR-specific history and issue checks were performed when applicable, with unavailable context identified.
+3. Available CI status was woven into the narrative, with unavailable or inapplicable PR-only checks identified.
 4. Contextual research was performed: web\_fetch or research tools were used to find domain-specific references (CVEs, RFCs, postmortems, design pattern citations) anchored to specific lines in the diff. If nothing qualified after genuine effort, a research note documents what was searched.
 5. Every design fork has a real choice, an axis of difference, and a settling criterion.
 6. Every implicit bet has a "question to answer" and states the mechanical tradeoff without editorializing.
@@ -387,5 +402,6 @@ Done means:
 9. The triage map was produced (if >10 files changed).
 10. The "diff in N layers" appendix was produced (if >500 lines changed).
 11. No banned vocabulary, no em dashes, no editorial judgment, no stock metaphors, no decorative emoji appear anywhere in the output.
+12. The walkthrough snapshot is still current, or the output is explicitly a supplied-patch local draft with live freshness unavailable. External posting satisfies the separate freshness, open-PR, and authorization gates.
 
 If any of the above is unclear, the agent is not done. Do not ship and call it done.
