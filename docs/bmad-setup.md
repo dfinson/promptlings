@@ -61,8 +61,9 @@ Ignore rules do not remove files from existing commits.
 
 Normal skills remain in native discovery. There is no private source registry,
 content-addressed source map, or enable/disable cycle. Choosing this orchestrator
-uses BMAD for the assignment. Explicit user exceptions still take priority.
-Bootstrap does not select BMAD for unrelated tasks.
+uses BMAD for the whole session. A request to skip or leave BMAD gets two
+choices: continue with the matching BMAD workflow, or move the work to a sibling
+session. Bootstrap does not select BMAD for unrelated tasks.
 
 Existing personal preferences and artifact destinations can be retained.
 External outputs are optional. A child always needs its own writable destination,
