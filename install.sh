@@ -95,7 +95,7 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 
 Files written by default: one .agent.md per selected agent, under ~/.copilot/agents/ and/or
 ~/.claude/agents/, and one <name>/SKILL.md per selected skill, under ~/.copilot/skills/ and/or
-~/.claude/skills/, including companion Markdown. technical-demo also selects its three companions.
+~/.claude/skills/, including companion Markdown. technical-demo also selects its five companions.
 bmad-orchestrator selects promptlings-bmad-setup and promptlings-bmad-bootstrap.
 No global instruction file is changed unless
 --with-bmad-bootstrap or --with-readside is given or you confirm the read-side prompt.

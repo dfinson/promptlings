@@ -109,7 +109,7 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 Files written by default: one .agent.md per selected agent, under %USERPROFILE%\.copilot\agents\
 and/or %USERPROFILE%\.claude\agents\, and one <name>\SKILL.md per selected skill, under
 %USERPROFILE%\.copilot\skills\ and/or %USERPROFILE%\.claude\skills\, including companion Markdown.
-technical-demo also selects its three companions. bmad-orchestrator selects
+technical-demo also selects its five companions. bmad-orchestrator selects
 promptlings-bmad-setup and promptlings-bmad-bootstrap. No global instruction file is changed
 unless -WithBmadBootstrap or -WithReadSide is given or you confirm the read-side prompt.
 COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.

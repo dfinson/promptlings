@@ -1,6 +1,6 @@
 ---
 name: cue-synced-demo
-description: 'Record real browser events and assemble approved per-line narration with pre-event holds, disclosed wait cuts and final audio checks.'
+description: 'Record real browser or editor events and assemble approved per-line narration with pre-event holds, disclosed wait cuts and final audio checks.'
 ---
 
 # Cue-Synced Demo
@@ -15,6 +15,12 @@ The Promptlings installer's demo toolchain provides these specialists, so use th
 
 - **Browser capture:** invoke the `playwright-cli` skill from [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli). It handles navigation and input, viewport size, named sessions, saved authentication state, screenshots, and video with chapter markers.
 - **Code walkthroughs in VS Code:** script the walkthrough with the `demotime-code-demo` skill from [Demo Time](https://github.com/estruyf/vscode-demo-time) (Apache-2.0). It writes a reset-able act file that opens, types, patches and highlights code, including the base-to-head change of a diff or pull request. Record it unattended with `npx @demotime/video export`, which plays the act in a fresh VS Code profile and writes an MP4 with chapters and `demo-events.jsonl` scene start times. Size each scene's `autoAdvanceAfter` to its accepted narration and bind narration to the recorded scene starts.
+  - Read-only scenes that open, scroll and highlight existing code are valid acts; a walkthrough need not type or patch.
+  - Set the capture size to the delivery resolution; the default is a smaller letterboxed frame.
+  - Pass exporter settings as a file path, not inline JSON.
+  - The export is silent. Add narration as described under "Schedule and assemble".
+  - Trim the VS Code startup frames before the first scene.
+  - The exporter plays from a temporary copy of the workspace and keeps it, so `actFile` paths in the event log point there. Map them back to the repository and delete the copy after export.
 - **VS Code stills and Web workbench states:** invoke the `vscode-playwright` skill from [microsoft/hve-core](https://github.com/microsoft/hve-core) (MIT). It drives VS Code Web through `serve-web` with Playwright, applies theme, zoom and layout, and verifies readable editor text.
 - **Produced documents:** convert office files to PDF with LibreOffice headless, or with Word where it is installed for the closest Word layout. Then render the PDF pages to images with Poppler `pdftoppm`, or display them in the browser with pdf.js. Show the real pages as held frames or composed overlays.
 
@@ -24,7 +30,7 @@ Rehearse the actual workflow, protect privacy and inspect a short native-viewpor
 
 Record named events against a monotonic clock with a documented recording origin. Log each event when its narrated condition first becomes visible, not after an arbitrary settling delay. Mark long waits with start/end times. Number repeated names across the whole take: `complete`, `complete#2`, `complete#3`, including across scenes. Record explicitly skipped optional actions by the exact narrated event name. A missing required event always fails. For an explicitly skipped optional event, warn, list the omitted cue in the timing report and fail if the approved delivery requires every cue.
 
-Inspect raw event frames to establish the event-to-video clock. Apply an observed offset when necessary. Do not assume page creation, recorder startup and encoded frame zero coincide. Audio checks alone do not prove visual alignment.
+Inspect raw event frames to establish the event-to-video clock. Apply an observed offset when necessary. Do not assume page creation, recorder startup and encoded frame zero coincide. For a Demo Time export, the `start` event in `demo-events.jsonl` is the origin and each `sceneStart` is a scene event; map them to the narrated event names. Verify cuts with frames extracted at exact timestamps or with scene detection, because a contact-sheet still can land on a transitional frame. Audio checks alone do not prove visual alignment.
 
 ## Bind narration to events
 
@@ -38,6 +44,8 @@ This line continues the same cue.
 ```
 
 Associate each cue with its audio file, exact text and selected voice, model and settings using the project's existing notes or a small index. Reuse only unchanged text and speech settings. Reject mismatched text or voice before rendering. Measure actual clip onset and end rather than trusting cached duration.
+
+Bind each cue to the moment its subject becomes visible, not to the start of its scene. In an editor, that is when the file has rendered, scrolled into place and the discussed lines are highlighted.
 
 ## Schedule and assemble
 
