@@ -16,7 +16,7 @@ Focused custom agents for code review, session continuity, technical demos, and 
 | [Memory Manager](agents/context/memory-manager.agent.md) | Capture a session's purpose, reasoning, decisions, and continuation state in Basic Memory, then recall and maintain scoped knowledge. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
 | [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | A BMAD-only coach: every delivery runs through installed BMAD workflows, and work outside BMAD goes to a separate session. |
-| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | A Spec-Kit-only coach: anchored spec, plan, and tasks, implementation through the implement and converge loop, and Fleet on request. |
+| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | A Spec-Kit-only coach: anchored spec, plan, and tasks, implementation through the implement and converge loop, and the gated delivery workflow on request. |
 
 ## Install
 
@@ -147,7 +147,7 @@ See [personal setup and worktree provisioning](docs/bmad-setup.md).
 
 ### Spec-Kit Flow
 
-Starts from a software request and always establishes current `spec.md`, `plan.md`, and `tasks.md` anchors before implementation. It then selects the lightest anchored execution path, adding [Spec-Kit](https://github.com/github/spec-kit) phases only when they resolve a named need and handing control to [Fleet](https://github.com/sharathsatish/spec-kit-fleet) when parallel tasks, resume, rollback, remediation, or assurance make its lifecycle valuable.
+Starts from a software request and always establishes current `spec.md`, `plan.md`, and `tasks.md` anchors before implementation. It then selects the lightest anchored execution path, adding [Spec-Kit](https://github.com/github/spec-kit) phases only when they resolve a named need. On request it runs the [promptlings delivery workflow](workflows/speckit/promptlings-delivery/workflow.yml) through Spec-Kit's workflow engine: an approval gate, implement and converge until converged, and an acceptance gate, with run state that resumes across sessions.
 
 ## Principles
 
