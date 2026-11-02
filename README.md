@@ -60,9 +60,11 @@ Windows PowerShell 5.1 defaults to the `Restricted` execution policy, which bloc
 | `--list` / `-List` | Print available agent names and exit |
 | `--dry-run` / `-DryRun` | Print every path that would be written, write nothing |
 | `--with-readside` / `-WithReadSide` | Opt in to installing or replacing the managed Basic Memory read-side instruction |
-| `--with-bmad-bootstrap` / `-WithBmadBootstrap` | With BMAD Orchestrator, opt in to the global BMAD checkout-readiness instruction |
 
-By default the script writes selected agents and their companion skills. It does not touch `~/.copilot/copilot-instructions.md`, `~/.claude/CLAUDE.md`, your shell profile, or your PATH.
+By default the script writes selected agents and their companion resources. BMAD procedures
+go under `<host-root>/promptlings/bmad`, outside skill discovery. The installer does not
+touch `~/.copilot/copilot-instructions.md`, `~/.claude/CLAUDE.md`, your shell profile,
+or your PATH without the separate Memory Manager read-side opt-in.
 
 Also available as a Claude Code plugin, currently carrying the two code-review agents:
 
@@ -134,13 +136,17 @@ Saving requires invoking Memory Manager unless a supported host hook has actuall
 
 [BMAD Method](https://github.com/bmad-code-org/BMAD-METHOD), short for Breakthrough Method of Agile AI-driven Development, carries software work from clarification and planning through implementation and review.
 
-Start with a software request, not a BMAD command. The agent verifies setup, uses focused evidence for bounded work, escalates uncertainty and high-risk changes to full assurance, and keeps every output conformant with the installed BMAD workflow.
+Select **BMAD Orchestrator** explicitly, then start with a software request, not a BMAD
+command. Only that orchestrator and its explicitly assigned BMAD children use the flow.
+Ordinary sessions have no BMAD setup, skill or delivery obligations.
 
-For personal use, keep normal BMAD files out of delivery commits with private Git
-exclusions. The orchestrator provisions each child worktree from its explicitly
-identified parent before work starts. A standalone bootstrap skill validates the
-copy and child-local outputs without needing BMAD already installed.
-See [personal setup and worktree provisioning](docs/bmad-setup.md).
+The agent verifies setup in a dedicated worktree and provisions isolated child
+worktrees with checkout-local skills, runtime and separate outputs. Never install BMAD
+skills in personal discovery directories or add a global BMAD startup instruction.
+Private Git exclusions keep personal files out of delivery commits, but do not isolate
+skill discovery.
+
+See [setup and worktree isolation](docs/bmad-setup.md).
 
 - [Install BMAD](https://docs.bmad-method.org/how-to/install-bmad/)
 - [BMAD releases](https://github.com/bmad-code-org/BMAD-METHOD/releases)

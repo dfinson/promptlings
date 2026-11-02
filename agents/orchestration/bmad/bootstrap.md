@@ -1,12 +1,12 @@
----
-name: promptlings-bmad-bootstrap
-description: For the session owning a new or unprepared BMAD checkout, provision its runtime, integrations and task documents from its explicitly identified parent checkout. Also use when that session selects a BMAD entry but its runtime is missing. Not for in-process reviewers, researchers or generic coding subagents using a prepared checkout, especially handoffs prohibiting skill invocation. Runs without BMAD installed.
----
-
 # BMAD Worktree Bootstrap
 
-The checkout-owning session runs this procedure before invoking a BMAD entry
-or starting work in its independently assigned child checkout. In-process
+This is an explicitly assigned procedure, not a discoverable skill or a global
+startup rule. Run it only for BMAD Orchestrator or a child explicitly assigned
+BMAD work by that orchestrator. A missing runtime in an ordinary session does
+not select BMAD, require provisioning or block ordinary engineering tools.
+
+The orchestrator or assigned child runs this procedure before invoking a BMAD entry
+or starting work in its isolated child checkout. In-process
 reviewers, researchers and generic coding subagents in the already prepared
 checkout do not run it. Respect installed handoffs that prohibit skill
 invocation. Report missing inputs to the owning session instead of provisioning
@@ -15,16 +15,19 @@ Never invoke Build to bootstrap Build. Em dashes are banned from output.
 
 ## 1. Identify the source and authority
 
-Read the assignment's exact parent session ID and absolute checkout path,
+For an initial orchestrator checkout with no prepared parent, read `setup.md`
+instead. For a child, read the assignment's exact parent session ID and absolute checkout path,
 child task, relevant document/spec paths, allowed copy destinations and output
-ownership. On resume, read the checkout's `.bmad-local/provisioning.md` if present.
+ownership, and explicit BMAD ownership. Without that assignment, do not bootstrap.
+On resume, read the checkout's `.bmad-local/provisioning.md` if present.
 Preserve inherited HOME, USERPROFILE and COPILOT_HOME.
 
 Check the current checkout first. If it is already provisioned, validate it and
 preserve its existing work. Do not refresh it merely because the parent changed.
 Otherwise prefer the explicitly identified parent session checkout. A primary
-checkout is a fallback only if explicitly supplied and authorized, and the parent
-is unavailable or lacks the required installation. Record why it was used.
+checkout is a fallback only if explicitly supplied, authorized and dedicated to
+BMAD, and the parent is unavailable or lacks the required installation. Record
+why it was used.
 A contradictory version or incomplete parent is a repair decision, not permission
 to silently select a different source.
 
@@ -39,6 +42,9 @@ not an assumed accessible local path.
 Obtain approval for exact reads, child writes, output destinations and private
 exclusions unless the assignment already grants it. BMAD workflow approval does
 not permit overwriting existing child files.
+The child must have a dedicated worktree, not a branch session sharing the
+primary or another session's checkout. If the host cannot provide that isolation,
+stop only this BMAD dispatch. Do not change global discovery as a workaround.
 
 ## 2. Copy the selected BMAD payload
 
@@ -49,9 +55,9 @@ entries and required task documents. For a known installation, copy:
   and customizations. Omit render snapshots, caches, bytecode, locks and logs.
 - Complete BMAD-owned skill and persona directories required by the selected
   host and installed workflow, including review/handoff dependencies. Keep their
-  normal supported relative locations. Do not copy entire shared `.agents`,
+  checkout-local supported relative locations. Do not copy entire shared `.agents`,
   `.github` or `.claude` directories, host settings, credentials or plugins.
-  Shared personal skills can be used in place if actually visible to the child.
+  Never depend on shared personal BMAD skills.
 - Explicitly selected planning, architecture, context, spec and task documents,
   plus their referenced companions needed by the assignment.
 
@@ -83,7 +89,7 @@ approved read-only inputs. Unresolved parent paths block delivery.
 Set supported user overrides so the child writes only to its own checkout or
 an explicitly approved distinct external directory. For BMAD 6.12.1 use
 `_bmad/custom/config.user.toml` and the four destination keys documented in
-`promptlings-bmad-setup`. A straightforward local choice is
+companion `setup.md`. A straightforward local choice is
 `{project-root}/_bmad-output` with separate planning, implementation and knowledge
 subdirectories. Never edit generated base config or broadly replace path strings.
 Record intentional override differences separately from copied-file hashes.
@@ -107,9 +113,11 @@ Run the installed non-mutating configuration/Help probe from the child root.
 Use a dependency-isolated invocation or an existing interpreter for Python
 readiness probes. Do not let `uv run` synchronize the application's dependencies
 just to check BMAD. Stop if the probe fails or configuration still targets another
-checkout. Reload the child host's skill catalog if copied entries were not present
-at session start. If reload is unavailable, restart before native invocation,
-not a global toggle or a private source-map workaround.
+checkout. Verify the actual child catalog contains the required checkout-local
+entries, not just their files. Reload the child host's skill catalog if copied
+entries were not present at session start. If reload is unavailable, restart before native invocation,
+not a global toggle. When the host exposes no reload or restart operation,
+report that specific BMAD dispatch as unready rather than claiming success.
 
 Write `.bmad-local/provisioning.md` with source session/checkout, fallback reason
 if any, version, selected payload and hash results, input path mapping, approved
@@ -120,5 +128,5 @@ not a success record.
 Only then begin the assigned workflow through its normal installed entry and
 original launcher contract. For a generic coding child under a BMAD-owning
 parent, follow the installed handoff and spec instead of invoking a second Build.
-No usable source means explicit setup through `promptlings-bmad-setup`, not
+No usable source means explicit setup through companion `setup.md`, not
 silent ordinary-tool substitution or an invented runtime.
