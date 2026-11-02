@@ -39,7 +39,7 @@ Pick the specialist by what the viewer needs to see:
 - **The diff itself:** render the hunk to HTML with [diff2html](https://github.com/rtfpessoa/diff2html) (MIT) and hold or compose it.
 - **Before-to-after morph:** animate the two versions with Shiki's [`@shikijs/magic-move`](https://github.com/shikijs/shiki/tree/main/packages/magic-move) (MIT) inside a `hyperframes` composition.
 
-Offer installs for missing specialists with the user's approval, as `cue-synced-demo` describes, and never hand-roll a substitute.
+Handle a missing specialist as `cue-synced-demo` describes, and never hand-roll a substitute.
 
 ## Produce and deliver
 
