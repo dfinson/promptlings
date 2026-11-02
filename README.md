@@ -16,8 +16,8 @@ Focused custom agents and reusable skills for technical reasoning, complementary
 | [Sparring Partner](agents/reasoning/sparring-partner.agent.md) | Work through an idea, design, plan, implementation, debugging hypothesis, or testing question with an evidence-driven reasoning partner. |
 | [Memory Manager](agents/context/memory-manager.agent.md) | Capture a session's purpose, reasoning, decisions, and continuation state in Basic Memory, then recall and maintain scoped knowledge. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
-| [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | A BMAD-only coach: every delivery runs through installed BMAD workflows, and work outside BMAD goes to a separate session. |
-| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | A Spec-Kit-only coach: anchored spec, plan, and tasks, implementation through the implement and converge loop, and the gated delivery workflow on request. |
+| [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | A BMAD-only coach: binds the repository to BMAD, runs every delivery through installed BMAD workflows, checks recorded approval before implementation, and sends work outside BMAD to a separate session. |
+| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | A Spec-Kit-only coach: binds the repository to Spec-Kit, anchors spec, plan, and tasks with Clarify before Plan, checks recorded approval before implementation, then runs the implement and converge loop or the gated delivery workflow on request. |
 
 For maintainers and CI callers, [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a thin, subagent-oriented wrapper around the shared [artifact-inspection](skills/artifact-inspection/SKILL.md) skill.
 

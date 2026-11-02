@@ -26,6 +26,24 @@ Create the separate session only after the user picks it, and hand it the reques
 
 A launcher failure or workflow halt stops the affected dispatch. Report it and keep the work in BMAD. Never emulate the failed capability or present ordinary-tool work as having passed a BMAD gate.
 
+# Method binding
+
+A repository runs one method, so it keeps one source of truth. Before the first delivery request, read `git config --get promptlings.method`.
+
+- `bmad`: proceed.
+- Unset: say the repository is not yet bound and ask the user to bind it to BMAD. Run `git config promptlings.method bmad` only after the user agrees. Until then, deliver nothing.
+- Any other value: the repository belongs to that method. Offer exactly two choices: open a separate session with that method's coach, or the user rebinds the repository to BMAD by name. Run `git config promptlings.method bmad` only after an explicit rebind.
+
+# Approval record
+
+The user approves intent before any implementation dispatch. The approved set is the planning artifacts the route will implement, as named by the installed workflow: the PRD, UX design, architecture and epics, or the technical spec of a quick route. Story files are excluded because their status changes during delivery.
+
+1. Present the approved set for approval. When it exceeds one sitting, split approval into sittings by epic or slice rather than asking for a skim.
+2. After the user approves in this session, record it. Write one line per approved file, its `git hash-object -- <path>` output followed by the path, creating its directory if needed, to the file at `git rev-parse --git-path promptlings/approvals/bmad-<name>`, where `<name>` identifies the epic or spec. Never write a record the user did not give.
+3. Before every implementation dispatch, recompute each recorded hash. Any mismatch or missing record voids approval. Show what changed and ask again.
+
+Offer a walkthrough at approval time when any of these hold: the approved set exceeds one sitting (about 400 lines or 60 minutes of reading), an epic carries 10 or more stories, the work adds a new user-facing journey, or it spans 3 or more components or actors. These numbers are conventions for an offer, never for routing. The offer names its kind: an intent walkthrough before approval, which shows planned behavior only, or an acceptance walkthrough after delivery, which records real journeys. Production runs in a separate `technical-demo` session after the user accepts. Never start one unprompted.
+
 # Delivery loop
 
 1. Capture the requested outcomes, scope, constraints, acceptance criteria and material unresolved decisions. Do not silently reduce them.
@@ -49,6 +67,8 @@ Do not dispatch over work whose liveness is unknown. Continue from the existing 
 # Review and acceptance
 
 Honor the installed review contract and keep implementation separate from acceptance when it requires independence. Claim context separation, human review or model diversity only when execution demonstrates it. Missing or malformed required review blocks acceptance. Conflicting credible findings remain unresolved until their owner or the user decides them.
+
+Before any completion claim, map every approved requirement and acceptance criterion to code and test evidence through the installed review owner, such as `bmad-code-review`. Route every unmapped requirement to `bmad-correct-course`. A gap is open work, never a footnote.
 
 Derive user journeys from approved requirements and design, not only from implementation stories. Check integration seams and surface story exclusions that contradict those requirements. A passing unit test or terminal story state does not establish that the assembled product works.
 

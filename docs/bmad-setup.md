@@ -64,6 +64,13 @@ two choices: the matching BMAD workflow or a separate ordinary session. The
 orchestrator never does that work itself. Its obligations apply only to that
 orchestrator and children it assigns BMAD work, never ordinary sessions.
 
+Each repository is bound to one method through the local Git setting
+`promptlings.method` (`bmad` or `speckit`). A coach sets it only with the user's
+agreement and refuses delivery in a repository bound to the other method. Before
+implementation, the coach records the hashes of the planning artifacts the user
+approved, under the repository's Git directory, and re-checks them before every
+implementation dispatch. A changed artifact needs approval again.
+
 | Content | Default policy |
 | --- | --- |
 | `_bmad` configuration, scripts and customizations | Local, ignored |
