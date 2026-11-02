@@ -28,6 +28,14 @@ The medium decides how much the words must do. Decide separately at each boundar
 | Written explainer or documentation | Headings navigate; prose links. Do not stack headings without text between them, and do not fill the gap with boilerplate such as "In this section we will". Opening sentences connect the section to the reader's need. |
 | Step-by-step tutorial | The sequence. Imperative steps need almost no connective text. Put connective prose at phase boundaries and state the outcome the learner should now see before moving on. |
 
+## Cross into and out of code
+
+A code walkthrough inside a demo or video is a change of medium, so its boundaries need their own care.
+
+- **Into code:** start from the behavior or claim just shown and name where it lives, for example "That rejection happens in the installer's name check." Show the file and function before the detail, and let a zoom, highlight or the editor opening carry the move.
+- **Within code:** keep one focal line or block at a time and narrate it while it is highlighted. Name each new file or function as the view changes to it, and pause briefly after the change.
+- **Out of code:** carry the mechanism back to its consequence, either the behavior it produces next or the next question it raises, rather than leaving the viewer in the editor. A recap of the code just shown is not a link.
+
 ## Avoid these openings
 
 - A read-out title or heading.
