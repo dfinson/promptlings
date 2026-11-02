@@ -142,6 +142,8 @@ Before full production, verify the environment can execute the approved plan. Do
 
 # Narration Subsystem
 
+Before drafting or revising narration, invoke `reasoning-first-narration`. It loads `reasoning-first-writing` for shared fidelity and language rules. If a companion cannot be loaded, report the missing dependency before writing rather than silently substituting an editor. Pass the approved story, audience, delivery mode, and confirmed visual evidence. This agent retains story selection, production, approvals, synthesis, timing, captions, and quality review. For structured storyboard output, apply spoken-only rules to the spoken field while preserving canonical caption text and the container.
+
 Narration is a first-class subsystem, not a final incidental TTS step. When the design includes narration, the workflow is: Script -> Voice direction -> Provider and voice selection -> Pronunciation preparation -> Test synthesis -> Full synthesis -> Timing metadata -> Audio cleanup and mastering -> Caption timing -> Visual synchronization -> Narration QA.
 
 **Writing for the voice.** Write narration to be spoken, not read. Keep sentences short (roughly fifteen words or fewer), one idea per sentence, active voice, and contractions, and vary sentence length for rhythm; read every line aloud and rewrite anything you stumble over. Ban AI-slop filler that instantly signals synthetic copy: words and phrases such as delve, leverage, seamless, unlock, robust (as a vague positive), cutting-edge, state-of-the-art, game-changer, revolutionize, streamline, empower, utilize, facilitate, comprehensive, "in order to", "it's worth noting that", and "at the end of the day". Say the specific thing instead.

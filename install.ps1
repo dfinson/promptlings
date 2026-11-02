@@ -49,7 +49,23 @@ $AllAgents = @(
 )
 $ReviewAgents = @("the-nitcracker", "pr-walkthrough")
 $ReasoningSkills = @("technical-investigation", "test-analysis", "design-analysis", "evidence-verification")
-$AllSkills = $ReasoningSkills + @("review-ensemble", "artifact-inspection")
+$AllSkills = $ReasoningSkills + @("review-ensemble", "artifact-inspection", "reasoning-first-writing", "reasoning-first-narration", "design-writing")
+
+function Get-SkillFiles {
+    param([string]$Name)
+    "SKILL.md"
+    switch ($Name) {
+        "artifact-inspection" { "scripts/check_artifacts.py" }
+        "reasoning-first-writing" { "references/sources.md" }
+        "design-writing" {
+            "references/adr.md"
+            "references/specification.md"
+            "references/design-document.md"
+            "references/tickets.md"
+            "references/sources.md"
+        }
+    }
+}
 
 $AgentPaths = @{
     "pr-walkthrough"    = "agents/code-review/pr-walkthrough.agent.md"
@@ -70,7 +86,7 @@ Usage: .\install.ps1 [options]
 
 Agent selection (pick at most one):
   -Review               Install the two code-review agents and review-ensemble skill
-  -All                  Install all eight agents and six skills
+  -All                  Install all eight agents and nine skills
   -Agents a,b,c         Install agents by name (comma separated)
   -List                 Print available agent names and exit
 
@@ -93,7 +109,7 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 Files written by default: one .agent.md per selected agent, under %USERPROFILE%\.copilot\agents\
 and/or %USERPROFILE%\.claude\agents\. Selecting bmad-orchestrator also installs setup.md
 and bootstrap.md under each host's promptlings\bmad directory, outside
-skill discovery. BMAD never adds global startup instructions or globally discovered skills.
+skill discovery. BMAD method skills remain checkout-local, with no global startup block.
 No global instruction file is changed unless -WithReadSide is given or you confirm the
 read-side prompt. COPILOT_HOME overrides the Copilot root.
 Skills install under each host's skills directory. Required companion skills and agents
@@ -157,7 +173,7 @@ if (-not $selectionSource -and -not $Skills) {
     if ($interactive) {
         Write-Host "Which agents do you want?"
         Write-Host "  1) The two code-review agents and review-ensemble skill (default)"
-        Write-Host "  2) All eight agents and six skills"
+        Write-Host "  2) All eight agents and nine skills"
         Write-Host "  3) Cancel"
         $choice = Read-Host "Choice [1]"
         switch (("$choice").Trim()) {
@@ -173,7 +189,7 @@ if (-not $selectionSource -and -not $Skills) {
         Write-Host "No selection flag and no console to ask on, so defaulting to the review set."
         Write-Host "For everything else, download the script and pass a flag:"
         Write-Host "  irm $BaseUrl/install.ps1 -OutFile install.ps1"
-        Write-Host "  .\install.ps1 -All            # all eight agents and six skills"
+        Write-Host "  .\install.ps1 -All            # all eight agents and nine skills"
         Write-Host "  .\install.ps1 -List           # available agent names"
         Write-Host ""
     }
@@ -183,6 +199,13 @@ if ($selectionSource -eq "-All") { $skillSelection += $AllSkills }
 if ($selectionSource -eq "-Review") { $skillSelection += "review-ensemble" }
 if ($selection -contains "sparring-partner") { $skillSelection += $ReasoningSkills }
 if ($selection -contains "artifact-inspector") { $skillSelection += "artifact-inspection" }
+if ($selection -contains "technical-demo") { $skillSelection += "reasoning-first-narration" }
+if (($selection -contains "bmad-orchestrator") -or ($selection -contains "speckit-flow")) {
+    $skillSelection += "design-writing"
+}
+if (($skillSelection -contains "reasoning-first-narration") -or ($skillSelection -contains "design-writing")) {
+    $skillSelection += "reasoning-first-writing"
+}
 if ($skillSelection -contains "review-ensemble") {
     $selection += $ReviewAgents
     $skillSelection += "evidence-verification"
@@ -289,9 +312,8 @@ foreach ($t in $targets) {
     }
     foreach ($s in $skillSelection) {
         $skillDir = Join-Path (Split-Path $t -Parent) "skills\$s"
-        Write-Host "  $(Join-Path $skillDir 'SKILL.md')"
-        if ($s -eq "artifact-inspection") {
-            Write-Host "  $(Join-Path $skillDir 'scripts\check_artifacts.py')"
+        foreach ($file in (Get-SkillFiles $s)) {
+            Write-Host "  $(Join-Path $skillDir $file)"
         }
     }
 }
@@ -363,12 +385,10 @@ foreach ($t in $targets) {
     }
     foreach ($s in $skillSelection) {
         $skillDir = Join-Path (Split-Path $t -Parent) "skills\$s"
-        New-Item -ItemType Directory -Force -Path $skillDir | Out-Null
-        Get-Remote -Remote "skills/$s/SKILL.md" -Dest (Join-Path $skillDir "SKILL.md")
-        if ($s -eq "artifact-inspection") {
-            $scriptsDir = Join-Path $skillDir "scripts"
-            New-Item -ItemType Directory -Force -Path $scriptsDir | Out-Null
-            Get-Remote -Remote "skills/$s/scripts/check_artifacts.py" -Dest (Join-Path $scriptsDir "check_artifacts.py")
+        foreach ($file in (Get-SkillFiles $s)) {
+            $dest = Join-Path $skillDir $file
+            New-Item -ItemType Directory -Force -Path (Split-Path $dest -Parent) | Out-Null
+            Get-Remote -Remote "skills/$s/$file" -Dest $dest
         }
     }
 }

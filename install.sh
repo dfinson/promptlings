@@ -24,7 +24,19 @@ BMAD_PROCEDURE_PATH="agents/orchestration/bmad"
 ALL_AGENTS="the-nitcracker pr-walkthrough memory-manager technical-demo bmad-orchestrator speckit-flow sparring-partner artifact-inspector"
 REVIEW_AGENTS="the-nitcracker pr-walkthrough"
 REASONING_SKILLS="technical-investigation test-analysis design-analysis evidence-verification"
-ALL_SKILLS="$REASONING_SKILLS review-ensemble artifact-inspection"
+ALL_SKILLS="$REASONING_SKILLS review-ensemble artifact-inspection reasoning-first-writing reasoning-first-narration design-writing"
+
+skill_files() {
+  echo "SKILL.md"
+  case "$1" in
+    artifact-inspection) echo "scripts/check_artifacts.py" ;;
+    reasoning-first-writing) echo "references/sources.md" ;;
+    design-writing)
+      printf '%s\n' "references/adr.md" "references/specification.md" \
+        "references/design-document.md" "references/tickets.md" "references/sources.md"
+      ;;
+  esac
+}
 
 agent_path() {
   case "$1" in
@@ -48,7 +60,7 @@ Usage: bash install.sh [options]
 
 Agent selection (pick at most one):
   --review              Install the two code-review agents and review-ensemble skill
-  --all                 Install all eight agents and six skills
+  --all                 Install all eight agents and nine skills
   --agents a,b,c        Install agents by name (comma separated)
   --list                Print available agent names and exit
 
@@ -71,7 +83,7 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 Files written by default: one .agent.md per selected agent, under ~/.copilot/agents/ and/or
 ~/.claude/agents/. Selecting bmad-orchestrator also installs setup.md and bootstrap.md
 under each host's promptlings/bmad directory, outside skill discovery.
-BMAD never adds global startup instructions or globally discovered skills.
+BMAD method skills remain checkout-local, with no global startup block.
 No global instruction file is changed unless --with-readside is given or you confirm
 the read-side prompt. COPILOT_HOME overrides the Copilot root.
 Skills install under each host's skills directory. Required companion skills and agents
@@ -172,7 +184,7 @@ if [ -z "$selection_source" ] && [ "$skills_requested" -eq 0 ]; then
   if [ "$interactive" -eq 1 ]; then
     echo "Which agents do you want?"
     echo "  1) The two code-review agents and review-ensemble skill (default)"
-    echo "  2) All eight agents and six skills"
+    echo "  2) All eight agents and nine skills"
     echo "  3) Cancel"
     printf 'Choice [1]: '
     read -r choice || choice=""
@@ -187,7 +199,7 @@ if [ -z "$selection_source" ] && [ "$skills_requested" -eq 0 ]; then
     echo "No selection flag and no terminal to ask on, so defaulting to the review set."
     echo "For everything else, download the script and pass a flag:"
     echo "  curl -fsSL $BASE_URL/install.sh -o install.sh"
-    echo "  bash install.sh --all          # all eight agents and six skills"
+    echo "  bash install.sh --all          # all eight agents and nine skills"
     echo "  bash install.sh --list         # available agent names"
     echo ""
   fi
@@ -199,9 +211,16 @@ for a in $selection; do
   case "$a" in
     sparring-partner) skill_selection="$skill_selection $REASONING_SKILLS" ;;
     artifact-inspector) skill_selection="$skill_selection artifact-inspection" ;;
+    technical-demo) skill_selection="$skill_selection reasoning-first-narration" ;;
+    bmad-orchestrator|speckit-flow) skill_selection="$skill_selection design-writing" ;;
   esac
 done
 for s in $skill_selection; do
+  case "$s" in
+    reasoning-first-narration|design-writing)
+      skill_selection="$skill_selection reasoning-first-writing"
+      ;;
+  esac
   if [ "$s" = "review-ensemble" ]; then
     selection="$selection $REVIEW_AGENTS"
     skill_selection="$skill_selection evidence-verification"
@@ -329,10 +348,9 @@ plan_files() {
     echo "  $(dirname "$1")/promptlings/bmad/bootstrap.md"
   fi
   for s in $skill_selection; do
-    echo "  $(dirname "$1")/skills/$s/SKILL.md"
-    if [ "$s" = "artifact-inspection" ]; then
-      echo "  $(dirname "$1")/skills/$s/scripts/check_artifacts.py"
-    fi
+    while IFS= read -r file; do
+      echo "  $(dirname "$1")/skills/$s/$file"
+    done < <(skill_files "$s")
   done
 }
 if [ "$copilot_selected" -eq 1 ]; then plan_files "$copilot_dir"; fi
@@ -412,12 +430,10 @@ install_to() {
   for s in $skill_selection; do
     local skill_dir
     skill_dir="$(dirname "$1")/skills/$s"
-    mkdir -p "$skill_dir"
-    download "skills/$s/SKILL.md" "$skill_dir/SKILL.md"
-    if [ "$s" = "artifact-inspection" ]; then
-      mkdir -p "$skill_dir/scripts"
-      download "skills/$s/scripts/check_artifacts.py" "$skill_dir/scripts/check_artifacts.py"
-    fi
+    while IFS= read -r file; do
+      mkdir -p "$(dirname "$skill_dir/$file")"
+      download "skills/$s/$file" "$skill_dir/$file"
+    done < <(skill_files "$s")
   done
 }
 if [ "$copilot_selected" -eq 1 ]; then install_to "$copilot_dir"; fi

@@ -66,7 +66,7 @@ Restart your assistant to pick it up. For agents with companion skills, use the 
 | User-wide | `~/.copilot/skills/<skill>/SKILL.md` | `~/.claude/skills/<skill>/SKILL.md` |
 | Repository-local | `.github/skills/<skill>/SKILL.md` | `.claude/skills/<skill>/SKILL.md` |
 
-Copy each complete directory from `skills/`, including bundled scripts. `COPILOT_HOME` overrides the Copilot root for installer-managed agents and skills.
+Copy each complete directory from `skills/`, including bundled scripts and references. `COPILOT_HOME` overrides the Copilot root for installer-managed agents and skills.
 
 ### Installer script
 
@@ -86,7 +86,7 @@ Windows PowerShell 5.1 defaults to the `Restricted` execution policy, which bloc
 
 | Flag | Effect |
 | --- | --- |
-| `--all` / `-All` | Install all eight agents and six skills |
+| `--all` / `-All` | Install all eight agents and nine skills |
 | `--review` / `-Review` | Install the two code-review agents, review-ensemble, and evidence-verification (also the noninteractive default) |
 | `--agents a,b` / `-Agents a,b` | Install agents by name and their required companion skills |
 | `--skills a,b` / `-Skills a,b` | Install skills by name, alone or with an agent selection, including dependencies |
@@ -100,6 +100,7 @@ bash install.sh --review --dry-run
 bash install.sh --agents sparring-partner
 bash install.sh --skills review-ensemble
 bash install.sh --agents artifact-inspector
+bash install.sh --skills design-writing,reasoning-first-narration
 ```
 
 ```powershell
@@ -107,9 +108,12 @@ bash install.sh --agents artifact-inspector
 .\install.ps1 -Agents sparring-partner
 .\install.ps1 -Skills review-ensemble
 .\install.ps1 -Agents artifact-inspector
+.\install.ps1 -Skills design-writing,reasoning-first-narration
 ```
 
 Selecting `review-ensemble` includes both Promptlings reviewers and `evidence-verification`. Selecting Sparring Partner includes `technical-investigation`, `test-analysis`, `design-analysis`, and `evidence-verification`. Selecting Artifact Inspector includes `artifact-inspection` and its Python mechanical checker. The checker uses only the Python standard library. The installer installs neither Python nor external agent runtimes.
+
+Selecting Technical Demo includes `reasoning-first-narration` and `reasoning-first-writing`. Selecting BMAD Orchestrator or Spec-Kit Flow includes `design-writing` and `reasoning-first-writing`. Selecting either writing specialist directly includes the shared foundation. Every bundled reference is included. These are generic writing skills, not globally installed BMAD method skills.
 
 **Upgrade behavior:** the review/default selection now also installs two discoverable skills. Explicit `--agents the-nitcracker,pr-walkthrough` (or `-Agents`) preserves agent-only installation. Existing selected files are overwritten, with each download staged before replacement so a failed fetch preserves that destination's previous content. Installation is per-file, not a transaction across the full selection. Unselected files are preserved.
 
@@ -126,6 +130,24 @@ Also available as a Claude Code plugin, currently carrying the two code-review a
 ```
 
 ## Agent Notes
+
+### Writing skills
+
+| Skill | Responsibility |
+| --- | --- |
+| [reasoning-first-writing](skills/reasoning-first-writing/SKILL.md) | Draft or revise natural, intelligible prose while preserving evidence, meaning, attribution, terminology, and the writer's voice |
+| [reasoning-first-narration](skills/reasoning-first-narration/SKILL.md) | Apply that foundation to spoken delivery, including TTS, teleprompters, human narration, and confirmed on-screen evidence |
+| [design-writing](skills/design-writing/SKILL.md) | Apply the foundation to ADRs, specifications, broader designs, and tracker tickets through selectively loaded references |
+
+Use the foundation alone for an explanation, report, documentation draft, or editing task. Use a specialist for its destination. Specialists load the foundation explicitly, not each other. A video explaining a design can use design writing for the document and narration for the script. There is no mandatory three-stage pipeline and no global writing hook.
+
+Design writing adapts to the artifact: an ADR centers on one significant decision, a broader design can cover several, a specification preserves normative requirements and acceptance, and [tickets](skills/design-writing/references/tickets.md) express bounded work with verifiable outcomes. Ticket guidance covers stories, tasks, bugs, epics/features, and investigations across Jira, Azure DevOps, GitHub Issues, and similar trackers. It is grounded in linked Atlassian, Microsoft, and GitHub guidance, while preserving the project's actual schema and template.
+
+Technical Demo invokes narration before script work. BMAD Orchestrator and Spec-Kit Flow pass design-writing guidance to the installed authoring owner without changing managed files directly or bypassing method gates. Child authoring contexts must receive the guidance or have the companions available. Installation does not prove a running session has loaded a skill. Missing dependencies are reported before the writing task.
+
+`design-analysis` still evaluates technical choices. Design writing expresses them without pretending that better prose resolves a missing decision. `no-ai-slop` remains an optional editor, not a dependency, and its change report or contrast-removal defaults do not override fidelity or spoken-only output. Existing review agents, Memory Manager, and Artifact Inspector keep their own output and workflow contracts. They can use the writing foundation for an explicitly requested drafting task without making it a prerequisite for every review or memory operation.
+
+The [shared writing sources](skills/reasoning-first-writing/references/sources.md) and [design-writing sources](skills/design-writing/references/sources.md) describe the research and its limits. Manual installs must copy both a specialist's complete directory and `reasoning-first-writing`. The Claude review plugin still contains only its two review agents, not these skills.
 
 ### Sparring Partner
 

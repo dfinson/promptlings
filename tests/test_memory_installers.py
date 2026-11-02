@@ -194,7 +194,7 @@ class InstallerTests(unittest.TestCase):
                     for path in self.instructions(home):
                         self.assertEqual(path.read_text(), expected)
 
-    def test_all_installs_eight_canonical_agents_and_six_skills_without_global_opt_in(self):
+    def test_all_installs_eight_canonical_agents_and_nine_skills_without_global_opt_in(self):
         expected = {
             "the-nitcracker.agent.md", "pr-walkthrough.agent.md",
             "memory-manager.agent.md", "technical-demo.agent.md",
@@ -212,6 +212,8 @@ class InstallerTests(unittest.TestCase):
                     self.assert_skills(home / tool, {
                         "technical-investigation", "test-analysis", "design-analysis",
                         "evidence-verification", "review-ensemble", "artifact-inspection",
+                        "reasoning-first-writing", "reasoning-first-narration",
+                        "design-writing",
                     })
                 self.assertFalse(any(p.exists() for p in self.instructions(home)))
 
@@ -253,6 +255,9 @@ class InstallerTests(unittest.TestCase):
                     "evidence-verification",
                 }),
                 ("artifact-inspector", {"artifact-inspection"}),
+                ("technical-demo", {"reasoning-first-narration", "reasoning-first-writing"}),
+                ("speckit-flow", {"design-writing", "reasoning-first-writing"}),
+                ("bmad-orchestrator", {"design-writing", "reasoning-first-writing"}),
             )):
                 with self.subTest(shell=shell, agent=agent):
                     home, script = self.prepare_case(shell, number, LEGACY)
@@ -264,7 +269,15 @@ class InstallerTests(unittest.TestCase):
                     )
                     self.assertFalse(custom.exists())
                     for name in expected:
-                        self.assertIn(name, plan.stdout)
+                        for file in (ROOT / "skills" / name).rglob("*"):
+                            if file.is_file() and "__pycache__" not in file.parts:
+                                destination = custom / file.relative_to(ROOT)
+                                planned_paths = {
+                                    Path(line.strip()).resolve()
+                                    for line in plan.stdout.splitlines()
+                                    if line.strip().endswith(file.name)
+                                }
+                                self.assertIn(destination.resolve(), planned_paths)
                     self.run_installer(shell, home, script, agents=f" \t{agent}\t ",
                                        readside=False, copilot_home=custom)
                     for host in (custom, home / ".claude"):
@@ -300,6 +313,49 @@ class InstallerTests(unittest.TestCase):
                     self.assertFalse((home / ".copilot/skills").exists())
                     self.assertFalse(list((home / ".copilot/agents").iterdir()))
                     self.assertEqual(before, [p.read_bytes() for p in self.instructions(home)])
+
+    def test_writing_skill_dependency_closure_without_agents_or_global_writes(self):
+        cases = (
+            ("reasoning-first-writing", {"reasoning-first-writing"}),
+            ("reasoning-first-narration", {"reasoning-first-narration", "reasoning-first-writing"}),
+            ("design-writing", {"design-writing", "reasoning-first-writing"}),
+            ("design-writing,reasoning-first-narration,reasoning-first-writing,design-writing",
+             {"design-writing", "reasoning-first-narration", "reasoning-first-writing"}),
+        )
+        for shell in self.shells:
+            for number, (selection, expected) in enumerate(cases):
+                with self.subTest(shell=shell, selection=selection):
+                    home, script = self.prepare_case(shell, number, LEGACY)
+                    before = [p.read_bytes() for p in self.instructions(home)]
+                    self.run_installer(shell, home, script, agents=None,
+                                       skills=selection, readside=False)
+                    for tool in (".copilot", ".claude"):
+                        self.assertFalse(list((home / tool / "agents").iterdir()))
+                        self.assert_skills(home / tool, expected)
+                    self.assertEqual(before, [p.read_bytes() for p in self.instructions(home)])
+
+    def test_failed_writing_reference_download_is_visible_and_preserves_old_file(self):
+        for shell in self.shells:
+            with self.subTest(shell=shell):
+                home, script = self.prepare(shell, LEGACY)
+                self.run_installer(shell, home, script, agents=None,
+                                   skills="design-writing", readside=False)
+                relative = Path("skills/design-writing/references/tickets.md")
+                installed = home / ".copilot" / relative
+                installed.write_text("Existing ticket guidance.\n", encoding="utf-8")
+                before = [p.read_bytes() for p in self.instructions(home)]
+                FixtureHandler.fault_path = relative.as_posix()
+                FixtureHandler.fault = "http"
+                result = self.run_installer(shell, home, script, agents=None,
+                                            skills="design-writing", readside=False,
+                                            expect_success=False)
+                self.assertIn(relative.as_posix(), result.stdout + result.stderr)
+                self.assertEqual(installed.read_text(), "Existing ticket guidance.\n")
+                self.assertEqual({p.name for p in installed.parent.iterdir()}, {
+                    "adr.md", "specification.md", "design-document.md", "tickets.md", "sources.md",
+                })
+                self.assertEqual(before, [p.read_bytes() for p in self.instructions(home)])
+                FixtureHandler.fault = None
 
     def test_failed_skill_download_preserves_existing_content(self):
         for shell in self.shells:
