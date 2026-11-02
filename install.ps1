@@ -1,502 +1,442 @@
-# promptlings installer (Windows PowerShell)
-#
-# Installs selected agent files into your assistant's agents directory.
-#
-# This script does NOT modify any global instruction file by default. The memory-manager
-# read-side block changes how your assistant behaves in every future session in every
-# repository, so it is opt-in only, via -WithReadSide or an explicit interactive
-# confirmation. See -Help.
-#
-# Recommended usage (read the script before running it):
-#   irm https://raw.githubusercontent.com/dfinson/promptlings/main/install.ps1 -OutFile install.ps1
-#   Get-Content install.ps1 | more
-#   .\install.ps1 -Review
-
 [CmdletBinding()]
 param(
-    [switch]$Review,
-    [switch]$All,
-    [string]$Agents,
-    [switch]$List,
-    [switch]$DryRun,
-    [switch]$Yes,
-    [switch]$WithReadSide,
-    [switch]$WithBmadBootstrap,
-    [switch]$Help
+    [switch]$All, [switch]$Review, [string]$Agents, [switch]$List,
+    [switch]$DryRun, [switch]$Yes, [switch]$Help,
+    [switch]$NoDependencies, [switch]$NoSystemPackages, [switch]$NoSkills,
+    [switch]$NoMemory, [switch]$NoStartup, [switch]$NoBmad,
+    [switch]$NoSpeckit, [switch]$NoFleet, [switch]$NoPlaywright,
+    [switch]$NoHyperframes, [switch]$NoDemo, [switch]$NoReadSide,
+    [string]$Project, [switch]$ProjectOnly, [switch]$SharedFrameworks,
+    [ValidateSet("copilot", "claude")][string]$Integration = "copilot",
+    [ValidateRange(1, 65535)][int]$MemoryPort = 8000
 )
-
 $ErrorActionPreference = "Stop"
+# Pinned upstream tools. Keep these values identical in install.sh.
+$pins = @{
+    BMAD_PACKAGE = "bmad-method@6.12.4"
+    SPECKIT_PACKAGE = "git+https://github.com/github/spec-kit.git@v0.8.18"
+    MEMORY_PACKAGE = "basic-memory==0.24.1"
+    SKILLS_PACKAGE = "skills@1.7.4"
+    RULESYNC_PACKAGE = "rulesync@42.0.0"
+    RULESYNC_RULE_TARGETS = "antigravity-cli,antigravity-ide,augmentcode,bob,claudecode,cline,codebuddy,copilot,copilotcli,devin,firebender,grokcli,kilo,kiro-cli,kiro-ide,mimocode,omp,opencode,qoder,qwencode,tabnine,zoocode"
+    ADD_MCP_PACKAGE = "add-mcp@2.6.0"
+    PLAYWRIGHT_PACKAGE = "@playwright/cli@0.1.22"
+    HYPERFRAMES_PACKAGE = "hyperframes@0.8.202"
+    MEMORY_SKILLS = "https://github.com/basicmachines-co/basic-memory/tree/ac064607a688720cf44037e27ea55552bc5edede/skills"
+    PLAYWRIGHT_SKILLS = "https://github.com/microsoft/playwright-cli/tree/b85c7a736bb473bf55b584e54a09ffa698d6d871/skills/playwright-cli"
+    DEMOTIME_EXTENSION = "eliostruyf.vscode-demo-time@2.4.0"
+    DEMOTIME_SKILLS = "https://github.com/estruyf/vscode-demo-time/tree/96175a9b64a4f6e066720315e8119f8a7ea6cf5e/skills"
+    VSCODE_PLAYWRIGHT_SKILL = "https://github.com/microsoft/hve-core/tree/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/experimental/vscode-playwright"
+    HYPERFRAMES_SKILLS = "https://github.com/heygen-com/hyperframes/tree/618c486734b3cbb697bd432bace7e9642e48b6be/skills"
+    FLEET_URL = "https://github.com/sharathsatish/spec-kit-fleet/archive/refs/tags/v1.1.0.zip"
+    VERIFY_URL = "https://github.com/ismaelJimenez/spec-kit-verify/archive/refs/tags/v1.0.0.zip"
+}
 
-$Repo = "dfinson/promptlings"
-$Branch = "main"
-$BaseUrl = "https://raw.githubusercontent.com/$Repo/$Branch"
-$ReadSidePath = "agents/context/memory-manager-read-side.md"
-$BmadSetupPath = "skills/promptlings-bmad-setup/SKILL.md"
-$BmadBootstrapPath = "skills/promptlings-bmad-bootstrap"
-$BmadBootstrapMarker = "promptlings-bmad-bootstrap-start"
-
-$AllAgents = @(
-    "the-nitcracker"
-    "pr-walkthrough"
-    "memory-manager"
-    "technical-demo"
-    "bmad-orchestrator"
-    "speckit-flow"
-)
-$ReviewAgents = @("the-nitcracker", "pr-walkthrough")
-
-$AgentPaths = @{
-    "pr-walkthrough"    = "agents/code-review/pr-walkthrough.agent.md"
-    "the-nitcracker"    = "agents/code-review/the-nitcracker.agent.md"
-    "memory-manager"    = "agents/context/memory-manager.agent.md"
-    "technical-demo"    = "agents/media/technical-demo.agent.md"
+$BaseUrl = if ($env:PROMPTLINGS_SOURCE) { $env:PROMPTLINGS_SOURCE.TrimEnd("/") } else {
+    "https://raw.githubusercontent.com/dfinson/promptlings/main"
+}
+$agentPaths = [ordered]@{
+    "the-nitcracker" = "agents/code-review/the-nitcracker.agent.md"
+    "pr-walkthrough" = "agents/code-review/pr-walkthrough.agent.md"
+    "memory-manager" = "agents/context/memory-manager.agent.md"
+    "technical-demo" = "agents/media/technical-demo.agent.md"
     "bmad-orchestrator" = "agents/orchestration/bmad-orchestrator.agent.md"
-    "speckit-flow"      = "agents/orchestration/speckit-flow.agent.md"
+    "speckit-flow" = "agents/orchestration/speckit-flow.agent.md"
 }
-
-function Show-Usage {
-    Write-Host @'
-promptlings installer
-
-Usage: .\install.ps1 [options]
-
-Selection (pick at most one):
-  -Review               Install the two code-review agents (the-nitcracker, pr-walkthrough)
-  -All                  Install all six agents
-  -Agents a,b,c         Install agents by name (comma separated)
-  -List                 Print available agent names and exit
-
-Behavior:
-  -DryRun               Print every path that would be written, write nothing
-  -Yes                  Skip the confirmation prompt
-  -WithReadSide         Install or replace the managed memory read-side block in your GLOBAL
-                        instruction file. Requires memory-manager. This changes
-                        assistant behavior in every future session in every repository.
-                        Migrate legacy handoff data before replacing its read-side block.
-  -WithBmadBootstrap    Append the BMAD startup block to selected hosts' GLOBAL instruction
-                        files, once. Requires bmad-orchestrator. No additional opt-in prompt.
-  -Help                 Print this message and exit
-
-With no selection flag, an interactive run asks which set you want. A non-interactive run
-(a piped one-liner) installs the two code-review agents and prints how to ask for more.
-
-Files written by default: one .agent.md per selected agent, under %USERPROFILE%\.copilot\agents\
-and/or %USERPROFILE%\.claude\agents\. Selecting bmad-orchestrator also installs its setup
-SKILL.md under each host's skills\promptlings-bmad-setup directory, plus SKILL.md and
-startup.md under skills\promptlings-bmad-bootstrap. No global instruction file is changed
-unless -WithBmadBootstrap or -WithReadSide is given or you confirm the read-side prompt.
-COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.
-
-session-handoff is a deprecated selection alias for memory-manager. Existing agent files
-and legacy handoff data are never deleted. Basic Memory setup is performed by the agent.
-'@
-}
-
-function Write-Fail {
-    # Mirrors the bash script: message on stderr, exit code 2.
-    param([string]$Message)
-    [Console]::Error.WriteLine("Error: $Message")
-}
-
-if ($Help) { Show-Usage; return }
-if ($List) { $AllAgents | ForEach-Object { Write-Host $_ }; return }
-
-# ----- resolve the selection flags -----
-
-$selection = @()
-$selectionSource = $null
-
-if ($Review) {
-    $selectionSource = "-Review"
-    $selection = $ReviewAgents
-}
-if ($All) {
-    if ($selectionSource) {
-        Write-Fail "-All conflicts with $selectionSource. Pick one selection flag."
-        exit 2
-    }
-    $selectionSource = "-All"
-    $selection = $AllAgents
-}
-if ($Agents) {
-    if ($selectionSource) {
-        Write-Fail "-Agents conflicts with $selectionSource. Pick one selection flag."
-        exit 2
-    }
-    $selectionSource = "-Agents"
-    $selection = @($Agents -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" })
-}
-
-# ----- interactivity -----
-#
-# Interactive means the script was invoked as a file on disk AND stdin is a real console.
-# `irm ... | iex` leaves $PSCommandPath empty, so it can never prompt and never silently
-# opts in to anything.
-
-$scriptIsFile = -not [string]::IsNullOrEmpty($PSCommandPath)
-$interactive = $scriptIsFile -and [Environment]::UserInteractive -and (-not [Console]::IsInputRedirected)
-
-# ----- resolve the selection -----
-
-if ($selection.Count -eq 0) {
-    if ($interactive) {
-        Write-Host "Which agents do you want?"
-        Write-Host "  1) The two code-review agents: the-nitcracker, pr-walkthrough (default)"
-        Write-Host "  2) All six agents"
-        Write-Host "  3) Cancel"
-        $choice = Read-Host "Choice [1]"
-        switch (("$choice").Trim()) {
-            "" { $selection = $ReviewAgents }
-            "1" { $selection = $ReviewAgents }
-            "2" { $selection = $AllAgents }
-            default { Write-Host "Cancelled. Nothing was written."; return }
-        }
-    }
-    else {
-        $selection = $ReviewAgents
-        Write-Host "No selection flag and no console to ask on, so defaulting to the two code-review agents."
-        Write-Host "For everything else, download the script and pass a flag:"
-        Write-Host "  irm $BaseUrl/install.ps1 -OutFile install.ps1"
-        Write-Host "  .\install.ps1 -All            # all six agents"
-        Write-Host "  .\install.ps1 -List           # available agent names"
-        Write-Host ""
-    }
-}
-
-# validate and de-duplicate
-$resolved = @()
-foreach ($a in $selection) {
-    if ($a -eq "session-handoff") {
-        Write-Host "session-handoff is now memory-manager. Installing the canonical agent only."
-        $a = "memory-manager"
-    }
-    if (-not $AgentPaths.ContainsKey($a)) {
-        Write-Fail "Unknown agent '$a'. Run with -List to see valid names."
-        exit 2
-    }
-    if ($resolved -notcontains $a) { $resolved += $a }
-}
-$selection = $resolved
-
-if ($selection.Count -eq 0) {
-    Write-Fail "No agents selected."
-    exit 2
-}
-
-$selectionHasBmad = $selection -contains "bmad-orchestrator"
-$selectionHasMemoryManager = $selection -contains "memory-manager"
-
-if ($WithReadSide -and (-not $selectionHasMemoryManager)) {
-    Write-Fail "-WithReadSide only makes sense alongside the memory-manager agent."
-    [Console]::Error.WriteLine("Try: .\install.ps1 -Agents memory-manager -WithReadSide")
-    exit 2
-}
-if ($WithBmadBootstrap -and (-not $selectionHasBmad)) {
-    Write-Fail "-WithBmadBootstrap requires the bmad-orchestrator agent."
-    exit 2
-}
-
-# ----- detect targets -----
-
-$targets = @()
-$copilotRoot = if ([string]::IsNullOrWhiteSpace($env:COPILOT_HOME)) {
-    Join-Path $env:USERPROFILE ".copilot"
-} else {
-    [IO.Path]::GetFullPath($env:COPILOT_HOME)
-}
-$copilotDir = Join-Path $copilotRoot "agents"
-$claudeDir = Join-Path $env:USERPROFILE ".claude\agents"
-$copilotSelected = $false
-$claudeSelected = $false
-
-$copilotDetected = (-not [string]::IsNullOrWhiteSpace($env:COPILOT_HOME)) -or
-                   (Test-Path $copilotRoot) -or
-                   ($null -ne (Get-Command copilot -ErrorAction SilentlyContinue))
-if ((-not $copilotDetected) -and ($null -ne (Get-Command gh -ErrorAction SilentlyContinue))) {
-    $copilotDetected = $null -ne (& gh copilot --version 2>$null)
-}
-if ($copilotDetected) {
-    $targets += $copilotDir
-    $copilotSelected = $true
-}
-
-$claudeDetected = (Test-Path (Join-Path $env:USERPROFILE ".claude")) -or
-                  ($null -ne (Get-Command claude -ErrorAction SilentlyContinue))
-if ($claudeDetected) {
-    $targets += $claudeDir
-    $claudeSelected = $true
-}
-
-if ($targets.Count -eq 0) {
-    Write-Host "No supported assistant detected. Defaulting to the GitHub Copilot CLI location."
-    Write-Host ""
-    $targets = @($copilotDir)
-    $copilotSelected = $true
-}
-
-$readSideFiles = @()
-$bmadBootstrapFiles = @()
-if ($WithBmadBootstrap) {
-    if ($copilotSelected) { $bmadBootstrapFiles += Join-Path $copilotRoot "copilot-instructions.md" }
-    if ($claudeSelected) { $bmadBootstrapFiles += Join-Path $env:USERPROFILE ".claude\CLAUDE.md" }
-}
-if ($WithReadSide -or ($selectionHasMemoryManager -and $interactive)) {
-    if ($copilotSelected) { $readSideFiles += Join-Path $copilotRoot "copilot-instructions.md" }
-    if ($claudeSelected) { $readSideFiles += Join-Path $env:USERPROFILE ".claude\CLAUDE.md" }
-}
-
-# ----- print the plan before writing anything -----
-
-Write-Host "Plan"
-Write-Host "===="
-Write-Host "Source: $BaseUrl"
-Write-Host ""
-Write-Host "Directories created if missing:"
-foreach ($t in $targets) { Write-Host "  $t" }
-Write-Host ""
-Write-Host "Files written ($($selection.Count) agent(s) per directory, overwritten if present):"
-foreach ($t in $targets) {
-    foreach ($a in $selection) { Write-Host "  $(Join-Path $t "$a.agent.md")" }
-    if ($selectionHasBmad) {
-        Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-setup\SKILL.md')"
-        Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-bootstrap\SKILL.md')"
-        Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-bootstrap\startup.md')"
-    }
-}
-Write-Host ""
-
-if ($WithReadSide) {
-    Write-Host "Global instruction files updated (opt-in via -WithReadSide):"
-    foreach ($f in $readSideFiles) { Write-Host "  $f" }
-    Write-Host ""
-    Write-Host "  The block enables scoped Basic Memory recall and session capture in future sessions."
-    Write-Host "  Existing memory-manager or legacy session-handoff marked blocks are replaced."
-    Write-Host "  Unrelated instructions and handoff data are preserved. Migrate legacy data first."
-    Write-Host ""
-}
-elseif ($selectionHasMemoryManager -and $interactive) {
-    Write-Host "After installation you will be asked whether to update the memory read-side block in:"
-    foreach ($f in $readSideFiles) { Write-Host "  $f" }
-    Write-Host "Answering no leaves those files untouched."
-    Write-Host ""
-}
-elseif (-not $WithBmadBootstrap) {
-    Write-Host "Global instruction files modified: none."
-    Write-Host ""
-}
-if ($WithBmadBootstrap) {
-    Write-Host "Global instruction files appended to (opt-in via -WithBmadBootstrap):"
-    foreach ($f in $bmadBootstrapFiles) { Write-Host "  $f" }
-    Write-Host "  Appends startup.md once, marked with '$BmadBootstrapMarker'; preserves existing contents."
-    Write-Host ""
-}
-
-if ($DryRun) {
-    Write-Host "Dry run. Nothing was written."
+$allAgents = $agentPaths.Keys -join ","
+if ($List) { $allAgents.Split(","); return }
+if ($Help) {
+    Write-Host "Install all agents and tools: .\install.ps1 -Yes"
+    Write-Host "Initialize a repository: .\install.ps1 -Project PATH -ProjectOnly -Yes"
+    Write-Host "Frameworks and generated documents are locally ignored. Opt into tracking with -SharedFrameworks."
+    Write-Host "Opt-outs: -NoDependencies, -NoSystemPackages, -NoSkills, -NoReadSide,"
+    Write-Host "-NoMemory, -NoStartup, -NoBmad, -NoSpeckit, -NoFleet, -NoPlaywright, -NoHyperframes, -NoDemo."
     return
 }
-
-if ($interactive -and (-not $Yes)) {
-    $reply = Read-Host "Proceed? [y/N]"
-    if (("$reply").Trim() -notmatch '^(y|Y|yes|Yes|YES)$') {
-        Write-Host "Cancelled. Nothing was written."
-        return
-    }
-    Write-Host ""
+if (@("All", "Review", "Agents" | Where-Object { $PSBoundParameters.ContainsKey($_) }).Count -gt 1) {
+    throw "Choose only one of -All, -Review or -Agents."
+}
+if ($Review) { $Agents = "the-nitcracker,pr-walkthrough" }
+elseif (-not $PSBoundParameters.ContainsKey("Agents")) { $Agents = $allAgents }
+if (-not $Agents -or @($Agents.Split(",") | Where-Object { $_ -notin $allAgents.Split(",") }).Count) {
+    throw "Unknown or empty agent selection. Use -List."
+}
+if ($ProjectOnly -and -not $Project) { throw "-ProjectOnly requires -Project." }
+if ($SharedFrameworks -and -not $Project) { throw "-SharedFrameworks requires -Project." }
+if ($Project -and $NoDependencies) { throw "-Project cannot be combined with -NoDependencies." }
+if ($NoSpeckit) { $NoFleet = $true }
+Write-Host "Agents: $Agents"
+Write-Host "Default: WinGet prerequisites, uv applications, global npm applications and published global skills."
+Write-Host "Opt-outs: memory=$NoMemory bmad=$NoBmad speckit=$NoSpeckit fleet=$NoFleet playwright=$NoPlaywright hyperframes=$NoHyperframes demo=$NoDemo"
+Write-Host "Basic Memory: native user-login startup=$(-not $NoStartup), loopback port=$MemoryPort."
+$frameworkPolicy = if ($SharedFrameworks) { "shared, eligible for tracking" } else { "local, ignored including generated documents" }
+Write-Host "Repository: $Project. Framework policy: $frameworkPolicy."
+Write-Host "Project-only=$ProjectOnly. NoDependencies=$NoDependencies. NoSystemPackages=$NoSystemPackages. NoSkills=$NoSkills."
+Write-Host "Package installation can request elevation. No private runtimes, global Git exclusions, staging or commits."
+if ($DryRun) { Write-Host "Dry run. Nothing was downloaded or written."; return }
+if (-not $Yes) {
+    if ([Console]::IsInputRedirected) { throw "Review -DryRun, then pass -Yes for noninteractive installation." }
+    if ((Read-Host "Install the displayed components? [y/N]") -notmatch '^(?i:y|yes)$') { return }
 }
 
-# ----- install -----
-
-function Get-Remote {
-    # Get-Remote REMOTE DEST: download to a temp file first so a failed fetch cannot
-    # truncate a file that is already installed.
-    param([string]$Remote, [string]$Dest)
-    $tmp = "$Dest.$([System.IO.Path]::GetRandomFileName())"
-    try {
-        Invoke-WebRequest -Uri "$BaseUrl/$Remote" -OutFile $tmp -UseBasicParsing
-        Move-Item -Path $tmp -Destination $Dest -Force
-    }
-    catch {
-        if (Test-Path $tmp) { Remove-Item $tmp -Force }
-        throw "Failed to download $Remote"
-    }
+function Invoke-Native {
+    $Command, $Arguments = $args
+    $Arguments = @($Arguments)
+    Write-Host "+ $Command $($Arguments -join ' ')"
+    & $Command @Arguments
+    if ($LASTEXITCODE -ne 0) { throw "Command failed ($LASTEXITCODE): $Command $($Arguments -join ' ')" }
 }
-
-foreach ($t in $targets) {
-    Write-Host "Installing to $t"
-    New-Item -ItemType Directory -Force -Path $t | Out-Null
-    foreach ($a in $selection) {
-        Write-Host "  $a.agent.md"
-        Get-Remote -Remote $AgentPaths[$a] -Dest (Join-Path $t "$a.agent.md")
+function Get-Asset {
+    param([string]$Relative, [string]$Destination)
+    $local = Join-Path $PSScriptRoot ($Relative.Replace("/", [IO.Path]::DirectorySeparatorChar))
+    if ($BaseUrl -eq "https://raw.githubusercontent.com/dfinson/promptlings/main" -and (Test-Path -LiteralPath $local)) {
+        Copy-Item -LiteralPath $local -Destination $Destination
     }
-    if ($selectionHasBmad) {
-        $skillDir = Join-Path (Split-Path $t -Parent) "skills\promptlings-bmad-setup"
-        New-Item -ItemType Directory -Force -Path $skillDir | Out-Null
-        Get-Remote -Remote $BmadSetupPath -Dest (Join-Path $skillDir "SKILL.md")
-        $bootstrapDir = Join-Path (Split-Path $t -Parent) "skills\promptlings-bmad-bootstrap"
-        New-Item -ItemType Directory -Force -Path $bootstrapDir | Out-Null
-        foreach ($file in @("SKILL.md", "startup.md")) {
-            Get-Remote -Remote "$BmadBootstrapPath/$file" -Dest (Join-Path $bootstrapDir $file)
+    else { Invoke-WebRequest "$BaseUrl/$Relative" -OutFile $Destination -UseBasicParsing }
+}
+# Validates the repository root and promptlings-managed blocks before anything is installed.
+function Get-ProjectExclude {
+    # Git resolves short names, links and case, so ask it rather than comparing path strings.
+    $state = @(Invoke-Native git -C $Project rev-parse --is-inside-work-tree --show-prefix)
+    if ($state[0] -ne "true" -or ($state.Count -gt 1 -and $state[1])) {
+        throw "-Project must name the Git repository or linked worktree root."
+    }
+    $path = (Invoke-Native git -C $Project rev-parse --path-format=absolute --git-path info/exclude) -join ""
+    if (Test-Path -LiteralPath $path) {
+        $lines = @(Get-Content -LiteralPath $path)
+        foreach ($name in @("personal", "bmad", "speckit")) {
+            $starts = @(); $ends = @()
+            for ($i = 0; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -ceq "# promptlings $name start") { $starts += $i }
+                if ($lines[$i] -ceq "# promptlings $name end") { $ends += $i }
+            }
+            if (($starts.Count + $ends.Count) -and ($starts.Count -ne 1 -or $ends.Count -ne 1 -or $starts[0] -ge $ends[0])) {
+                throw "Malformed promptlings $name exclusion block in $path. Existing rules were not changed."
+            }
         }
     }
+    $path
+}
+function Set-ExclusionBlock([string]$Name, [string[]]$Rules) {
+    $lines = if (Test-Path -LiteralPath $exclude) { @(Get-Content -LiteralPath $exclude) } else { @() }
+    $kept = @()
+    $skip = $false
+    foreach ($line in $lines) {
+        if ($line -ceq "# promptlings $Name start") { $skip = $true }
+        if (-not $skip) { $kept += $line }
+        if ($line -ceq "# promptlings $Name end") { $skip = $false }
+    }
+    $kept += @("# promptlings $Name start") + $Rules + @("# promptlings $Name end")
+    [IO.File]::WriteAllText($exclude, ($kept -join "`n") + "`n")
+}
+function Set-Exclusions {
+    $null = New-Item -ItemType Directory -Force -Path (Split-Path $exclude)
+    $original = if (Test-Path -LiteralPath $exclude) { @(Get-Content -LiteralPath $exclude) } else { @() }
+    Set-ExclusionBlock personal @("/.claude/settings.local.json", "/CLAUDE.local.md")
+    if (-not $NoBmad) {
+        $rules = @("/_bmad/config.user.toml", "/_bmad/custom/*.user.toml", "/_bmad/render/", "/_bmad/**/__pycache__/", ".memlog.md")
+        $machinery = @("/_bmad/", "/_bmad-output/", "/.agents/skills/bmad-*/", "/.claude/skills/bmad-*/",
+            "/.github/skills/bmad-*/", "/.github/agents/bmad-*.agent.md")
+        $script:framework += $machinery
+        if (-not $SharedFrameworks) { $rules += $machinery }
+        Set-ExclusionBlock bmad $rules
+    }
+    if (-not $NoSpeckit) {
+        $rules = @("/.specify/feature.json", "/.specify/extensions/.cache/", "/.specify/extensions/.backup/",
+            "/.specify/extensions/*/local-config.yml", "/.specify/extensions/*/*-config.local.yml")
+        $machinery = @("/.specify/", "/specs/", "/.github/skills/speckit-*/", "/.claude/skills/speckit-*/",
+            "/.agents/skills/speckit-*/", "/.github/agents/speckit.*.agent.md",
+            "/.github/prompts/speckit.*.prompt.md", "/.claude/commands/speckit.*.md")
+        $script:framework += $machinery
+        if (-not $SharedFrameworks) {
+            $rules += $machinery
+            $context = if ($Integration -eq "copilot") { ".github/copilot-instructions.md" } else { "CLAUDE.md" }
+            # Only reserve a generic instruction file when the framework creates it.
+            foreach ($candidate in @(".github/copilot-instructions.md", "CLAUDE.md")) {
+                if ($original -ccontains "/$candidate" -or ($candidate -eq $context -and -not (Test-Path -LiteralPath (Join-Path $Project $candidate)))) {
+                    $rules += "/$candidate"
+                    $script:framework += "/$candidate"
+                }
+            }
+        }
+        Set-ExclusionBlock speckit $rules
+    }
+}
+function Test-Project {
+    $required = @()
+    if (-not $NoBmad) {
+        $required += @("_bmad/scripts/render_skill.py", "_bmad/_config/manifest.yaml", "_bmad/config.toml",
+            ".agents/skills/bmad-build/SKILL.md", ".claude/skills/bmad-build/SKILL.md")
+    }
+    if (-not $NoSpeckit) {
+        $directory = if ($Integration -eq "copilot") { ".github/skills" } else { ".claude/skills" }
+        $required += @(".specify/integration.json", "$directory/speckit-specify/SKILL.md")
+        if (-not $NoFleet) {
+            $required += @(".specify/extensions/fleet/extension.yml", ".specify/extensions/verify/extension.yml",
+                "$directory/speckit-fleet-run/SKILL.md", "$directory/speckit-fleet-review/SKILL.md", "$directory/speckit-verify-run/SKILL.md")
+        }
+    }
+    foreach ($relative in $required) {
+        if (-not (Test-Path -LiteralPath (Join-Path $Project $relative) -PathType Leaf)) {
+            throw "Framework installation is incomplete in ${Project}: $relative."
+        }
+    }
+    if ($SharedFrameworks) {
+        $samples = @()
+        if (-not $NoBmad) { $samples += "_bmad/config.toml" }
+        if (-not $NoSpeckit) { $samples += @(".specify/memory/constitution.md", "specs/001-example/spec.md") }
+        foreach ($relative in $samples) {
+            & git -C $Project check-ignore --no-index -q $relative
+            if ($LASTEXITCODE -eq 0) { throw "Shared framework path is ignored: $relative. Review existing Git exclusions." }
+        }
+        $global:LASTEXITCODE = 0
+        Write-Host "Shared framework files and artifacts are eligible for tracking. Nothing was staged or committed."
+        return
+    }
+    # Existing files expose rules, such as negations, that sample paths cannot.
+    $pathspecs = @($script:framework | ForEach-Object {
+        $rule = $_.TrimStart("/")
+        if ($rule.EndsWith("/")) { $rule += "**" }
+        ":(glob)$rule"
+    })
+    if ($pathspecs.Count) {
+        $leaks = @(Invoke-Native git -C $Project ls-files --others --exclude-standard -- @pathspecs)
+        if ($leaks.Count) {
+            throw "Local framework files are not ignored: $(($leaks | Select-Object -First 5) -join ', '). Review existing Git exclusions, including negations."
+        }
+    }
+    Write-Host "Framework machinery and generated artifacts are locally ignored. Nothing was staged or committed."
+}
+function Refresh-Path {
+    $paths = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+        [Environment]::GetEnvironmentVariable("Path", "User") + ";" + $env:PATH
+    $env:PATH = (($paths -split ";" | Where-Object { $_ } | Select-Object -Unique) -join ";")
 }
 
-if ($WithBmadBootstrap) {
-    foreach ($f in $bmadBootstrapFiles) {
-        if (Test-Path -LiteralPath $f) {
-            $stream = [IO.File]::OpenRead($f)
+$temporary = Join-Path ([IO.Path]::GetTempPath()) ("promptlings-" + [guid]::NewGuid())
+$null = New-Item -ItemType Directory -Path $temporary
+$framework = @()
+try {
+    $windows = $env:OS -eq "Windows_NT"
+    if (-not $NoDependencies -and -not $ProjectOnly -and -not $NoSystemPackages) {
+        if (-not $windows) { throw "Use install.sh on macOS and Ubuntu/Debian." }
+        if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
+            throw "Install Microsoft's App Installer (WinGet): https://aka.ms/getwinget . Then rerun."
+        }
+        $systemPackages = @("Python.Python.3.12", "OpenJS.NodeJS.LTS", "Git.Git", "GitHub.cli", "astral-sh.uv")
+        if (-not $NoHyperframes -or -not $NoDemo) { $systemPackages += "Gyan.FFmpeg" }
+        if (-not $NoDemo) {
+            $systemPackages += "oschwartz10612.Poppler"
+            if (-not (Get-Command code -ErrorAction SilentlyContinue)) { $systemPackages += "Microsoft.VisualStudioCode" }
+            if (-not (Get-Command soffice.com -ErrorAction SilentlyContinue)) { $systemPackages += "TheDocumentFoundation.LibreOffice" }
+        }
+        foreach ($package in $systemPackages) {
+            & winget.exe install --id $package --exact --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity
+            # WinGet reports an already-current installation as no applicable update.
+            if ($LASTEXITCODE -notin @(0, -1978335189)) { throw "WinGet failed ($LASTEXITCODE): $package" }
+        }
+        Refresh-Path
+    }
+    $python = Get-Command python.exe -ErrorAction SilentlyContinue
+    if (-not $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
+    if ($Project) { $exclude = Get-ProjectExclude }
+    if (-not $NoDependencies -and -not $ProjectOnly) {
+        foreach ($command in @("uv", "node", "npm.cmd", "git", "gh")) {
+            if (-not (Get-Command $command -ErrorAction SilentlyContinue)) { throw "Missing prerequisite: $command" }
+        }
+        if (-not $python) { throw "Python 3.11+ is required. Rerun without -NoSystemPackages to install it." }
+        Invoke-Native $python.Source -c "import sys; sys.exit(0 if sys.version_info >= (3, 11) else 1)"
+        Invoke-Native node -e "const [a,b]=process.versions.node.split('.').map(Number);if(a<22||(a===22&&b<20))throw Error('Node.js 22.20+ required')"
+        Invoke-Native git --version
+        Invoke-Native gh --version
+        $packages = @()
+        if (-not $NoSkills) { $packages += $pins.SKILLS_PACKAGE }
+        if (-not $NoBmad) { $packages += $pins.BMAD_PACKAGE }
+        if (-not $NoPlaywright) { $packages += $pins.PLAYWRIGHT_PACKAGE }
+        if (-not $NoHyperframes) { $packages += $pins.HYPERFRAMES_PACKAGE }
+        if ($packages.Count) { Invoke-Native npm.cmd install --global @packages }
+        if (-not $NoMemory) { Invoke-Native uv tool install --force --python 3.12 $pins.MEMORY_PACKAGE }
+        if (-not $NoSpeckit) { Invoke-Native uv tool install --force --python 3.12 $pins.SPECKIT_PACKAGE }
+        Invoke-Native uv tool update-shell
+        if ($windows) { Refresh-Path }
+        $toolBin = Invoke-Native uv tool dir --bin
+        $env:PATH = "$toolBin;$env:PATH"
+        if (-not $NoMemory) { Invoke-Native basic-memory --version }
+        if (-not $NoSpeckit) { Invoke-Native specify version }
+        if (-not $NoBmad) { Invoke-Native bmad-method.cmd --version }
+        if (-not $NoSkills) {
+            $env:DISABLE_TELEMETRY = "1"
+            $sources = @()
+            if (-not $NoMemory) { $sources += $pins.MEMORY_SKILLS }
+            if (-not $NoPlaywright) { $sources += $pins.PLAYWRIGHT_SKILLS }
+            if (-not $NoHyperframes) { $sources += $pins.HYPERFRAMES_SKILLS }
+            if (-not $NoDemo) { $sources += $pins.DEMOTIME_SKILLS, $pins.VSCODE_PLAYWRIGHT_SKILL }
+            foreach ($source in $sources) {
+                Invoke-Native skills.cmd add $source --global --skill "*" --yes --copy
+            }
+        }
+        if (-not $NoPlaywright) {
+            Invoke-Native playwright-cli.cmd install-browser chrome
+            Push-Location $temporary
             try {
-                $prefix = New-Object byte[] 4
-                $count = $stream.Read($prefix, 0, $prefix.Length)
-                $signature = [BitConverter]::ToString($prefix, 0, $count)
+                $session = "promptlings-install-$PID"
+                Invoke-Native playwright-cli.cmd "-s=$session" open about:blank
+                $title = Invoke-Native playwright-cli.cmd "-s=$session" eval "() => { document.title = 'promptlings'; return document.title; }" --raw
+                if (($title -join "`n").Trim().Trim('"') -ne "promptlings") { throw "Playwright CLI browser smoke check failed: $title" }
             }
-            finally { $stream.Dispose() }
-            if ($signature -match '^(FF-FE|FE-FF|00-00-FE-FF)') {
-                throw "UTF-16 or UTF-32 instruction file: $f. Convert it to UTF-8 before enabling BMAD bootstrap. Nothing was appended."
+            finally {
+                Invoke-Native playwright-cli.cmd "-s=$session" close
+                Pop-Location
             }
         }
-        if ((Test-Path -LiteralPath $f) -and
-            [IO.File]::ReadAllText($f).Contains($BmadBootstrapMarker)) {
-            Write-Host "  Already present in $f. Skipping."
-            continue
+        if (-not $NoHyperframes) {
+            Invoke-Native ffmpeg -version
+            Invoke-Native ffprobe -version
+            Invoke-Native hyperframes.cmd browser ensure
+            $report = (Invoke-Native hyperframes.cmd doctor --json) | ConvertFrom-Json
+            foreach ($name in @("FFmpeg", "FFprobe", "Chrome")) {
+                if (-not @($report.checks | Where-Object { $_.name -eq $name -and $_.ok }).Count) {
+                    throw "HyperFrames prerequisite failed: $name"
+                }
+            }
+            Invoke-Native npx.cmd --no-install hyperframes --version
         }
-        $startup = Join-Path (Split-Path $f -Parent) "skills\promptlings-bmad-bootstrap\startup.md"
-        $block = [IO.File]::ReadAllText($startup)
-        if ([string]::IsNullOrWhiteSpace($block) -or -not $block.Contains($BmadBootstrapMarker)) {
-            throw "Invalid BMAD startup block: $startup. Nothing was appended to $f."
-        }
-        [IO.File]::AppendAllText($f, "`n$block`n", [Text.UTF8Encoding]::new($false))
-        Write-Host "  Appended to $f"
-    }
-}
-
-Write-Host ""
-Write-Host "Installed $($selection.Count) agent(s). Restart your assistant to pick them up."
-
-# ----- read-side block, opt-in only -----
-
-function Set-ReadSide {
-    param([string]$InstructionFile, [string]$Block)
-
-    $start = '<!-- memory-manager-read-side-start -->'
-    $end = '<!-- memory-manager-read-side-end -->'
-    $blockText = $Block.Replace("`r`n", "`n").TrimEnd("`r", "`n")
-    $blockLines = $blockText -split '\r?\n'
-    $markerPattern = '(?m)^<!-- (session-handoff|memory-manager)-read-side-(start|end) -->\r?$'
-    $blockMarkers = [regex]::Matches($blockText, $markerPattern)
-    if ($blockLines[0] -ne $start -or $blockLines[-1] -ne $end -or $blockMarkers.Count -ne 2) {
-        throw "Invalid downloaded memory read-side block. $InstructionFile was not changed."
-    }
-
-    $original = ""
-    if (Test-Path -LiteralPath $InstructionFile) {
-        $original = [System.IO.File]::ReadAllText($InstructionFile)
-    }
-    $markers = [regex]::Matches($original, $markerPattern)
-    $openFamily = $null
-    foreach ($marker in $markers) {
-        $family = $marker.Groups[1].Value
-        if ($marker.Groups[2].Value -eq "start") {
-            if ($null -ne $openFamily) { throw "Nested memory markers in $InstructionFile. Repair them manually." }
-            $openFamily = $family
-        }
-        else {
-            if ($openFamily -ne $family) { throw "Unmatched memory markers in $InstructionFile. Repair them manually." }
-            $openFamily = $null
+        if (-not $NoDemo) {
+            $office = Join-Path $env:ProgramFiles "LibreOffice\program"
+            if (-not (Get-Command soffice.com -ErrorAction SilentlyContinue) -and (Test-Path (Join-Path $office "soffice.com"))) {
+                # LibreOffice does not add its program directory to PATH.
+                $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+                [Environment]::SetEnvironmentVariable("Path", (@($userPath, $office) | Where-Object { $_ }) -join ";", "User")
+                $env:PATH = "$env:PATH;$office"
+            }
+            Invoke-Native code.cmd --version
+            Invoke-Native code.cmd --install-extension $pins.DEMOTIME_EXTENSION
+            Invoke-Native soffice.com --version
+            Invoke-Native pdftoppm -v
+            Invoke-Native ffmpeg -version
         }
     }
-    if ($null -ne $openFamily) { throw "Unclosed memory marker in $InstructionFile. Repair it manually." }
-
-    $regions = [regex]::Matches($original, '(?ms)^<!-- (session-handoff|memory-manager)-read-side-start -->\r?\n.*?^<!-- \1-read-side-end -->\r?$(?:\n)?')
-    $result = New-Object System.Text.StringBuilder
-    $cursor = 0
-    $inserted = $false
-    foreach ($region in $regions) {
-        [void]$result.Append($original.Substring($cursor, $region.Index - $cursor))
-        if (-not $inserted) {
-            [void]$result.Append($blockText + "`n")
-            $inserted = $true
+    if ($Project) {
+        $Project = (Resolve-Path -LiteralPath $Project).Path
+        if (-not $NoBmad) {
+            $version = Invoke-Native bmad-method.cmd --version
+            if (($version -join "`n") -notmatch [regex]::Escape(($pins.BMAD_PACKAGE -split "@")[-1])) {
+                throw "BMAD version does not match the installer pin. Run the machine installer first."
+            }
         }
-        $cursor = $region.Index + $region.Length
+        if (-not $NoSpeckit) {
+            $version = Invoke-Native specify version
+            if (($version -join "`n") -notmatch [regex]::Escape(($pins.SPECKIT_PACKAGE -split "@v")[-1])) {
+                throw "Specify version does not match the installer pin. Run the machine installer first."
+            }
+        }
+        Set-Exclusions
+        if (-not $NoBmad -and -not (Test-Path (Join-Path $Project "_bmad"))) {
+            Invoke-Native bmad-method.cmd install --directory $Project --modules bmm --tools "github-copilot,claude-code" --yes
+        }
+        if (-not $NoSpeckit) {
+            Push-Location $Project
+            try {
+                if (-not (Test-Path .specify)) {
+                    $options = @()
+                    if ($Integration -eq "copilot") { $options += "--integration-options=--skills" }
+                    "" | & specify init --here --force --no-git --integration $Integration --ignore-agent-tools @options
+                    if ($LASTEXITCODE -ne 0) { throw "Spec Kit initialization failed ($LASTEXITCODE)." }
+                }
+                Invoke-Native specify integration list
+                if (-not $NoFleet) {
+                    foreach ($extension in @("fleet", "verify")) {
+                        if (-not (Test-Path ".specify/extensions/$extension/extension.yml")) {
+                            $url = $pins[($extension.ToUpperInvariant() + "_URL")]
+                            "y" | & specify extension add $extension --from $url
+                            if ($LASTEXITCODE -ne 0) { throw "$extension installation failed ($LASTEXITCODE)." }
+                        }
+                    }
+                }
+            }
+            finally { Pop-Location }
+        }
+        Test-Project
     }
-    [void]$result.Append($original.Substring($cursor))
-    if ($regions.Count -eq 0) {
-        if ($result.Length -gt 0 -and -not $original.EndsWith("`n")) { [void]$result.Append("`n") }
-        [void]$result.Append($blockText + "`n")
-    }
-    $updated = $result.ToString()
-    if ($updated -ceq $original) {
-        Write-Host "  Already current in $InstructionFile."
-        return
-    }
-    $dir = Split-Path $InstructionFile -Parent
-    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Force -Path $dir | Out-Null }
-    $tmp = "$InstructionFile.$([System.IO.Path]::GetRandomFileName())"
-    try {
-        [System.IO.File]::WriteAllText($tmp, $updated, (New-Object System.Text.UTF8Encoding($false)))
-        Move-Item -LiteralPath $tmp -Destination $InstructionFile -Force
-    }
-    finally {
-        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force }
-    }
-    Write-Host "  Updated managed memory instructions in $InstructionFile."
-}
-
-function Show-ReadSideEnableHint {
-    Write-Host "To enable it later, run:"
-    Write-Host "  irm $BaseUrl/install.ps1 -OutFile install.ps1"
-    Write-Host "  .\install.ps1 -Agents memory-manager -WithReadSide"
-    Write-Host "Or add it by hand: see Completion and setup instructions in"
-    Write-Host "  $BaseUrl/agents/context/memory-manager.agent.md"
-}
-
-if ($selectionHasMemoryManager) {
-    Write-Host "Legacy Session Handoff, Context Manager, or Memory Maintainer agent files are not removed."
-    Write-Host "After migration, review and retire obsolete agents manually. Run Memory Manager setup"
-    Write-Host "to configure Basic Memory projects and routing. The installer does not create them."
-    Write-Host ""
-    $proceedReadSide = $false
-
-    if ($WithReadSide) {
-        $proceedReadSide = $true
-    }
-    elseif ($interactive) {
-        Write-Host "Memory Manager has a companion read-side instruction for future sessions."
-        Write-Host "Enabling it installs or replaces managed memory blocks in:"
-        foreach ($f in $readSideFiles) { Write-Host "  $f" }
-        Write-Host ""
-        Write-Host "That block applies to EVERY future session in EVERY repository, not just this one. It"
-        Write-Host "replaces legacy handoff instructions, not the data. Migrate that data first."
-        Write-Host ""
-        $reply = Read-Host "Update it now? [y/N]"
-        $proceedReadSide = ("$reply").Trim() -match '^(y|Y|yes|Yes|YES)$'
-    }
-    else {
-        Write-Host "Skipping the memory-manager read-side block: it modifies a global instruction file"
-        Write-Host "that affects every future session in every repository, and there is no console here"
-        Write-Host "to confirm on."
-        Show-ReadSideEnableHint
-        $proceedReadSide = $false
-    }
-
-    if ($proceedReadSide) {
-        Write-Host ""
-        Write-Host "Fetching $ReadSidePath ..."
-        $readSideBlock = $null
+    if (-not $ProjectOnly) {
+        $taskName = "Promptlings Basic Memory"
+        if (-not (Get-Command npx.cmd -ErrorAction SilentlyContinue)) {
+            throw "Node.js npx is required to publish agents and register MCP servers."
+        }
+        $memoryCommand = $null
+        if (-not $NoMemory -and -not $NoDependencies) {
+            $memoryCommand = (Get-Command basic-memory -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+            if (-not $memoryCommand) { throw "basic-memory is not on PATH after installation." }
+            if (-not $NoStartup) {
+                # A previous run of this service would hold the memory port.
+                if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) { Stop-ScheduledTask -TaskName $taskName }
+                $probe = [Net.Sockets.TcpClient]::new()
+                try { $open = $probe.ConnectAsync("127.0.0.1", $MemoryPort).Wait(1000) } catch { $open = $false } finally { $probe.Dispose() }
+                if ($open) { throw "Memory port $MemoryPort is in use. Stop that listener or pass another port." }
+            }
+        }
+        $source = Join-Path $temporary "rulesync"
+        $null = New-Item -ItemType Directory -Force -Path (Join-Path $source "subagents")
+        $utf8 = [Text.UTF8Encoding]::new($false)
+        $download = Join-Path $temporary "asset.md"
+        foreach ($name in $Agents.Split(",")) {
+            Get-Asset $agentPaths[$name] $download
+            $text = [IO.File]::ReadAllText($download).Replace("`r`n", "`n")
+            if (-not $text.StartsWith("---`n")) { throw "Agent has no frontmatter: $($agentPaths[$name])" }
+            # rulesync skips sources without targets.
+            [IO.File]::WriteAllText((Join-Path $source "subagents\$name.md"), "---`ntargets: [`"*`"]`n" + $text.Substring(4), $utf8)
+        }
+        $memoryRule = "memory-manager" -in $Agents.Split(",") -and -not $NoReadSide -and -not $NoMemory
+        if ($memoryRule) {
+            Get-Asset agents/context/memory-manager-read-side.md $download
+            $block = [IO.File]::ReadAllText($download).Replace("`r`n", "`n")
+            if (-not $block.StartsWith("<!-- memory-manager-read-side-start -->`n") -or
+                -not $block.TrimEnd().EndsWith("<!-- memory-manager-read-side-end -->")) {
+                throw "Invalid downloaded memory read-side rule."
+            }
+            $null = New-Item -ItemType Directory -Force -Path (Join-Path $source "rules")
+            [IO.File]::WriteAllText((Join-Path $source "rules\promptlings-memory.md"),
+                "---`ntargets: [`"*`"]`nglobs: [`"**/*`"]`n---`n" + $block, $utf8)
+        }
+        Push-Location $source
         try {
-            $readSideBlock = (Invoke-WebRequest -Uri "$BaseUrl/$ReadSidePath" -UseBasicParsing).Content
+            Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t "*" -f subagents
+            # Only targets with a dedicated global rule file. Others share a root file rulesync would replace.
+            if ($memoryRule) {
+                Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t $pins.RULESYNC_RULE_TARGETS -f rules
+            }
         }
-        catch { throw "Failed to fetch $ReadSidePath. Global instructions were not changed. $($_.Exception.Message)" }
-        if ([string]::IsNullOrWhiteSpace($readSideBlock)) {
-            throw "Empty download for $ReadSidePath. Global instructions were not changed."
+        finally { Pop-Location }
+        if ($memoryCommand) {
+            $server = if ($NoStartup) { @($memoryCommand, "--args", "mcp") } else { @("http://127.0.0.1:$MemoryPort/mcp") }
+            Invoke-Native npx.cmd --yes $pins.ADD_MCP_PACKAGE @server -g -y -n basic-memory
         }
-        else {
-            foreach ($f in $readSideFiles) { Set-ReadSide -InstructionFile $f -Block $readSideBlock }
+        if ($memoryCommand -and -not $NoStartup) {
+            $action = New-ScheduledTaskAction -Execute $memoryCommand -Argument "mcp --transport streamable-http --host 127.0.0.1 --port $MemoryPort"
+            $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+            $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+            $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
+            $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+            Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+            Start-ScheduledTask -TaskName $taskName
+            $request = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"promptlings-installer","version":"1"}}}'
+            $ready = $false
+            $deadline = (Get-Date).AddSeconds(180)
+            while (-not $ready -and (Get-Date) -lt $deadline) {
+                try {
+                    $response = Invoke-WebRequest "http://127.0.0.1:$MemoryPort/mcp" -Method Post -Body $request -UseBasicParsing -TimeoutSec 2 `
+                        -ContentType "application/json" -Headers @{ Accept = "application/json, text/event-stream" }
+                    $ready = [Text.Encoding]::UTF8.GetString($response.RawContentStream.ToArray()) -match '"name": ?"basic[ _-]?memory"'
+                }
+                catch { $ready = $false }
+                if (-not $ready) { Start-Sleep -Seconds 1 }
+            }
+            if (-not $ready) { throw "Basic Memory did not become ready at 127.0.0.1:$MemoryPort. Inspect its scheduled task." }
         }
     }
-    elseif ($interactive -and (-not $WithReadSide)) {
-        Write-Host ""
-        Write-Host "Left your global instruction files untouched."
-        Show-ReadSideEnableHint
-    }
+    Write-Host "Installed selected components. Restart your terminal and assistant. Repository changes remain unstaged."
+}
+finally {
+    # Browser diagnostics can contain nested files and belong only to this invocation.
+    Remove-Item -LiteralPath $temporary -Recurse
 }
