@@ -14,6 +14,18 @@ You have two jobs, in this order:
 Most candidate findings will not clear that bar. That is the desired outcome, not a failure. But the walkthrough ships regardless - a PR with zero findings still gets a full narrative, because the reviewer still needs to understand the diff.
  
 This skill assumes the human running it has high taste and high cost-of-being-wrong. They would rather receive three sharp comments than ten plausible ones. They would rather see "nothing flagged" than padded output. They will catch invented claims, hedging, and stock metaphors and they will be unhappy about it.
+
+## Review snapshot
+
+Before mapping the diff, bind the review to one target:
+
+- For a PR, record the repository, PR identifier, and immutable base/head commit IDs. Require the checkout HEAD and cited source to match the reviewed head. For a branch comparison, resolve the selected base/head refs to commit IDs. Compute the comparison from those recorded IDs, not a default base branch or a moving ref. Stop on a mismatch without switching branches or overwriting local work.
+- For a file or local-change review, record the selected paths and whether the target includes committed, staged, unstaged, or untracked content. Retain the selected patch and relevant source content in existing scratch notes or review artifacts. Do not mix unselected local edits into evidence for a committed target.
+- For a supplied patch without repository access, use the supplied patch and source context as the snapshot. Mark live freshness and repository-only checks unavailable and produce a local draft only.
+
+Before presenting the final review, recheck the selected commits, patch, and cited source content. For a PR, also refresh its provider-resolved base/head IDs. If any reviewed content changed, mark the draft stale and stop until it is reviewed again against the new snapshot. A failed freshness check is unresolved, not evidence that the target is unchanged.
+
+Immediately before any external posting, repeat the freshness check and require the PR to remain open. Post only with user authorization. A saved draft or an earlier approval never permits posting findings against a changed target.
  
 ## Pipeline
  
@@ -31,11 +43,11 @@ Open each file in the workspace at those ranges, not just the diff fragment. The
 
 For renames and deletes, check whether call sites elsewhere in the repo were updated. A rename in isolation is a finding waiting to happen.
 
-Pull CI status via `gh pr checks` (or equivalent). Record which checks passed, which failed, and coverage if reported. You will weave this into the narrative at the end, not as a separate section.
+For a PR, pull CI status via `gh pr checks` (or equivalent). Record which checks passed, which failed, and coverage if reported. Mark unavailable checks explicitly. For a branch, file, or supplied-patch review without a PR, PR-only checks are not applicable. Weave available results into the narrative, not a separate section.
 
 ### 1b. Map the runway
 
-You cannot review a PR properly without understanding what shaped it. Before generating findings, spend five minutes on context:
+Before generating findings, gather the target's available context. For a PR:
 
 - Read the PR description and linked issues. Note what prior work the author references.
 - Run `gh pr list --state merged --author <author> --search <relevant path or keyword> --limit 5` to find the 2-3 recent merged PRs that cleared the runway for this one.
@@ -46,7 +58,7 @@ Record:
 - Which issues this PR closes vs. which it deliberately punts.
 - Any explicit "this lands after X" sequencing the author documented.
 
-This context feeds the narrative. It does NOT create findings on code outside the diff. The rule remains: pre-existing code is someone else's problem. But the narrative can and should explain *why* the diff is shaped the way it is, and that explanation often lives in the PRs that landed last week.
+For other targets, use the supplied purpose and relevant repository context. Record missing context without inventing PR history. This context feeds the narrative, not findings on code outside the diff. It explains why the change is shaped this way.
  
 ### 2. Generate candidate findings
 
@@ -96,7 +108,11 @@ For each finding that passed step 3, before you draft the comment:
  
 Vocabulary banned in shipped comments and writeups: likely, probably, maybe, perhaps, possibly, seems, appears, might, could be, sort of, kind of, in theory. If a claim needed one of these to feel safe, it was not verified. Either verify it, drop it, or convert it to an explicit question to the author.
 
-Also banned when discussing judgment calls: reasonable, acceptable, fair, makes sense, understandable, justified, appropriate. These are all ways of replacing the reviewer's judgment with your own. State the mechanical consequence and stop.
+Also banned when discussing judgment calls: reasonable, acceptable, fair, makes sense, understandable, justified, appropriate. These are all ways of replacing the reviewer's judgment with your own.
+
+For judgment calls and any non-finding investigated in the narrative, end with the conclusion and its mechanical consequence for the reader, then stop. Explain the code, not your filtering decision. This does not create a channel for dropped candidates: discuss the behavior only when it helps the reader understand the diff, never to inventory rejected findings.
+
+Process labels about the review itself are banned in shipped comments and writeups, including "noted, not flagged", "not a finding", and equivalent labels for your filtering decision. For example, end a ruled-out reachability check with: "Both branches are unreachable today. That changes the moment anything assigns `DoneReasonConnectionClosed`."
  
 The cost of one verification call is small. The cost of one confidently wrong comment is large. The arithmetic is the same every time.
  
@@ -157,6 +173,8 @@ A candidate qualifies as an implicit bet if:
 2. There exists a defensible alternative the author did not take.
 3. The choice has real consequences (cost to reverse, failure mode shape, who bears the operational burden).
 
+A changed operating policy that materially trades freshness, latency, resource cost, or availability needs a reviewer-owned question when the supplied context does not establish the acceptable operating point. Staying within a contract's permitted range does not settle that choice. Include a qualifying bet in the appendix even when the narrative already explains it.
+
 Format (one block after design forks in the appendix):
 
 ````markdown
@@ -204,7 +222,7 @@ Required:
  
 ### 7. Red-team your own drafts
  
-Before any output ships, re-read every draft (findings, top-level if any, design forks) with one judgment per item. If you have access to a fresh-context subagent, use it; if not, do the pass yourself, but treat it as a separate read with a separate goal.
+Before any output ships, re-read every draft (findings, top-level if any, design forks, implicit bets) with one judgment per item. If you have access to a fresh-context subagent, use it. If not, do the pass yourself, but treat it as a separate read with a separate goal.
  
 Per item, choose exactly one:
  
@@ -298,13 +316,13 @@ One sentence per architectural layer, nested in dependency order. The reader who
 
 Stop at the layer where the explanation is complete. Most PRs are 3-5 layers. A 16,000-line PR might be 7. A 200-line PR is 1-2 and probably doesn't need this appendix at all.
 
-If the survivor set is empty across all channels, say so in one sentence after the narrative.
+Before declaring the survivor set empty, check the narrative's operating-policy tradeoffs against step 5c. If the narrative identifies a changed operating policy whose acceptable operating point is unspecified, include its implicit-bet entry and reviewer-owned question, even when no defects survive. Say the survivor set is empty only when all channels are empty.
 
 "Nothing flagged" is a real result and a publishable one. Do not pad it with "the code is well-structured and follows good practices": that's grading, and you don't grade.
  
 ## Narrative writeup (always produced)
 
-The narrative writeup is always produced. It is never optional, never gated behind a minimum finding count, never refused. Its purpose is to build the human reviewer's complete mental model of the PR: how the pieces fit together, what the code is doing at each layer, what judgment calls were made, and what the change is betting on. The reviewer will read this writeup to understand the PR deeply before (or instead of) reading every file themselves. Write for that reader.
+Use the opening and narrative-first structure in Output format. Build the reviewer's mental model of how the pieces fit together, the judgment calls, and what the change is betting on, including when no findings survive.
 
 **This is not a summary.** A summary tells you what happened. The writeup walks you through the architecture of the change so you understand it well enough to have opinions about it. It is the difference between "the service now uses the new framework" (useless) and a thorough walk through how the lifespan constructs the credential, builds the runner, binds the timeout into the transport factory, hands it to the caller, and what happens at each layer when a request arrives (useful).
 
@@ -377,7 +395,7 @@ Rules:
 
   **The snark and the no-editorializing rule are not in conflict.** The ban on editorializing governs design tradeoffs and judgment calls: never tell the reviewer whether a bet is correct, whether a fork was resolved the right way, or whether a tradeoff is acceptable. The snark governs execution quality: architecture, dead code, commit hygiene, naming, test coverage, and the ratio of line count to substance are all yours to characterize as sharply as the facts support. Never judge the bet; freely judge the craft.
 
-  Constraints: the snark is always *specific* (pointed at actual code, actual line counts, actual decisions in this diff) and *earned* (factually true, verifiable by reading the diff). It never punches down at the author as a person. This rule protects the person, not the code. The code, the architecture, the test strategy, the naming, the commit messages, the file structure: all fair game and should be treated as such. A model that pulls snark out of a code observation because it feels "unkind" has misread this rule. The code, the architecture, the process, the commit history, the file names, the test coverage, the CI config - all fair game. The human who wrote it - never.
+  Constraints: the snark is specific to verified code, line counts, or decisions in this diff. Code, architecture, process, commit history, file names, tests, and CI are fair subjects. The author as a person is not.
 
   **Research the humor. This is mandatory, not optional.** Before drafting the narrative, spend real time on this. Do not rely on generic wit you can generate from memory. Actually spend time searching online for relevant anecdotes, memes, historical parallels, famous quotes, industry war stories, or cultural references that connect to the specific domain or pattern in this PR. A PR about service discovery? Find the relevant XKCD, or the famous AWS outage story, or the Chesterton's fence parable. A PR about auth? There's a decade of "we'll add auth later" horror stories. A PR about over-abstraction? Find the real blog post where someone ripped out their DI framework. The reference must be *apt* (it illuminates something true about this code) and *specific* (not a vague gesture at "distributed systems are hard"). Use web_fetch / research tools to find these. Budget real time on this - a perfectly placed cultural reference is worth more than three paragraphs of original prose because it gives the reader a mental anchor they already trust.
 
@@ -405,9 +423,9 @@ The writeup is the highest-risk output this skill produces, because the failure 
  
 Done means:
 
-1. Every changed file in the diff was opened in the workspace and read at the relevant range, not just skimmed in the diff.
-2. The runway was mapped: PR description, linked issues, and relevant prior merged PRs were checked for context.
-3. CI status was pulled and reported in the narrative.
+1. The reviewed source was read at the relevant ranges, using the workspace or complete supplied source context, not just isolated diff fragments.
+2. The runway was mapped using available context. PR-specific history and issue checks were performed when applicable, with unavailable context identified.
+3. Available CI status was reported in the narrative, with unavailable or inapplicable PR-only checks identified.
 4. Every shipped comment has a verified mechanism, a single concrete ask, and no banned vocabulary or style.
 5. Every shipped design fork has a real choice, an axis of difference, and a settling criterion.
 6. Every shipped implicit bet has a "question to answer" and states the mechanical tradeoff without editorializing.
@@ -416,6 +434,7 @@ Done means:
 9. The narrative writeup was produced, covers judgment calls and implicit bets, quotes the lines that embody them, and cleared the writeup-specific red-team pass.
 10. The triage map was produced (if >10 files changed).
 11. The "diff in N layers" appendix was produced (if >500 lines changed).
+12. The review snapshot is still current, or the output is explicitly a supplied-patch local draft with live freshness unavailable. External posting satisfies the separate freshness, open-PR, and authorization gates.
  
 If any of the above is unclear, the skill is not done. Do not ship and call it done.
 

@@ -1,88 +1,62 @@
 ---
 name: reasoning-first-narration
-description: Write or revise natural spoken explanations for technical demos, walkthroughs, presentations, and complex topics. Preserve the source's reasoning, evidence, meaning, and attribution; avoid generic AI presenter language, fabricated spontaneity, and unnecessary explanation. Supports human delivery, teleprompters, and TTS.
+description: Write or revise natural spoken explanations for technical demos, walkthroughs, presentations, and complex topics. Preserve the source's reasoning, evidence, meaning, and attribution. Supports human delivery, teleprompters, and TTS.
 ---
 
 # Reasoning-First Narration
 
-**Clear thinking. Natural delivery.**
+## Goal and shared foundation
 
-## Purpose and priority
+Produce conversational narration that develops an explanation instead of announcing conclusions. Use supplied material, an approved storyboard, verified research, or directly observable evidence. Do not imitate a named person's mannerisms without a supplied voice profile.
 
-Produce clear, conversational narration that develops an explanation instead of merely announcing conclusions. Preserve what makes an argument intelligible: its evidence, distinctions, causal links, and limits. Do not imitate a named person's mannerisms unless the user supplies a separate voice profile.
+Before drafting or revising, invoke `reasoning-first-writing` through the host's skill mechanism and apply its evidence, meaning, attribution, reasoning, and language rules. If the host has no invocation mechanism, read that skill's `SKILL.md` through its documented discovery location. Do not assume a personal installation path or reach through another skill's private resources. If the foundation cannot be loaded, report the missing dependency and stop the writing task. Do not install it or silently substitute another editor.
 
-Apply priorities in this order: **source accuracy > intended meaning and attribution > visual or argument sequence > delivery requirements > style**. A lower-priority rule never overrides a higher one.
+The shared foundation owns those rules. This skill adds spoken delivery and visual truth. Apply priorities in this order: source accuracy, intended meaning and attribution, visual or argument sequence, delivery requirements, style. A lower priority never overrides a higher one.
 
-## Gates (apply in order; fail closed)
+## Gates
 
-**G1. Inputs, scope, and mode**
+### G1. Inputs, scope, and mode
 
-- If the user supplies a draft, keep each sentence unchanged unless it violates a gate or the requested edit requires changing it. If producing a new script, use the supplied source material, storyboard, verified research, or directly observable evidence. If the task requires factual material that is unavailable, request that material instead of inventing it.
-- Select exactly one delivery mode: explicit TTS takes precedence, then explicit teleprompter, then explicit human live/recorded narration. Otherwise use human recorded narration. Use only that mode's formatting rules.
-- Identify the intended audience from the request or source. Do not invent audience background, expertise, motivations, or prior knowledge.
+- For an edit, retain effective existing wording unless the requested change or a failed rule calls for revision. For new narration, use available source material. Request missing factual material instead of inventing it.
+- Select exactly one delivery mode: explicit TTS first, then explicit teleprompter, then explicit human live or recorded narration. Otherwise use human recorded narration. Apply only that mode's formatting.
+- Derive the audience from the request or source. Keep its established knowledge level. Add explanations when the user requests teaching or comprehension depends on them, rather than explaining every technical term.
 
-**G2. Evidence**
+### G2. Visual and argument fidelity
 
-- For **each new factual assertion**, record internally: the claim, exact supporting source passage or observation, and its locator (file/line, URL, code location, screenshot region, or supplied text). A filename or citation without supporting content does not pass. Existing claims in a rewrite are preserved at their original confidence level, not independently certified.
-- Source code establishes what is implemented, not what successfully ran. Logs/tests establish only observed outcomes. Numbers require measurements. Design motives require an explicit rationale. A plan is not a delivered result; a partial test is not end-to-end proof.
-- If a claim is stronger than the evidence, narrow it. If no supported version remains, remove it. Never fill missing steps with plausible behavior, motives, performance, or outcomes.
+- Preserve the source's meaningful argument sequence, constraints, uncertainty, ownership, and technical distinctions under the foundation's rules.
+- Describe an action, visual, state change, or result as shown only when the source or storyboard confirms viewers will see it. Describe other supported information as background.
+- Never narrate an unsupplied click, navigation step, or mouse movement. Storyboard intent is not proof that capture succeeded. Do not turn planned footage or unexecuted tests into observed results.
+- Use ordinary spoken language and exact domain terms. Do not add jokes, filler words, artificial hesitations, manufactured doubts, or a personality performance.
 
-**G3. Meaning and attribution**
+### G3. Spoken text
 
-- Preserve explicit constraints, numbers, comparisons, negations, uncertainties, technical distinctions, causal claims, and sequence. Do not remove them merely to make the narration shorter or smoother.
-- Preserve existing first-person and team attribution. When ownership is unstated, name the component or process instead of inventing an author or a team.
-- Mention an action, visual, state change, or result as *shown* only if the source or storyboard confirms that viewers will see it. Otherwise describe it as background, not on-screen evidence.
+- Limit spoken sentences to 40 words. Split longer sentences at a real clause boundary without losing meaning.
+- Do not produce three consecutive one-sentence paragraphs or repeat the same opening transition in adjacent paragraphs.
+- Never repeat the same sentence after ignoring case, punctuation, and spacing. Also apply the foundation's semantic repetition check. Append a recap only when requested.
+- Exclude these strings from spoken output, case-insensitive: "let's dive in", "without further ado", "it is important to note", "we will now proceed", "this functionality enables", "game-changing", "seamless", and "in summary". Replace filler with precise information rather than a synonym of the cliche.
+- Do not insert a scripted "Not X, not Y, but Z" sequence. Retain contrasts when both sides and their relevance are supported.
 
-**G4. Explanation, not performance**
+### G4. Delivery
 
-- Develop the source's actual reasoning: the relevant observation, its supported explanation, and its consequence where evidenced. Preserve a documented distinction or tradeoff, including both sides and why it matters. Never manufacture a contrast, objection, false start, correction, doubt, or conclusion.
-- If no causal link is supported, describe the observable facts without adding one. Do not force every passage into a problem/contrast/solution template.
-- Explain a basic concept only if the user asks for teaching, the source calls for that explanation, or the user supplies a required definition. Otherwise keep the original assumed knowledge level. Do not invent a tutorial for terms merely mentioned in the source.
-- Use ordinary spoken English and exact domain terminology. Prefer concrete actions, mechanisms, and outcomes over abstract promotional labels. Do not add filler words, jokes, artificial hesitations, or a personality performance.
+- **TTS:** Return spoken words only. No bracketed cues, fake hesitations, SSML, or engine-specific controls unless the user specifies the engine and its supported syntax.
+- **Teleprompter:** Return spoken words only, without bracketed cues.
+- **Human live or recording:** Use `[beat]`, `[pause]`, or `[hold for screen]` only when explicitly requested by the user or storyboard. Otherwise use punctuation and paragraph breaks.
+- Pronunciation preparation, synthesis, timing, capture, captions, and audio review remain with the production owner. When it requests separate canonical captions and spoken-form fields, apply spoken-only rules to the spoken field and preserve the requested container. Never feed unrequested editing notes to TTS.
 
-**G5. Text rules**
+### G5. Release
 
-- Limit spoken sentences to **40 words**. Split longer ones at a real clause boundary, preserving their meaning.
-- Do not produce **three consecutive one-sentence paragraphs**. Do not repeat the same opening transition in adjacent paragraphs.
-- Never repeat the same sentence after ignoring case, punctuation, and spacing. Do not append a recap that adds no information unless the user explicitly asks for a recap.
-- Exclude these strings from spoken output, case-insensitive: "let's dive in," "without further ado," "it is important to note," "we will now proceed," "this functionality enables," "game-changing," "seamless," or "in summary." Replace them with precise information, not synonyms of the same cliche.
-- Do not insert a scripted "Not X, not Y, but Z" sequence. Use contrasts only when both sides are explicitly supported by G2.
-- Never narrate an unsupplied click, navigation step, or mouse movement.
+Recheck the shared foundation against the evidence, then visual and argument sequence, spoken text, and delivery. Revise any failure and check again. Remove or qualify unsupported claims. If that leaves no usable explanation, return the specific missing evidence instead of a fabricated script.
 
-**G6. Delivery**
+Return the complete ready-to-use narration without a preface or change report unless requested. A missing dependency or blocking evidence gap is a task-status response, not spoken script.
 
-- **TTS:** Output spoken words only; no bracketed stage cues, fake hesitations, SSML, or engine-specific controls. Use markup only when the user specifies the engine and its supported syntax.
-- **Teleprompter:** Output spoken words only, without bracketed cues.
-- **Human recording/live:** Use [beat], [pause], or [hold for screen] only when the user or storyboard explicitly requests that timing or action. Otherwise use ordinary punctuation and paragraph breaks.
+## Examples
 
-**G7. Release**
-
-- Recheck G2 factual support, G3 meaning and attribution, sequence, G5 text rules, and G6 delivery, in that order. Meeting G5 and G6 does not show that claims follow from their sources; G2 and G3 must be checked against the evidence.
-- Revise any failure, then rerun the checks. If a required factual claim has no support, remove or qualify it. If that leaves no usable explanation, state the specific missing evidence rather than inventing a script.
-- Return the complete ready-to-use narration without a preface unless the user requests commentary, evidence notes, or another format.
-
-## Examples (style illustrations, not factual sources)
-
-**Preserve a real distinction**
-
-Generic: "The asynchronous architecture improves efficiency by decoupling report generation from the interface."
-
-Reasoning-first: "The issue isn't only how long the report takes. We also don't want the request waiting for the whole process. The interface submits the job, the worker generates the report, and the result is tracked separately. That's why the work is split up."
-
-Use that contrast only when the supplied material establishes both the waiting problem and the architectural rationale.
-
-**Explain what actually changes**
+These illustrate style, not evidence for a new script.
 
 Generic: "This update enhances robustness through improved error handling."
 
-Reasoning-first: "This change moves the validation earlier. Invalid requests are rejected before they reach the next stage, rather than failing later in the process."
-
-**Preserve an existing speaker's voice**
+Grounded alternative, only when supported: "This change moves validation earlier. Invalid requests are rejected before they reach the next stage, rather than failing later in the process."
 
 Source: "I kept implementing while the earlier part was still under review, mainly because we had a short window to get the demo working."
 
-Acceptable: Keep unchanged.
-
-Unacceptable: "Due to timeline constraints, implementation proceeded in parallel with the review process."
-
-Examples demonstrate style only. Never reuse their technical claims without G2 support.
+Keep that voice when no change is needed. Do not recast it as "Due to timeline constraints, implementation proceeded in parallel with the review process."
