@@ -9,6 +9,7 @@ SKILLS_PACKAGE=skills@1.7.4
 RULESYNC_PACKAGE=rulesync@42.0.0
 RULESYNC_RULE_TARGETS=antigravity-cli,antigravity-ide,augmentcode,bob,claudecode,cline,codebuddy,copilot,copilotcli,devin,firebender,grokcli,kilo,kiro-cli,kiro-ide,mimocode,omp,opencode,qoder,qwencode,tabnine,zoocode
 ADD_MCP_PACKAGE=add-mcp@2.6.0
+MCP_REMOTE_PACKAGE=mcp-remote@0.15.2
 PLAYWRIGHT_PACKAGE=@playwright/cli@0.1.22
 HYPERFRAMES_PACKAGE=hyperframes@0.8.202
 DIFF2HTML_PACKAGE=diff2html-cli@5.2.15
@@ -477,7 +478,7 @@ if [ "$project_only" -eq 0 ]; then
       server=("$memory_command" --args mcp)
       transport=stdio
     fi
-    # add-mcp aborts if any detected client lacks the transport, so pass only the detected clients that support it.
+    # add-mcp aborts if any detected client lacks the transport. Stdio-only clients reach the HTTP server through mcp-remote.
     add_mcp="$temporary/add-mcp"
     npm install --prefix "$add_mcp" --no-save --no-fund --no-audit "$ADD_MCP_PACKAGE"
     cat >"$temporary/detect-mcp-clients.mjs" <<'EOF'
@@ -485,17 +486,30 @@ const [library, transport] = process.argv.slice(2);
 const { pathToFileURL } = await import("node:url");
 const { agents, detectGlobalAgents } = await import(pathToFileURL(library).href);
 for (const agent of await detectGlobalAgents()) {
-  if (agents[agent].supportedTransports.includes(transport)) console.log(agent);
+  const supported = agents[agent].supportedTransports;
+  if (supported.includes(transport)) console.log(`direct ${agent}`);
+  else if (transport === "http" && supported.includes("stdio")) console.log(`bridge ${agent}`);
   else console.error(`Skipping ${agents[agent].displayName}: no ${transport} MCP support.`);
 }
 EOF
     clients="$(node "$temporary/detect-mcp-clients.mjs" "$add_mcp/node_modules/add-mcp/dist/lib.js" "$transport")"
-    targets=()
-    for client in $clients; do targets+=(-a "$client"); done
-    if [ "${#targets[@]}" -gt 0 ]; then
-      node "$add_mcp/node_modules/add-mcp/dist/index.js" "${server[@]}" -g -y -n basic-memory "${targets[@]}"
-    else
-      printf 'Warning: no MCP client supporting %s was detected. basic-memory was not registered.\n' "$transport" >&2
+    add_mcp_cli="$add_mcp/node_modules/add-mcp/dist/index.js"
+    direct=()
+    bridge=()
+    while read -r mode client; do
+      case "$mode" in
+        direct) direct+=(-a "$client") ;;
+        bridge) bridge+=(-a "$client") ;;
+      esac
+    done <<<"$clients"
+    if [ "${#direct[@]}" -gt 0 ]; then
+      node "$add_mcp_cli" "${server[@]}" -g -y -n basic-memory "${direct[@]}"
+    fi
+    if [ "${#bridge[@]}" -gt 0 ]; then
+      node "$add_mcp_cli" "$MCP_REMOTE_PACKAGE" --args "http://127.0.0.1:$memory_port/mcp" -g -y -n basic-memory "${bridge[@]}"
+    fi
+    if [ -z "$clients" ]; then
+      printf 'Warning: no supported MCP client was detected. basic-memory was not registered.\n' >&2
     fi
   fi
   if [ -n "$memory_command" ] && [ "$startup" -eq 1 ]; then
@@ -537,7 +551,8 @@ EOF
     esac
     request='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"promptlings-installer","version":"1"}}}'
     ready=0
-    for _ in $(seq 180); do
+    # A cold start after reinstalling can take several minutes.
+    for _ in $(seq 600); do
       if curl -fsS --max-time 2 -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
         -d "$request" "http://127.0.0.1:$memory_port/mcp" 2>/dev/null | grep -Eiq '"name": ?"basic[ _-]?memory"'; then
         ready=1; break
