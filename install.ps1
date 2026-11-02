@@ -36,11 +36,31 @@ $BaseUrl = if ($env:PROMPTLINGS_SOURCE) { $env:PROMPTLINGS_SOURCE.TrimEnd("/") }
 $agentPaths = [ordered]@{
     "the-nitcracker" = "agents/code-review/the-nitcracker.agent.md"
     "pr-walkthrough" = "agents/code-review/pr-walkthrough.agent.md"
+    "sparring-partner" = "agents/reasoning/sparring-partner.agent.md"
     "memory-manager" = "agents/context/memory-manager.agent.md"
+    "artifact-inspector" = "agents/maintenance/artifact-inspector.agent.md"
     "technical-demo" = "agents/media/technical-demo.agent.md"
     "bmad-orchestrator" = "agents/orchestration/bmad-orchestrator.agent.md"
     "speckit-flow" = "agents/orchestration/speckit-flow.agent.md"
 }
+$skillFiles = @(
+    "skills/artifact-inspection/SKILL.md"
+    "skills/artifact-inspection/scripts/check_artifacts.py"
+    "skills/design-analysis/SKILL.md"
+    "skills/design-writing/SKILL.md"
+    "skills/design-writing/references/adr.md"
+    "skills/design-writing/references/design-document.md"
+    "skills/design-writing/references/sources.md"
+    "skills/design-writing/references/specification.md"
+    "skills/design-writing/references/tickets.md"
+    "skills/evidence-verification/SKILL.md"
+    "skills/reasoning-first-narration/SKILL.md"
+    "skills/reasoning-first-writing/SKILL.md"
+    "skills/reasoning-first-writing/references/sources.md"
+    "skills/review-ensemble/SKILL.md"
+    "skills/technical-investigation/SKILL.md"
+    "skills/test-analysis/SKILL.md"
+)
 $allAgents = $agentPaths.Keys -join ","
 if ($List) { $allAgents.Split(","); return }
 if ($Help) {
@@ -63,6 +83,7 @@ if ($ProjectOnly -and -not $Project) { throw "-ProjectOnly requires -Project." }
 if ($SharedFrameworks -and -not $Project) { throw "-SharedFrameworks requires -Project." }
 if ($Project -and $NoDependencies) { throw "-Project cannot be combined with -NoDependencies." }
 Write-Host "Agents: $Agents"
+Write-Host "Promptlings skills: all bundled skills, published with the agents."
 Write-Host "Default: WinGet prerequisites, uv applications, global npm applications and published global skills."
 Write-Host "Opt-outs: memory=$NoMemory bmad=$NoBmad speckit=$NoSpeckit playwright=$NoPlaywright hyperframes=$NoHyperframes demo=$NoDemo"
 Write-Host "Basic Memory: native user-login startup=$(-not $NoStartup), loopback port=$MemoryPort."
@@ -387,19 +408,22 @@ try {
             [IO.File]::WriteAllText((Join-Path $source "rules\promptlings-memory.md"),
                 "---`ntargets: [`"*`"]`nglobs: [`"**/*`"]`n---`n" + $block, $utf8)
         }
-        $features = "subagents"
+        $skillSources = $skillFiles
         if ("memory-manager" -in $Agents.Split(",") -and -not $NoMemory) {
-            $features = "subagents,skills"
-            Get-Asset skills/promptlings-memory-capture/SKILL.md $download
+            $skillSources += "skills/promptlings-memory-capture/SKILL.md"
+        }
+        foreach ($path in $skillSources) {
+            $target = Join-Path $source $path
+            $null = New-Item -ItemType Directory -Force -Path (Split-Path $target)
+            if ((Split-Path $path -Leaf) -ne "SKILL.md") { Get-Asset $path $target; continue }
+            Get-Asset $path $download
             $text = [IO.File]::ReadAllText($download).Replace("`r`n", "`n")
-            if (-not $text.StartsWith("---`n")) { throw "Memory capture skill has no frontmatter." }
-            $skill = Join-Path $source "skills\promptlings-memory-capture"
-            $null = New-Item -ItemType Directory -Force -Path $skill
-            [IO.File]::WriteAllText((Join-Path $skill "SKILL.md"), "---`ntargets: [`"*`"]`n" + $text.Substring(4), $utf8)
+            if (-not $text.StartsWith("---`n")) { throw "Skill has no frontmatter: $path" }
+            [IO.File]::WriteAllText($target, "---`ntargets: [`"*`"]`n" + $text.Substring(4), $utf8)
         }
         Push-Location $source
         try {
-            Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t "*" -f $features
+            Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t "*" -f "subagents,skills"
             # Only targets with a dedicated global rule file. Others share a root file rulesync would replace.
             if ($memoryRule) {
                 Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t $pins.RULESYNC_RULE_TARGETS -f rules

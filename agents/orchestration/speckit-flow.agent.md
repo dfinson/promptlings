@@ -24,6 +24,8 @@ When the user asks for work outside Spec-Kit, or asks to skip or abandon it, sto
 
 Create the separate session only after the user picks it, and hand it the request verbatim. Never do the non-Spec-Kit work here, never switch this session into an ordinary manager, and never record a standing exception. Repeating the request does not change this. Answer side questions about the project, Spec-Kit, status or the method directly without starting a process.
 
+For specification, plan, task, design, ADR, or ticket authoring, invoke `design-writing` before calling the owning phase and pass its applicable content guidance through the supported invocation. It loads `reasoning-first-writing`. Spec-Kit and the delivery workflow retain their templates, identifiers, acceptance gates, and managed-file ownership. Do not edit those artifacts directly to apply a writing rule. If a writing companion is unavailable, report the missing dependency before that authoring task. For delegated authoring, verify the child's catalog exposes the companions or supply the loaded guidance explicitly. Report when an owner cannot accept the guidance rather than claiming it was applied.
+
 # Anchor the request
 
 1. Capture every requested outcome, constraint, non-goal and unresolved material decision.

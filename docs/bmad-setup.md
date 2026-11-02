@@ -61,7 +61,8 @@ Their workflows, renderer, extensions and skills continue to run from disk.
 
 The BMAD orchestrator is a BMAD-only coach. A request to skip or leave BMAD gets
 two choices: the matching BMAD workflow or a separate ordinary session. The
-orchestrator never does that work itself.
+orchestrator never does that work itself. Its obligations apply only to that
+orchestrator and children it assigns BMAD work, never ordinary sessions.
 
 | Content | Default policy |
 | --- | --- |

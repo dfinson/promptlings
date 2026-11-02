@@ -20,15 +20,35 @@ HYPERFRAMES_SKILLS=https://github.com/heygen-com/hyperframes/tree/618c486734b3cb
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_url="${PROMPTLINGS_SOURCE:-https://raw.githubusercontent.com/dfinson/promptlings/main}"
-all_agents="the-nitcracker,pr-walkthrough,memory-manager,technical-demo,bmad-orchestrator,speckit-flow"
+all_agents="the-nitcracker,pr-walkthrough,sparring-partner,memory-manager,artifact-inspector,technical-demo,bmad-orchestrator,speckit-flow"
 agent_path() {
   case "$1" in
     the-nitcracker|pr-walkthrough) echo "agents/code-review/$1.agent.md" ;;
+    sparring-partner) echo "agents/reasoning/$1.agent.md" ;;
     memory-manager) echo "agents/context/$1.agent.md" ;;
+    artifact-inspector) echo "agents/maintenance/$1.agent.md" ;;
     technical-demo) echo "agents/media/$1.agent.md" ;;
     bmad-orchestrator|speckit-flow) echo "agents/orchestration/$1.agent.md" ;;
   esac
 }
+skill_files=(
+  skills/artifact-inspection/SKILL.md
+  skills/artifact-inspection/scripts/check_artifacts.py
+  skills/design-analysis/SKILL.md
+  skills/design-writing/SKILL.md
+  skills/design-writing/references/adr.md
+  skills/design-writing/references/design-document.md
+  skills/design-writing/references/sources.md
+  skills/design-writing/references/specification.md
+  skills/design-writing/references/tickets.md
+  skills/evidence-verification/SKILL.md
+  skills/reasoning-first-narration/SKILL.md
+  skills/reasoning-first-writing/SKILL.md
+  skills/reasoning-first-writing/references/sources.md
+  skills/review-ensemble/SKILL.md
+  skills/technical-investigation/SKILL.md
+  skills/test-analysis/SKILL.md
+)
 agents="$all_agents"
 yes=0 dry_run=0 dependencies=1 system_packages=1 skills=1 readside=1
 memory=1 startup=1 bmad=1 speckit=1 playwright=1 hyperframes=1 demo=1
@@ -88,6 +108,7 @@ memory_port=$((10#$memory_port))
 [ -z "$project" ] || [ "$dependencies" -eq 1 ] || fail "--project cannot be combined with --no-dependencies."
 
 echo "Agents: $agents"
+echo "Promptlings skills: all bundled skills, published with the agents."
 echo "Tools: memory=$memory bmad=$bmad speckit=$speckit playwright=$playwright hyperframes=$hyperframes demo=$demo"
 echo "Default: native prerequisites, uv applications, global npm applications and published global skills."
 echo "Basic Memory: native user-login startup=$startup, loopback port=$memory_port."
@@ -419,15 +440,16 @@ if [ "$project_only" -eq 0 ]; then
     mkdir -p "$rulesync_source/rules"
     { printf -- '---\ntargets: ["*"]\nglobs: ["**/*"]\n---\n'; cat "$temporary/read-side.lf"; } > "$rulesync_source/rules/promptlings-memory.md"
   fi
-  features=subagents
-  if [[ ",$agents," == *,memory-manager,* ]] && [ "$memory" -eq 1 ]; then
-    features=subagents,skills
-    mkdir -p "$rulesync_source/skills/promptlings-memory-capture"
-    fetch skills/promptlings-memory-capture/SKILL.md "$temporary/capture.md"
-    [ "$(head -n 1 "$temporary/capture.md" | tr -d '\r')" = --- ] || fail "Memory capture skill has no frontmatter."
-    { printf -- '---\ntargets: ["*"]\n'; tail -n +2 "$temporary/capture.md" | tr -d '\r'; } > "$rulesync_source/skills/promptlings-memory-capture/SKILL.md"
-  fi
-  (cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t '*' -f "$features")
+  skill_sources=("${skill_files[@]}")
+  if [[ ",$agents," == *,memory-manager,* ]] && [ "$memory" -eq 1 ]; then skill_sources+=(skills/promptlings-memory-capture/SKILL.md); fi
+  for path in "${skill_sources[@]}"; do
+    mkdir -p "$(dirname "$rulesync_source/$path")"
+    if [ "$(basename "$path")" != SKILL.md ]; then fetch "$path" "$rulesync_source/$path"; continue; fi
+    fetch "$path" "$temporary/skill.md"
+    [ "$(head -n 1 "$temporary/skill.md" | tr -d '\r')" = --- ] || fail "Skill has no frontmatter: $path"
+    { printf -- '---\ntargets: ["*"]\n'; tail -n +2 "$temporary/skill.md" | tr -d '\r'; } > "$rulesync_source/$path"
+  done
+  (cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t '*' -f subagents,skills)
   if [ "$memory_rule" -eq 1 ]; then
     # Only targets with a dedicated global rule file. Others share a root file rulesync would replace.
     (cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t "$RULESYNC_RULE_TARGETS" -f rules)
