@@ -241,6 +241,10 @@ PRs are welcome. Keep each agent's responsibility and judgment boundary explicit
 
 The new reasoning and inspection prompts and review-ensemble procedure are original Promptlings text. Design influences include [HVE Core](https://github.com/microsoft/hve-core) (independent critique, evidence-based arbitration, artifact review, and requirements-led authoring) and the existing Promptlings review agents. HVE's report-specific workflows and framework-specific contracts are not imported. The workflow formalizes the established Promptlings reviewers plus Copilot's built-in rubber-duck without copying that built-in agent or silently replacing it.
 
+When changing an agent, keep its purpose, output channels, approval boundaries, and host capabilities intact unless the change explicitly targets them. Remove repeated rules only when their required behavior remains covered, resolve contradictory instructions, and state what happens when evidence is missing. These maintenance criteria adapt the [HVE Builder requirements](https://github.com/microsoft/hve-core/blob/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/hve-core/hve-builder/references/requirements-catalog.md), without adding an HVE dependency.
+
+For review-agent changes, run the three [review regression cases](tests/review-regressions.md) and assess the actual output against their expected behavior. Keep the Claude plugin copies synchronized using its [documented adaptations](plugins/promptlings-code-review/README.md#relationship-to-the-source-files). Markdown lint checks formatting, not review accuracy.
+
 ## License
 
 Apache 2.0. See [LICENSE](LICENSE).

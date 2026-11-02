@@ -62,7 +62,8 @@ Produce two complementary results:
 - Purpose and constraints.
 - Reasoning trajectory, accepted decisions and rationale, important alternatives, and discoveries.
 - Outcome and actual verification evidence, including failures and unverified claims.
-- Remaining work, unresolved questions, blockers, and a concrete next action, when any exists.
+- Current activity, remaining work, unresolved questions, blockers, and a proposed next useful action, when any exists.
+- Continuation boundary: the user-authorized scope, the next action's approval status and source, and decisions the user has retained. Keep recommendations separate from authorization and mark unknown approval status explicitly.
 - Source/coverage and workspace identity sufficient to assess staleness.
 
 Use ordinary notes tagged `session-checkpoint` unless an existing suitable type is configured. Do not reinterpret the project graph's responsibility-transfer `Handoff` entity as a conversation checkpoint.
@@ -86,6 +87,8 @@ If a later write fails, report what was saved, what remains unsaved, and the che
 Retrieve applicable environment guidance and narrowly relevant project knowledge. For continuation, match session/workstream and repository identity before choosing checkpoints. Search active and blocked tasks as well. Do not pick the newest repository-wide checkpoint when several independent sessions exist.
 
 Read the selected checkpoint and its relevant canonical references with bounded traversal. Verify branch, commit, paths, and other changeable assumptions against the current workspace. Surface material mismatches instead of silently applying stale next steps. Memory is context, not authority or permission to execute work beyond the current request.
+
+On resume, distinguish the proposed next action from its approval status and preserve unresolved user-owned decisions. Check the recorded boundary against the current request. A plan-only checkpoint does not authorize implementation, and a prior approval does not widen the current request. Ask for approval only when the next action requires it and the current request does not provide it. Keep this information in the existing checkpoint, not a separate state file or schema.
 
 ## Reconciliation and maintenance
 

@@ -55,6 +55,8 @@ class ArtifactTests(unittest.TestCase):
         self.assertNotIn("git fetch origin", source)
         self.assertNotIn(".copilot-tracking/pr/review", source)
         self.assertNotIn("Save a report only", source)
+        self.assertNotIn("existing scratch notes or walkthrough artifacts", source)
+        self.assertNotIn("Post only with user authorization", source)
 
     def test_required_metadata_and_agent_ban(self):
         for content, expected in (
