@@ -39,7 +39,7 @@ Pick the specialist by what the viewer needs to see:
 - **The diff itself:** render the hunk to HTML with [diff2html](https://github.com/rtfpessoa/diff2html) (MIT) and hold or compose it.
 - **Before-to-after morph:** animate the two versions with Shiki's [`@shikijs/magic-move`](https://github.com/shikijs/shiki/tree/main/packages/magic-move) (MIT) inside a `hyperframes` composition.
 
-Handle a missing specialist as `cue-synced-demo` describes, and never hand-roll a substitute.
+Handle a missing installed specialist as `cue-synced-demo` describes, and never hand-roll a substitute. diff2html and `@shikijs/magic-move` are libraries, not installed specialists: add them as dependencies of the production workspace when the chosen view needs them.
 
 ## Produce and deliver
 
