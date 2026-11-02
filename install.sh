@@ -11,6 +11,7 @@ RULESYNC_RULE_TARGETS=antigravity-cli,antigravity-ide,augmentcode,bob,claudecode
 ADD_MCP_PACKAGE=add-mcp@2.6.0
 PLAYWRIGHT_PACKAGE=@playwright/cli@0.1.22
 HYPERFRAMES_PACKAGE=hyperframes@0.8.202
+DIFF2HTML_PACKAGE=diff2html-cli@5.2.15
 MEMORY_SKILLS=https://github.com/basicmachines-co/basic-memory/tree/ac064607a688720cf44037e27ea55552bc5edede/skills
 PLAYWRIGHT_SKILLS=https://github.com/microsoft/playwright-cli/tree/b85c7a736bb473bf55b584e54a09ffa698d6d871/skills/playwright-cli
 DEMOTIME_EXTENSION=eliostruyf.vscode-demo-time@2.4.0
@@ -34,6 +35,7 @@ agent_path() {
 skill_files=(
   skills/artifact-inspection/SKILL.md
   skills/artifact-inspection/scripts/check_artifacts.py
+  skills/cue-synced-demo/SKILL.md
   skills/design-analysis/SKILL.md
   skills/design-writing/SKILL.md
   skills/design-writing/references/adr.md
@@ -42,12 +44,15 @@ skill_files=(
   skills/design-writing/references/specification.md
   skills/design-writing/references/tickets.md
   skills/evidence-verification/SKILL.md
+  skills/narrative-transitions/SKILL.md
+  skills/pr-video/SKILL.md
   skills/reasoning-first-narration/SKILL.md
   skills/reasoning-first-writing/SKILL.md
   skills/reasoning-first-writing/references/sources.md
   skills/review-ensemble/SKILL.md
   skills/technical-investigation/SKILL.md
   skills/test-analysis/SKILL.md
+  skills/tts-setup/SKILL.md
 )
 agents="$all_agents"
 yes=0 dry_run=0 dependencies=1 system_packages=1 skills=1 readside=1
@@ -309,6 +314,7 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
   [ "$bmad" -eq 0 ] || packages+=("$BMAD_PACKAGE")
   [ "$playwright" -eq 0 ] || packages+=("$PLAYWRIGHT_PACKAGE")
   [ "$hyperframes" -eq 0 ] || packages+=("$HYPERFRAMES_PACKAGE")
+  [ "$demo" -eq 0 ] || packages+=("$DIFF2HTML_PACKAGE")
   if [ "${#packages[@]}" -gt 0 ]; then
     if [ "$os" = Linux ] && [ "$system_packages" -eq 1 ]; then
       sudo --preserve-env=npm_config_registry,NPM_CONFIG_REGISTRY npm install --global "${packages[@]}"
@@ -364,6 +370,7 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
     soffice --version
     pdftoppm -v
     ffmpeg -version
+    diff2html --version
   fi
 fi
 

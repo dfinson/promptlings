@@ -98,7 +98,7 @@ The default installation includes:
 | Spec-Kit | A normal uv tool installation, with upstream repository initialization and the promptlings delivery workflow |
 | Playwright | A normal global npm installation, its published skill, the CLI's default Chrome browser and a real CLI browser check |
 | HyperFrames | A normal global npm installation, published skills, rendering browser and native FFmpeg/FFprobe |
-| Demo capture | VS Code (when missing) with the pinned [Demo Time](https://github.com/estruyf/vscode-demo-time) extension and its skills, the hve-core [vscode-playwright](https://github.com/microsoft/hve-core) skill, LibreOffice, Poppler and FFmpeg, each checked by command |
+| Demo capture | VS Code (when missing) with the pinned [Demo Time](https://github.com/estruyf/vscode-demo-time) extension and its skills, the hve-core [vscode-playwright](https://github.com/microsoft/hve-core) skill, LibreOffice, Poppler, FFmpeg and the [diff2html](https://github.com/rtfpessoa/diff2html-cli) CLI, each checked by command |
 
 Supported system recipes are Windows with WinGet, macOS with Homebrew, and
 Ubuntu 24.04+ or Debian 12+ on x86_64 with APT. The Linux browser recipe uses
@@ -166,7 +166,7 @@ PowerShell execution-policy change is made.
 | `--no-startup` / `-NoStartup` | Use client-launched MCP instead of installing login startup |
 | `--no-playwright` / `-NoPlaywright` | Skip Playwright CLI, its browser check and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` / `-NoHyperframes` | Skip HyperFrames, media binaries and skills |
-| `--no-demo` / `-NoDemo` | Skip the demo capture tools: VS Code, Demo Time, vscode-playwright, LibreOffice and Poppler |
+| `--no-demo` / `-NoDemo` | Skip the demo capture tools: VS Code, Demo Time, vscode-playwright, LibreOffice, Poppler and diff2html |
 | `--no-skills` / `-NoSkills` | Skip external published skills, not promptlings skills or repository-local framework integrations |
 | `--no-readside` / `-NoReadSide` | Skip the global memory read-side rule |
 | `--project PATH` / `-Project PATH` | Initialize an existing Git repository through official framework installers |
@@ -252,6 +252,17 @@ Technical Demo invokes narration before script work. BMAD Orchestrator and Spec-
 `design-analysis` still evaluates technical choices. Design writing expresses them without pretending that better prose resolves a missing decision. `no-ai-slop` remains an optional editor, not a dependency, and its change report or contrast-removal defaults do not override fidelity or spoken-only output. Existing review agents, Memory Manager, and Artifact Inspector keep their own output and workflow contracts. They can use the writing foundation for an explicitly requested drafting task without making it a prerequisite for every review or memory operation.
 
 The [shared writing sources](skills/reasoning-first-writing/references/sources.md) and [design-writing sources](skills/design-writing/references/sources.md) describe the research and its limits. Manual installs must copy both a specialist's complete directory and `reasoning-first-writing`. The Claude review plugin still contains only its two review agents, not these skills.
+
+### Demo production skills
+
+| Skill | Responsibility |
+| --- | --- |
+| [narrative-transitions](skills/narrative-transitions/SKILL.md) | Join sections, scenes, slides, or steps so the piece plays as one line of thought |
+| [tts-setup](skills/tts-setup/SKILL.md) | Choose and accept a synthetic voice, honoring a recorded default before installed alternatives |
+| [cue-synced-demo](skills/cue-synced-demo/SKILL.md) | Record real browser or editor events, including human-style code walkthroughs, and bind narration to them |
+| [pr-video](skills/pr-video/SKILL.md) | Find the story in a pull request and plan a video that shows the change |
+
+Technical Demo or any agent producing a demo can load these alongside `reasoning-first-narration`. The installer publishes them with the other promptlings skills.
 
 ### Sparring Partner
 
