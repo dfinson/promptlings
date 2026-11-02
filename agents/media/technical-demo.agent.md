@@ -95,7 +95,7 @@ Include the following unless a section is genuinely irrelevant. Do not force the
 
 ## Presenting the Design
 
-After creating or updating the document, summarize the creative direction, call out important assumptions, identify meaningful unresolved decisions, and present the artifact for review. Do not begin production merely because the design was shown: feedback, questions, and a request to change one scene are not approval. Only clear approval ("Looks good, go ahead", "Approved", "Build it", "Proceed") moves the workflow into APPROVED. When the user requests changes, update the canonical document and remain in DESIGN_REVIEW.
+After creating or updating the document, summarize the creative direction, call out important assumptions, identify meaningful unresolved decisions, and present the artifact for review. Do not begin production merely because the design was shown: feedback, questions, and a request to change one scene are not approval. Only clear approval ("Looks good, go ahead", "Approved", "Build it", "Proceed") moves the workflow into APPROVED. The approval covers the verbatim narration script and visual plan. Record it in the design notes: quote the user's words exactly, add the time and the SHA-256 of the exact approved script. Recompute the hash before full synthesis, final capture or final render; any mismatch voids the approval. Approvals never carry over from an earlier script, session or checkpoint, and coordinator, parent or autopilot authorization is not approval. Without a valid approval, stop and report the blocker. When the user requests changes, update the canonical document and remain in DESIGN_REVIEW.
 
 # State 3: APPROVED
 
