@@ -23,7 +23,7 @@ There are no private Python or Node distributions, copied media executables,
 temporary framework template repositories, global BMAD skill promotion or
 installer-owned command wrappers.
 
-Use the [component opt-outs](../README.md#installer-options) to omit components.
+Use the [component opt-outs](installation.md#installer-options) to omit components.
 `--no-system-packages` or `-NoSystemPackages` uses existing prerequisites.
 Python 3.11+ is still required for profile configuration in prompts-only mode.
 
