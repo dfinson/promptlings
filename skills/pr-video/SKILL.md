@@ -36,10 +36,10 @@ Summarize mechanical churn such as renames, formatting and generated files in on
 Pick the specialist by what the viewer needs to see:
 
 - **Code in its editor:** a human-style walkthrough that navigates the file tree to the changed file, applies the change in place from base to head and follows definitions, captured as `cue-synced-demo` describes. Walk into surrounding code the change relies on the same way.
-- **The diff itself:** render the hunk to HTML with [diff2html](https://github.com/rtfpessoa/diff2html) (MIT) and hold or compose it.
-- **Before-to-after morph:** animate the two versions with Shiki's [`@shikijs/magic-move`](https://github.com/shikijs/shiki/tree/main/packages/magic-move) (MIT) inside a `hyperframes` composition.
+- **The diff itself:** render the hunk to HTML with the installed `diff2html` CLI from [diff2html-cli](https://github.com/rtfpessoa/diff2html-cli) (MIT) and hold or compose it.
+- **Before-to-after morph:** animate the two versions with Shiki's [`@shikijs/magic-move`](https://github.com/shikijs/shiki/tree/main/packages/magic-move) (MIT) inside a `hyperframes` composition, loaded from a version-pinned CDN URL the way compositions load their other runtime libraries.
 
-Handle a missing installed specialist as `cue-synced-demo` describes, and never hand-roll a substitute. diff2html and `@shikijs/magic-move` are libraries, not installed specialists: add them as dependencies of the production workspace when the chosen view needs them.
+Handle a missing specialist as `cue-synced-demo` describes, and never hand-roll a substitute.
 
 ## Produce and deliver
 

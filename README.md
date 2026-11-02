@@ -98,7 +98,7 @@ The default installation includes:
 | Spec-Kit | A normal uv tool installation, with upstream repository initialization and the promptlings delivery workflow |
 | Playwright | A normal global npm installation, its published skill, the CLI's default Chrome browser and a real CLI browser check |
 | HyperFrames | A normal global npm installation, published skills, rendering browser and native FFmpeg/FFprobe |
-| Demo capture | VS Code (when missing) with the pinned [Demo Time](https://github.com/estruyf/vscode-demo-time) extension and its skills, the hve-core [vscode-playwright](https://github.com/microsoft/hve-core) skill, LibreOffice, Poppler and FFmpeg, each checked by command |
+| Demo capture | VS Code (when missing) with the pinned [Demo Time](https://github.com/estruyf/vscode-demo-time) extension and its skills, the hve-core [vscode-playwright](https://github.com/microsoft/hve-core) skill, LibreOffice, Poppler, FFmpeg and the [diff2html](https://github.com/rtfpessoa/diff2html-cli) CLI, each checked by command |
 
 Supported system recipes are Windows with WinGet, macOS with Homebrew, and
 Ubuntu 24.04+ or Debian 12+ on x86_64 with APT. The Linux browser recipe uses
@@ -166,7 +166,7 @@ PowerShell execution-policy change is made.
 | `--no-startup` / `-NoStartup` | Use client-launched MCP instead of installing login startup |
 | `--no-playwright` / `-NoPlaywright` | Skip Playwright CLI, its browser check and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` / `-NoHyperframes` | Skip HyperFrames, media binaries and skills |
-| `--no-demo` / `-NoDemo` | Skip the demo capture tools: VS Code, Demo Time, vscode-playwright, LibreOffice and Poppler |
+| `--no-demo` / `-NoDemo` | Skip the demo capture tools: VS Code, Demo Time, vscode-playwright, LibreOffice, Poppler and diff2html |
 | `--no-skills` / `-NoSkills` | Skip external published skills, not promptlings skills or repository-local framework integrations |
 | `--no-readside` / `-NoReadSide` | Skip the global memory read-side rule |
 | `--project PATH` / `-Project PATH` | Initialize an existing Git repository through official framework installers |

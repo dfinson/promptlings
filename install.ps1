@@ -22,6 +22,7 @@ $pins = @{
     ADD_MCP_PACKAGE = "add-mcp@2.6.0"
     PLAYWRIGHT_PACKAGE = "@playwright/cli@0.1.22"
     HYPERFRAMES_PACKAGE = "hyperframes@0.8.202"
+    DIFF2HTML_PACKAGE = "diff2html-cli@5.2.15"
     MEMORY_SKILLS = "https://github.com/basicmachines-co/basic-memory/tree/ac064607a688720cf44037e27ea55552bc5edede/skills"
     PLAYWRIGHT_SKILLS = "https://github.com/microsoft/playwright-cli/tree/b85c7a736bb473bf55b584e54a09ffa698d6d871/skills/playwright-cli"
     DEMOTIME_EXTENSION = "eliostruyf.vscode-demo-time@2.4.0"
@@ -273,6 +274,7 @@ try {
         if (-not $NoBmad) { $packages += $pins.BMAD_PACKAGE }
         if (-not $NoPlaywright) { $packages += $pins.PLAYWRIGHT_PACKAGE }
         if (-not $NoHyperframes) { $packages += $pins.HYPERFRAMES_PACKAGE }
+        if (-not $NoDemo) { $packages += $pins.DIFF2HTML_PACKAGE }
         if ($packages.Count) { Invoke-Native npm.cmd install --global @packages }
         if (-not $NoMemory) { Invoke-Native uv tool install --force --python 3.12 $pins.MEMORY_PACKAGE }
         if (-not $NoSpeckit) { Invoke-Native uv tool install --force --python 3.12 $pins.SPECKIT_PACKAGE }
@@ -333,6 +335,7 @@ try {
             Invoke-Native soffice.com --version
             Invoke-Native pdftoppm -v
             Invoke-Native ffmpeg -version
+            Invoke-Native diff2html.cmd --version
         }
     }
     if ($Project) {
