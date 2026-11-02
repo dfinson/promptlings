@@ -232,6 +232,18 @@ function Refresh-Path {
         [Environment]::GetEnvironmentVariable("Path", "User") + ";" + $env:PATH
     $env:PATH = (($paths -split ";" | Where-Object { $_ } | Select-Object -Unique) -join ";")
 }
+# Document rendering needs either Microsoft Word or LibreOffice.
+function Get-WordPath {
+    foreach ($hive in @("HKLM:", "HKCU:")) {
+        $key = "$hive\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\Winword.exe"
+        $path = (Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue).'(default)'
+        if ($path -and (Test-Path -LiteralPath $path)) { return $path }
+    }
+}
+function Test-LibreOffice {
+    [bool](Get-Command soffice.com -ErrorAction SilentlyContinue) -or
+        (Test-Path (Join-Path $env:ProgramFiles "LibreOffice\program\soffice.com"))
+}
 
 $temporary = Join-Path ([IO.Path]::GetTempPath()) ("promptlings-" + [guid]::NewGuid())
 $null = New-Item -ItemType Directory -Path $temporary
@@ -248,7 +260,7 @@ try {
         if (-not $NoDemo) {
             $systemPackages += "oschwartz10612.Poppler"
             if (-not (Get-Command code -ErrorAction SilentlyContinue)) { $systemPackages += "Microsoft.VisualStudioCode" }
-            if (-not (Get-Command soffice.com -ErrorAction SilentlyContinue)) { $systemPackages += "TheDocumentFoundation.LibreOffice" }
+            if (-not (Get-WordPath) -and -not (Test-LibreOffice)) { $systemPackages += "TheDocumentFoundation.LibreOffice" }
         }
         foreach ($package in $systemPackages) {
             & winget.exe install --id $package --exact --source winget --accept-package-agreements --accept-source-agreements --disable-interactivity
@@ -332,7 +344,9 @@ try {
             }
             Invoke-Native code.cmd --version
             Invoke-Native code.cmd --install-extension $pins.DEMOTIME_EXTENSION
-            Invoke-Native soffice.com --version
+            if (Get-Command soffice.com -ErrorAction SilentlyContinue) { Invoke-Native soffice.com --version }
+            elseif ($word = Get-WordPath) { Write-Host "Document rendering: Microsoft Word at $word." }
+            else { throw "Document rendering needs Microsoft Word or LibreOffice." }
             Invoke-Native pdftoppm -v
             Invoke-Native ffmpeg -version
             Invoke-Native diff2html.cmd --version

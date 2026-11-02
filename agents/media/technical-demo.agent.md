@@ -126,7 +126,7 @@ The human-readable Markdown design remains the source of approved creative inten
 
 # State 4: ENVIRONMENT_PREP
 
-Before full production, verify the approved scenes work with the installed toolchain. The promptlings installer owns Python, Node.js, Playwright CLI and its browser, HyperFrames, FFmpeg, VS Code with Demo Time, vscode-playwright, LibreOffice, Poppler and their upstream skills. Assume these are installed. Do not install or repair the machine, reconstruct setup instructions or delegate dependency provisioning to another agent.
+Before full production, verify the approved scenes work with the installed toolchain. The promptlings installer owns Python, Node.js, Playwright CLI and its browser, HyperFrames, FFmpeg, VS Code with Demo Time, vscode-playwright, Word or LibreOffice, Poppler and their upstream skills. Assume these are installed. Do not install or repair the machine, reconstruct setup instructions or delegate dependency provisioning to another agent.
 
 **Scope preparation to the production.** Start the subject application, establish demo data and authentication, select the approved voice and assets, and rehearse the planned captures. Provider credentials, licensed assets and a chosen narration model are production-specific inputs, not machine installation chores.
 
