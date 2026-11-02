@@ -159,7 +159,8 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ] && [ "$system_packages
       casks=()
       if [ "$demo" -eq 1 ]; then
         command -v code >/dev/null 2>&1 || [ -d "/Applications/Visual Studio Code.app" ] || casks+=(visual-studio-code)
-        command -v soffice >/dev/null 2>&1 || [ -d /Applications/LibreOffice.app ] || casks+=(libreoffice)
+        # Document rendering needs either Microsoft Word or LibreOffice.
+        command -v soffice >/dev/null 2>&1 || [ -d /Applications/LibreOffice.app ] || [ -d "/Applications/Microsoft Word.app" ] || casks+=(libreoffice)
       fi
       [ "${#casks[@]}" -eq 0 ] || brew install --cask "${casks[@]}"
       brew link --force node@24
@@ -175,7 +176,8 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ] && [ "$system_packages
       sudo apt-get update
       system_packages_list=(ca-certificates curl git gh python3 python3-venv)
       [ "$hyperframes" -eq 0 ] && [ "$demo" -eq 0 ] || system_packages_list+=(ffmpeg)
-      [ "$demo" -eq 0 ] || system_packages_list+=(libreoffice-writer libreoffice-impress poppler-utils)
+      [ "$demo" -eq 0 ] || system_packages_list+=(poppler-utils)
+      [ "$demo" -eq 0 ] || command -v soffice >/dev/null 2>&1 || system_packages_list+=(libreoffice-writer libreoffice-impress)
       sudo apt-get install -y "${system_packages_list[@]}"
       if [ "$demo" -eq 1 ] && ! command -v code >/dev/null 2>&1; then
         curl -fsSL "https://update.code.visualstudio.com/latest/linux-deb-x64/stable" -o "$temporary/code.deb"
@@ -367,7 +369,13 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
     fi
     code --version
     code --install-extension "$DEMOTIME_EXTENSION"
-    soffice --version
+    if command -v soffice >/dev/null 2>&1; then
+      soffice --version
+    elif [ -d "/Applications/Microsoft Word.app" ]; then
+      echo "Document rendering: Microsoft Word."
+    else
+      fail "Document rendering needs Microsoft Word or LibreOffice."
+    fi
     pdftoppm -v
     ffmpeg -version
     diff2html --version

@@ -98,7 +98,7 @@ The default installation includes:
 | Spec-Kit | A normal uv tool installation, with upstream repository initialization and the promptlings delivery workflow |
 | Playwright | A normal global npm installation, its published skill, the CLI's default Chrome browser and a real CLI browser check |
 | HyperFrames | A normal global npm installation, published skills, rendering browser and native FFmpeg/FFprobe |
-| Demo capture | VS Code (when missing) with the pinned [Demo Time](https://github.com/estruyf/vscode-demo-time) extension and its skills, the hve-core [vscode-playwright](https://github.com/microsoft/hve-core) skill, LibreOffice, Poppler, FFmpeg and the [diff2html](https://github.com/rtfpessoa/diff2html-cli) CLI, each checked by command |
+| Demo capture | VS Code (when missing) with the pinned [Demo Time](https://github.com/estruyf/vscode-demo-time) extension and its skills, the hve-core [vscode-playwright](https://github.com/microsoft/hve-core) skill, LibreOffice when neither Word nor LibreOffice is present, Poppler, FFmpeg and the [diff2html](https://github.com/rtfpessoa/diff2html-cli) CLI, each checked by command |
 
 Supported system recipes are Windows with WinGet, macOS with Homebrew, and
 Ubuntu 24.04+ or Debian 12+ on x86_64 with APT. The Linux browser recipe uses
@@ -111,9 +111,10 @@ On Linux, the recipe uses NodeSource's Node.js 24 APT setup and Astral's officia
 uv installer. Run the scripts as your normal user. Native package installation
 can request elevation. The Linux browser recipe installs Google's Chrome
 package through APT, including its system libraries, whenever Playwright or
-HyperFrames is selected. VS Code and LibreOffice are skipped when their commands
-are already present. On Windows the installer adds LibreOffice's program directory
-to the user PATH because its package does not. Package-manager failures stop the installation.
+HyperFrames is selected. VS Code is skipped when its command is already present. Document rendering needs
+Microsoft Word or LibreOffice, so LibreOffice is installed only when neither is found.
+On Windows the installer adds LibreOffice's program directory to the user PATH because
+its package does not. Package-manager failures stop the installation.
 
 Python applications use standard uv tool locations. Node applications use the
 configured global npm location, so commands such as `npx hyperframes` resolve the
