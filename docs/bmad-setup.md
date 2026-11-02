@@ -43,7 +43,7 @@ Omit `-ProjectOnly` or `--project-only` to install the machine toolchain and
 initialize the repository in one invocation.
 
 The scripts invoke the official BMAD installer in that repository, then Spec Kit
-and its Fleet/Verify extensions. Copilot uses the upstream skills integration.
+and adds the promptlings delivery workflow. Copilot uses the upstream skills integration.
 Choose Claude's integration with `-Integration claude` or `--integration claude`.
 BMAD installs integrations for both hosts.
 
@@ -58,6 +58,10 @@ Framework machinery and generated documents are working material for delivery,
 not default additions to implementation commits. The initializer installs the
 official frameworks normally and excludes their files locally before installation.
 Their workflows, renderer, extensions and skills continue to run from disk.
+
+The BMAD orchestrator is a BMAD-only coach. A request to skip or leave BMAD gets
+two choices: the matching BMAD workflow or a separate ordinary session. The
+orchestrator never does that work itself.
 
 | Content | Default policy |
 | --- | --- |

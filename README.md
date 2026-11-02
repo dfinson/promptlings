@@ -15,8 +15,8 @@ Focused custom agents for code review, session continuity, technical demos, and 
 | [PR Walkthrough](agents/code-review/pr-walkthrough.agent.md) | A narrative map of a PR before reviewing it: architecture, important files, design forks, and implicit bets. |
 | [Memory Manager](agents/context/memory-manager.agent.md) | Capture a session's purpose, reasoning, decisions, and continuation state in Basic Memory, then recall and maintain scoped knowledge. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
-| [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Conduct BMAD delivery through installed workflows, with scope preservation and evidence-backed acceptance. |
-| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | Anchor every change in Spec-Kit specification, plan, and tasks, then use only the additional phases and Fleet capabilities that add value. |
+| [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | A BMAD-only coach: every delivery runs through installed BMAD workflows, and work outside BMAD goes to a separate session. |
+| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | A Spec-Kit-only coach: anchored spec, plan, and tasks, implementation through the implement and converge loop, and the gated delivery workflow on request. |
 
 ## Install
 
@@ -63,7 +63,7 @@ The default installation includes:
 | Git and GitHub CLI | Native packages and public command checks |
 | Basic Memory | A normal uv tool installation, published memory skills, MCP registration and user-login startup |
 | BMAD | A normal global npm installation, with project-local skills installed during repository initialization |
-| Spec-Kit and Fleet | A normal uv tool installation, with upstream repository initialization and extension installation |
+| Spec-Kit | A normal uv tool installation, with upstream repository initialization and the promptlings delivery workflow |
 | Playwright | A normal global npm installation, its published skill, the CLI's default Chrome browser and a real CLI browser check |
 | HyperFrames | A normal global npm installation, published skills, rendering browser and native FFmpeg/FFprobe |
 | Demo capture | VS Code (when missing) with the pinned [Demo Time](https://github.com/estruyf/vscode-demo-time) extension and its skills, the hve-core [vscode-playwright](https://github.com/microsoft/hve-core) skill, LibreOffice, Poppler and FFmpeg, each checked by command |
@@ -127,8 +127,7 @@ PowerShell execution-policy change is made.
 | `--no-dependencies` / `-NoDependencies` | Publish agents only, without tools, external skills, MCP or startup. Requires Node.js |
 | `--no-system-packages` / `-NoSystemPackages` | Use existing Python, Node, Git, gh, FFmpeg and uv, but still install selected applications and skills |
 | `--no-bmad` / `-NoBmad` | Skip BMAD |
-| `--no-speckit` / `-NoSpeckit` | Skip Spec-Kit and Fleet |
-| `--no-fleet` / `-NoFleet` | Skip Fleet and Verify |
+| `--no-speckit` / `-NoSpeckit` | Skip Spec-Kit and its delivery workflow |
 | `--no-memory` / `-NoMemory` | Skip Basic Memory, its skills, MCP, startup and read-side instruction |
 | `--no-startup` / `-NoStartup` | Use client-launched MCP instead of installing login startup |
 | `--no-playwright` / `-NoPlaywright` | Skip Playwright CLI, its browser check and skill. Linux Chrome is still required by HyperFrames |
@@ -186,9 +185,8 @@ mappings. Basic Memory initializes its own default project on first start.
 Application versions and upstream skill revisions are pinned at the top of
 `install.ps1` and `install.sh`, with identical values. Framework updates are explicit
 framework operations, not automatic rewrites when a global CLI is updated.
-Specify 0.8.18, Fleet 1.1.0 and Verify 1.0.0 are pinned together because they
-generate working references to Spec-Kit's shared prerequisite scripts. Generated
-framework files are not patched by promptlings.
+Repository initialization adds the [promptlings delivery workflow](workflows/speckit/promptlings-delivery/workflow.yml)
+with `specify workflow add`. Generated framework files are not patched by promptlings.
 
 Also available as a Claude Code plugin, currently carrying the two code-review agents:
 
@@ -238,7 +236,7 @@ Repository/domain project ID: <actual Basic Memory project ID>
 Canonical repository identity: <credential-free remote identity, if applicable>
 ```
 
-The companion [read-side instruction](agents/context/memory-manager-read-side.md) makes future sessions retrieve relevant context and use session capture. It affects **every future session in every repository** and is included in the printed default plan. Disable it explicitly if that is not wanted:
+The companion [read-side instruction](agents/context/memory-manager-read-side.md) makes future sessions retrieve relevant context and save decisions, verified outcomes, failed approaches, and handoffs on their own through the [memory capture skill](skills/promptlings-memory-capture/SKILL.md), which the installer adds with Memory Manager. Memory Manager handles setup, full session capture, and graph maintenance. The read-side block affects **every future session in every repository** and is included in the printed default plan. Disable it explicitly if that is not wanted:
 
 ```bash
 bash install.sh --agents memory-manager --no-readside --yes
@@ -272,7 +270,7 @@ orchestrator does not copy parent runtimes, manage exclusions or run setup skill
 
 ### Spec-Kit Flow
 
-Starts from a software request and always establishes current `spec.md`, `plan.md`, and `tasks.md` anchors before implementation. It then selects the lightest anchored execution path, adding [Spec-Kit](https://github.com/github/spec-kit) phases only when they resolve a named need and handing control to [Fleet](https://github.com/sharathsatish/spec-kit-fleet) when parallel tasks, resume, rollback, remediation, or assurance make its lifecycle valuable.
+Starts from a software request and always establishes current `spec.md`, `plan.md`, and `tasks.md` anchors before implementation. It then selects the lightest anchored execution path, adding [Spec-Kit](https://github.com/github/spec-kit) phases only when they resolve a named need. On request it runs the [promptlings delivery workflow](workflows/speckit/promptlings-delivery/workflow.yml) through Spec-Kit's workflow engine: an approval gate, implement and converge until converged, and an acceptance gate, with run state that resumes across sessions.
 
 ## Principles
 

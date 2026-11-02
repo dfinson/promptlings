@@ -4,7 +4,7 @@ param(
     [switch]$DryRun, [switch]$Yes, [switch]$Help,
     [switch]$NoDependencies, [switch]$NoSystemPackages, [switch]$NoSkills,
     [switch]$NoMemory, [switch]$NoStartup, [switch]$NoBmad,
-    [switch]$NoSpeckit, [switch]$NoFleet, [switch]$NoPlaywright,
+    [switch]$NoSpeckit, [switch]$NoPlaywright,
     [switch]$NoHyperframes, [switch]$NoDemo, [switch]$NoReadSide,
     [string]$Project, [switch]$ProjectOnly, [switch]$SharedFrameworks,
     [ValidateSet("copilot", "claude")][string]$Integration = "copilot",
@@ -14,7 +14,7 @@ $ErrorActionPreference = "Stop"
 # Pinned upstream tools. Keep these values identical in install.sh.
 $pins = @{
     BMAD_PACKAGE = "bmad-method@6.12.4"
-    SPECKIT_PACKAGE = "git+https://github.com/github/spec-kit.git@v0.8.18"
+    SPECKIT_PACKAGE = "git+https://github.com/github/spec-kit.git@v1.2.5"
     MEMORY_PACKAGE = "basic-memory==0.24.1"
     SKILLS_PACKAGE = "skills@1.7.4"
     RULESYNC_PACKAGE = "rulesync@42.0.0"
@@ -28,8 +28,6 @@ $pins = @{
     DEMOTIME_SKILLS = "https://github.com/estruyf/vscode-demo-time/tree/96175a9b64a4f6e066720315e8119f8a7ea6cf5e/skills"
     VSCODE_PLAYWRIGHT_SKILL = "https://github.com/microsoft/hve-core/tree/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/experimental/vscode-playwright"
     HYPERFRAMES_SKILLS = "https://github.com/heygen-com/hyperframes/tree/618c486734b3cbb697bd432bace7e9642e48b6be/skills"
-    FLEET_URL = "https://github.com/sharathsatish/spec-kit-fleet/archive/refs/tags/v1.1.0.zip"
-    VERIFY_URL = "https://github.com/ismaelJimenez/spec-kit-verify/archive/refs/tags/v1.0.0.zip"
 }
 
 $BaseUrl = if ($env:PROMPTLINGS_SOURCE) { $env:PROMPTLINGS_SOURCE.TrimEnd("/") } else {
@@ -50,7 +48,7 @@ if ($Help) {
     Write-Host "Initialize a repository: .\install.ps1 -Project PATH -ProjectOnly -Yes"
     Write-Host "Frameworks and generated documents are locally ignored. Opt into tracking with -SharedFrameworks."
     Write-Host "Opt-outs: -NoDependencies, -NoSystemPackages, -NoSkills, -NoReadSide,"
-    Write-Host "-NoMemory, -NoStartup, -NoBmad, -NoSpeckit, -NoFleet, -NoPlaywright, -NoHyperframes, -NoDemo."
+    Write-Host "-NoMemory, -NoStartup, -NoBmad, -NoSpeckit, -NoPlaywright, -NoHyperframes, -NoDemo."
     return
 }
 if (@("All", "Review", "Agents" | Where-Object { $PSBoundParameters.ContainsKey($_) }).Count -gt 1) {
@@ -64,10 +62,9 @@ if (-not $Agents -or @($Agents.Split(",") | Where-Object { $_ -notin $allAgents.
 if ($ProjectOnly -and -not $Project) { throw "-ProjectOnly requires -Project." }
 if ($SharedFrameworks -and -not $Project) { throw "-SharedFrameworks requires -Project." }
 if ($Project -and $NoDependencies) { throw "-Project cannot be combined with -NoDependencies." }
-if ($NoSpeckit) { $NoFleet = $true }
 Write-Host "Agents: $Agents"
 Write-Host "Default: WinGet prerequisites, uv applications, global npm applications and published global skills."
-Write-Host "Opt-outs: memory=$NoMemory bmad=$NoBmad speckit=$NoSpeckit fleet=$NoFleet playwright=$NoPlaywright hyperframes=$NoHyperframes demo=$NoDemo"
+Write-Host "Opt-outs: memory=$NoMemory bmad=$NoBmad speckit=$NoSpeckit playwright=$NoPlaywright hyperframes=$NoHyperframes demo=$NoDemo"
 Write-Host "Basic Memory: native user-login startup=$(-not $NoStartup), loopback port=$MemoryPort."
 $frameworkPolicy = if ($SharedFrameworks) { "shared, eligible for tracking" } else { "local, ignored including generated documents" }
 Write-Host "Repository: $Project. Framework policy: $frameworkPolicy."
@@ -170,11 +167,8 @@ function Test-Project {
     }
     if (-not $NoSpeckit) {
         $directory = if ($Integration -eq "copilot") { ".github/skills" } else { ".claude/skills" }
-        $required += @(".specify/integration.json", "$directory/speckit-specify/SKILL.md")
-        if (-not $NoFleet) {
-            $required += @(".specify/extensions/fleet/extension.yml", ".specify/extensions/verify/extension.yml",
-                "$directory/speckit-fleet-run/SKILL.md", "$directory/speckit-fleet-review/SKILL.md", "$directory/speckit-verify-run/SKILL.md")
-        }
+        $required += @(".specify/integration.json", "$directory/speckit-specify/SKILL.md", "$directory/speckit-converge/SKILL.md",
+            ".specify/workflows/promptlings-delivery/workflow.yml")
     }
     foreach ($relative in $required) {
         if (-not (Test-Path -LiteralPath (Join-Path $Project $relative) -PathType Leaf)) {
@@ -335,24 +329,19 @@ try {
             Invoke-Native bmad-method.cmd install --directory $Project --modules bmm --tools "github-copilot,claude-code" --yes
         }
         if (-not $NoSpeckit) {
+            $workflow = Join-Path $temporary "promptlings-delivery.yml"
+            Get-Asset workflows/speckit/promptlings-delivery/workflow.yml $workflow
             Push-Location $Project
             try {
                 if (-not (Test-Path .specify)) {
                     $options = @()
                     if ($Integration -eq "copilot") { $options += "--integration-options=--skills" }
-                    "" | & specify init --here --force --no-git --integration $Integration --ignore-agent-tools @options
+                    "" | & specify init --here --force --non-interactive --integration $Integration --ignore-agent-tools @options
                     if ($LASTEXITCODE -ne 0) { throw "Spec Kit initialization failed ($LASTEXITCODE)." }
                 }
                 Invoke-Native specify integration list
-                if (-not $NoFleet) {
-                    foreach ($extension in @("fleet", "verify")) {
-                        if (-not (Test-Path ".specify/extensions/$extension/extension.yml")) {
-                            $url = $pins[($extension.ToUpperInvariant() + "_URL")]
-                            "y" | & specify extension add $extension --from $url
-                            if ($LASTEXITCODE -ne 0) { throw "$extension installation failed ($LASTEXITCODE)." }
-                        }
-                    }
-                }
+                Invoke-Native specify workflow add $workflow
+                $null = Invoke-Native specify workflow info promptlings-delivery
             }
             finally { Pop-Location }
         }
@@ -398,9 +387,19 @@ try {
             [IO.File]::WriteAllText((Join-Path $source "rules\promptlings-memory.md"),
                 "---`ntargets: [`"*`"]`nglobs: [`"**/*`"]`n---`n" + $block, $utf8)
         }
+        $features = "subagents"
+        if ("memory-manager" -in $Agents.Split(",") -and -not $NoMemory) {
+            $features = "subagents,skills"
+            Get-Asset skills/promptlings-memory-capture/SKILL.md $download
+            $text = [IO.File]::ReadAllText($download).Replace("`r`n", "`n")
+            if (-not $text.StartsWith("---`n")) { throw "Memory capture skill has no frontmatter." }
+            $skill = Join-Path $source "skills\promptlings-memory-capture"
+            $null = New-Item -ItemType Directory -Force -Path $skill
+            [IO.File]::WriteAllText((Join-Path $skill "SKILL.md"), "---`ntargets: [`"*`"]`n" + $text.Substring(4), $utf8)
+        }
         Push-Location $source
         try {
-            Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t "*" -f subagents
+            Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t "*" -f $features
             # Only targets with a dedicated global rule file. Others share a root file rulesync would replace.
             if ($memoryRule) {
                 Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t $pins.RULESYNC_RULE_TARGETS -f rules

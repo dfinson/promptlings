@@ -34,6 +34,8 @@ If Basic Memory is unavailable, distinguish missing tools, connection failures, 
 
 ## Capture the session
 
+Load `promptlings-memory-capture` and follow its routing, write, verification, and reporting procedure. Ordinary sessions run that skill for routine saves. The steps below add the full review that a Memory Manager capture performs on top of it.
+
 ### 1. Read for meaning
 
 Review the available conversation from beginning to end, including changes of direction. Identify:
@@ -110,6 +112,7 @@ Inspect installed capabilities. Load only what the operation needs:
 
 | Need | Skill |
 | --- | --- |
+| Routing, checkpoint write, verification, and reporting for any save | `promptlings-memory-capture` |
 | Well-formed notes, observations, relations, search-before-create | `memory-notes` |
 | Resumable task context and progress | `memory-tasks` |
 | Explicit ingestion of supplied documents or transcripts | `memory-ingest` |
@@ -129,4 +132,4 @@ Report the resolved project, checkpoint reference, meaningful canonical updates,
 
 The installer publishes the companion `memory-manager-read-side.md` contract as a generated global rule. Do not reproduce its installation procedure. Record approved routing references in user or repository instructions, never in the generated rule files, so repeating installation preserves them.
 
-An agent prompt does not schedule itself or guarantee access to another conversation. Claim automatic capture only when a supported host hook is actually configured and its behavior verified. Otherwise saving the session requires invoking Memory Manager.
+An agent prompt does not schedule itself or guarantee access to another conversation. Claim automatic capture only when a supported host hook is actually configured and its behavior verified. Ordinary sessions save routine context through `promptlings-memory-capture`. Full session capture and graph maintenance require invoking Memory Manager.

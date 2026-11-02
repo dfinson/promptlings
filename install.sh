@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Pinned upstream tools. Keep these values identical in install.ps1.
 BMAD_PACKAGE=bmad-method@6.12.4
-SPECKIT_PACKAGE=git+https://github.com/github/spec-kit.git@v0.8.18
+SPECKIT_PACKAGE=git+https://github.com/github/spec-kit.git@v1.2.5
 MEMORY_PACKAGE=basic-memory==0.24.1
 SKILLS_PACKAGE=skills@1.7.4
 RULESYNC_PACKAGE=rulesync@42.0.0
@@ -17,8 +17,6 @@ DEMOTIME_EXTENSION=eliostruyf.vscode-demo-time@2.4.0
 DEMOTIME_SKILLS=https://github.com/estruyf/vscode-demo-time/tree/96175a9b64a4f6e066720315e8119f8a7ea6cf5e/skills
 VSCODE_PLAYWRIGHT_SKILL=https://github.com/microsoft/hve-core/tree/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/experimental/vscode-playwright
 HYPERFRAMES_SKILLS=https://github.com/heygen-com/hyperframes/tree/618c486734b3cbb697bd432bace7e9642e48b6be/skills
-FLEET_URL=https://github.com/sharathsatish/spec-kit-fleet/archive/refs/tags/v1.1.0.zip
-VERIFY_URL=https://github.com/ismaelJimenez/spec-kit-verify/archive/refs/tags/v1.0.0.zip
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_url="${PROMPTLINGS_SOURCE:-https://raw.githubusercontent.com/dfinson/promptlings/main}"
@@ -33,7 +31,7 @@ agent_path() {
 }
 agents="$all_agents"
 yes=0 dry_run=0 dependencies=1 system_packages=1 skills=1 readside=1
-memory=1 startup=1 bmad=1 speckit=1 fleet=1 playwright=1 hyperframes=1 demo=1
+memory=1 startup=1 bmad=1 speckit=1 playwright=1 hyperframes=1 demo=1
 project="" project_only=0 shared_frameworks=0 integration=copilot memory_port=8000
 selection=0
 fail() { echo "Installation incomplete: $*" >&2; exit 1; }
@@ -52,8 +50,7 @@ while [ "$#" -gt 0 ]; do
     --no-memory) memory=0 ;;
     --no-startup) startup=0 ;;
     --no-bmad) bmad=0 ;;
-    --no-speckit) speckit=0; fleet=0 ;;
-    --no-fleet) fleet=0 ;;
+    --no-speckit) speckit=0 ;;
     --no-playwright) playwright=0 ;;
     --no-hyperframes) hyperframes=0 ;;
     --no-demo) demo=0 ;;
@@ -70,7 +67,7 @@ while [ "$#" -gt 0 ]; do
       echo "Options: --all, --review, --agents NAME,NAME, --dry-run, --integration copilot|claude,"
       echo "--no-dependencies, --no-system-packages, --no-skills, --no-readside,"
       echo "--no-memory, --no-startup, --memory-port PORT, --no-bmad, --no-speckit,"
-      echo "--no-fleet, --no-playwright, --no-hyperframes, --no-demo"
+      echo "--no-playwright, --no-hyperframes, --no-demo"
       exit 0 ;;
     *) fail "Unknown option: $1. Use --help." ;;
   esac
@@ -91,7 +88,7 @@ memory_port=$((10#$memory_port))
 [ -z "$project" ] || [ "$dependencies" -eq 1 ] || fail "--project cannot be combined with --no-dependencies."
 
 echo "Agents: $agents"
-echo "Tools: memory=$memory bmad=$bmad speckit=$speckit fleet=$fleet playwright=$playwright hyperframes=$hyperframes demo=$demo"
+echo "Tools: memory=$memory bmad=$bmad speckit=$speckit playwright=$playwright hyperframes=$hyperframes demo=$demo"
 echo "Default: native prerequisites, uv applications, global npm applications and published global skills."
 echo "Basic Memory: native user-login startup=$startup, loopback port=$memory_port."
 framework_policy="local, ignored including generated documents"
@@ -248,9 +245,8 @@ verify_project() {
   fi
   if [ "$speckit" -eq 1 ]; then
     if [ "$integration" = copilot ]; then directory=.github/skills; else directory=.claude/skills; fi
-    required+=(.specify/integration.json "$directory/speckit-specify/SKILL.md")
-    [ "$fleet" -eq 0 ] || required+=(.specify/extensions/fleet/extension.yml .specify/extensions/verify/extension.yml
-      "$directory/speckit-fleet-run/SKILL.md" "$directory/speckit-fleet-review/SKILL.md" "$directory/speckit-verify-run/SKILL.md")
+    required+=(.specify/integration.json "$directory/speckit-specify/SKILL.md" "$directory/speckit-converge/SKILL.md"
+      .specify/workflows/promptlings-delivery/workflow.yml)
   fi
   for relative in ${required[@]+"${required[@]}"}; do
     [ -f "$project/$relative" ] || fail "Framework installation is incomplete in $project: $relative."
@@ -365,18 +361,17 @@ if [ -n "$project" ]; then
     bmad-method install --directory "$project" --modules bmm --tools github-copilot,claude-code --yes
   fi
   if [ "$speckit" -eq 1 ]; then
+    fetch workflows/speckit/promptlings-delivery/workflow.yml "$temporary/promptlings-delivery.yml"
     (
       cd "$project"
       if [ ! -d .specify ]; then
         options=()
         [ "$integration" != copilot ] || options+=(--integration-options=--skills)
-        specify init --here --force --no-git --integration "$integration" --ignore-agent-tools "${options[@]}" </dev/null
+        specify init --here --force --non-interactive --integration "$integration" --ignore-agent-tools "${options[@]}" </dev/null
       fi
       specify integration list
-      if [ "$fleet" -eq 1 ]; then
-        if [ ! -f .specify/extensions/fleet/extension.yml ]; then printf 'y\n' | specify extension add fleet --from "$FLEET_URL"; fi
-        if [ ! -f .specify/extensions/verify/extension.yml ]; then printf 'y\n' | specify extension add verify --from "$VERIFY_URL"; fi
-      fi
+      specify workflow add "$temporary/promptlings-delivery.yml"
+      specify workflow info promptlings-delivery >/dev/null
     )
   fi
   verify_project
@@ -424,7 +419,15 @@ if [ "$project_only" -eq 0 ]; then
     mkdir -p "$rulesync_source/rules"
     { printf -- '---\ntargets: ["*"]\nglobs: ["**/*"]\n---\n'; cat "$temporary/read-side.lf"; } > "$rulesync_source/rules/promptlings-memory.md"
   fi
-  (cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t '*' -f subagents)
+  features=subagents
+  if [[ ",$agents," == *,memory-manager,* ]] && [ "$memory" -eq 1 ]; then
+    features=subagents,skills
+    mkdir -p "$rulesync_source/skills/promptlings-memory-capture"
+    fetch skills/promptlings-memory-capture/SKILL.md "$temporary/capture.md"
+    [ "$(head -n 1 "$temporary/capture.md" | tr -d '\r')" = --- ] || fail "Memory capture skill has no frontmatter."
+    { printf -- '---\ntargets: ["*"]\n'; tail -n +2 "$temporary/capture.md" | tr -d '\r'; } > "$rulesync_source/skills/promptlings-memory-capture/SKILL.md"
+  fi
+  (cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t '*' -f "$features")
   if [ "$memory_rule" -eq 1 ]; then
     # Only targets with a dedicated global rule file. Others share a root file rulesync would replace.
     (cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t "$RULESYNC_RULE_TARGETS" -f rules)
