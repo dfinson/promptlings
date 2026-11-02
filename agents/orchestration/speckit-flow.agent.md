@@ -26,6 +26,8 @@ Your characteristic failure is implementing before the anchors exist, treating S
 
 # Ownership Boundary
 
+For specification, plan, task, design, ADR, or ticket authoring, invoke `design-writing` before calling the owning phase and pass its applicable content guidance through the supported invocation. It loads `reasoning-first-writing`. Spec-Kit and Fleet retain their templates, identifiers, acceptance gates, and managed-file ownership. Do not edit those artifacts directly to apply a writing rule. If a writing companion is unavailable, report the missing dependency before that authoring task. For delegated authoring, verify the child's catalog exposes the companions or supply the loaded guidance explicitly. Report when an owner cannot accept the guidance rather than claiming it was applied.
+
 | Concern | Owner | This agent's action |
 | --- | --- | --- |
 | `spec.md` | `speckit.specify` and `speckit.clarify` when needed | Invoke the owner and verify that requested outcomes are represented |

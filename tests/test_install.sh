@@ -33,11 +33,27 @@ sources=(
   "agents/orchestration/bmad-orchestrator.agent.md"
   "agents/orchestration/bmad/setup.md"
   "agents/orchestration/bmad/bootstrap.md"
+  "skills/design-writing/SKILL.md"
+  "skills/design-writing/references/adr.md"
+  "skills/design-writing/references/specification.md"
+  "skills/design-writing/references/design-document.md"
+  "skills/design-writing/references/tickets.md"
+  "skills/design-writing/references/sources.md"
+  "skills/reasoning-first-writing/SKILL.md"
+  "skills/reasoning-first-writing/references/sources.md"
 )
 destinations=(
   "agents/bmad-orchestrator.agent.md"
   "promptlings/bmad/setup.md"
   "promptlings/bmad/bootstrap.md"
+  "skills/design-writing/SKILL.md"
+  "skills/design-writing/references/adr.md"
+  "skills/design-writing/references/specification.md"
+  "skills/design-writing/references/design-document.md"
+  "skills/design-writing/references/tickets.md"
+  "skills/design-writing/references/sources.md"
+  "skills/reasoning-first-writing/SKILL.md"
+  "skills/reasoning-first-writing/references/sources.md"
 )
 assert_plan() {
   local plan="$1" host_root index
@@ -55,7 +71,7 @@ assert_assets() {
     for index in "${!sources[@]}"; do
       cmp "$source_root/${sources[$index]}" "$host_root/${destinations[$index]}"
     done
-    [ ! -e "$host_root/skills" ]
+    [ "$(for directory in "$host_root"/skills/*; do basename "$directory"; done | sort)" = "$(printf '%s\n' design-writing reasoning-first-writing)" ]
   done
 }
 plan="$(bash "$source_root/install.sh" --agents bmad-orchestrator --dry-run)"

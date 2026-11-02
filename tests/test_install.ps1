@@ -9,7 +9,15 @@ $installer = Join-Path $sourceRoot "install.ps1"
 $assets = @(
     @("agents\orchestration\bmad-orchestrator.agent.md", "agents\bmad-orchestrator.agent.md"),
     @("agents\orchestration\bmad\setup.md", "promptlings\bmad\setup.md"),
-    @("agents\orchestration\bmad\bootstrap.md", "promptlings\bmad\bootstrap.md")
+    @("agents\orchestration\bmad\bootstrap.md", "promptlings\bmad\bootstrap.md"),
+    @("skills\design-writing\SKILL.md", "skills\design-writing\SKILL.md"),
+    @("skills\design-writing\references\adr.md", "skills\design-writing\references\adr.md"),
+    @("skills\design-writing\references\specification.md", "skills\design-writing\references\specification.md"),
+    @("skills\design-writing\references\design-document.md", "skills\design-writing\references\design-document.md"),
+    @("skills\design-writing\references\tickets.md", "skills\design-writing\references\tickets.md"),
+    @("skills\design-writing\references\sources.md", "skills\design-writing\references\sources.md"),
+    @("skills\reasoning-first-writing\SKILL.md", "skills\reasoning-first-writing\SKILL.md"),
+    @("skills\reasoning-first-writing\references\sources.md", "skills\reasoning-first-writing\references\sources.md")
 )
 
 function Assert-Plan {
@@ -33,7 +41,10 @@ function Assert-Assets {
                 throw "Installed content differs: $installed"
             }
         }
-        if (Test-Path (Join-Path $hostRoot "skills")) { throw "Installer created global skills" }
+        $skillNames = @(Get-ChildItem (Join-Path $hostRoot "skills") -Directory | Select-Object -ExpandProperty Name)
+        if (($skillNames | Sort-Object) -join ',' -ne 'design-writing,reasoning-first-writing') {
+            throw "Installer added skills other than generic writing companions"
+        }
     }
 }
 
