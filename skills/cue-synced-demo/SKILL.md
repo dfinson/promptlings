@@ -13,9 +13,11 @@ This skill supplies practice, not a recorder, assembler or required programming 
 
 Check whether the session already has these skills before offering installs.
 - **Browser capture:** invoke the `playwright-cli` skill from [microsoft/playwright-cli](https://github.com/microsoft/playwright-cli). It handles navigation and input, viewport size, named sessions, saved authentication state, screenshots, and video with chapter markers. If it is missing, give the user `npm install -g @playwright/cli@latest` followed by `playwright-cli install --skills`, and install it only after the user approves.
+- **Code walkthroughs in VS Code:** script the walkthrough with the `demotime-code-demo` skill from [Demo Time](https://github.com/estruyf/vscode-demo-time) (Apache-2.0). It writes a reset-able act file that opens, types, patches and highlights code, including the base-to-head change of a diff or pull request. Record it unattended with `npx @demotime/video export`, which plays the act in a fresh VS Code profile and writes an MP4 with chapters and `demo-events.jsonl` scene start times. Size each scene's `autoAdvanceAfter` to its accepted narration and bind narration to the recorded scene starts. If the skill is missing, give the user `code --install-extension eliostruyf.vscode-demo-time`, then the **Demo Time: Install or update AI skills** command for Copilot CLI or Claude Code.
+- **VS Code stills and Web workbench states:** invoke the `vscode-playwright` skill from [microsoft/hve-core](https://github.com/microsoft/hve-core) (MIT). It drives VS Code Web through `serve-web` with Playwright, applies theme, zoom and layout, and verifies readable editor text. If it is missing, give the user `copilot plugin marketplace add microsoft/hve-core` followed by `copilot plugin install hve-core@hve-core`.
 - **Produced documents:** convert office files to PDF with LibreOffice headless, or with Word where it is installed for the closest Word layout. Then render the PDF pages to images with Poppler `pdftoppm`, or display them in the browser with pdf.js. Show the real pages as held frames or composed overlays.
 
-If a required specialist is unavailable and the user declines to install it, report the gap and propose options instead of building a substitute.
+Install any specialist only after the user approves. If a required specialist is unavailable and the user declines to install it, report the gap and propose options instead of building a substitute.
 
 ## Capture real events
 

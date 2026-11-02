@@ -23,7 +23,7 @@ BMAD_BOOTSTRAP_PATH="skills/promptlings-bmad-bootstrap"
 BMAD_BOOTSTRAP_MARKER="promptlings-bmad-bootstrap-start"
 
 ALL_AGENTS="the-nitcracker pr-walkthrough memory-manager technical-demo bmad-orchestrator speckit-flow"
-ALL_SKILLS="reasoning-first-narration narrative-transitions tts-setup cue-synced-demo promptlings-bmad-setup promptlings-bmad-bootstrap"
+ALL_SKILLS="reasoning-first-narration narrative-transitions tts-setup cue-synced-demo pr-video promptlings-bmad-setup promptlings-bmad-bootstrap"
 REVIEW_AGENTS="the-nitcracker pr-walkthrough"
 
 agent_path() {
@@ -44,6 +44,7 @@ skill_path() {
     narrative-transitions) echo "skills/narrative-transitions/SKILL.md" ;;
     tts-setup) echo "skills/tts-setup/SKILL.md" ;;
     cue-synced-demo) echo "skills/cue-synced-demo/SKILL.md" ;;
+    pr-video) echo "skills/pr-video/SKILL.md" ;;
     promptlings-bmad-setup) echo "skills/promptlings-bmad-setup/SKILL.md" ;;
     promptlings-bmad-bootstrap) echo "skills/promptlings-bmad-bootstrap/SKILL.md" ;;
     *) return 1 ;;
@@ -52,7 +53,7 @@ skill_path() {
 
 skill_files() {
   case "$1" in
-    reasoning-first-narration|narrative-transitions|tts-setup|cue-synced-demo|promptlings-bmad-setup) echo "SKILL.md" ;;
+    reasoning-first-narration|narrative-transitions|tts-setup|cue-synced-demo|pr-video|promptlings-bmad-setup) echo "SKILL.md" ;;
     promptlings-bmad-bootstrap) printf '%s\n' "SKILL.md" "startup.md" ;;
     *) return 1 ;;
   esac
@@ -60,7 +61,7 @@ skill_files() {
 
 agent_skills() {
   case "$1" in
-    technical-demo) echo "reasoning-first-narration narrative-transitions tts-setup cue-synced-demo" ;;
+    technical-demo) echo "reasoning-first-narration narrative-transitions tts-setup cue-synced-demo pr-video" ;;
     bmad-orchestrator) echo "promptlings-bmad-setup promptlings-bmad-bootstrap" ;;
   esac
 }

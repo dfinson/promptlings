@@ -43,10 +43,10 @@ $AllAgents = @(
     "speckit-flow"
 )
 $ReviewAgents = @("the-nitcracker", "pr-walkthrough")
-$AllSkills = @("reasoning-first-narration", "narrative-transitions", "tts-setup", "cue-synced-demo",
+$AllSkills = @("reasoning-first-narration", "narrative-transitions", "tts-setup", "cue-synced-demo", "pr-video",
     "promptlings-bmad-setup", "promptlings-bmad-bootstrap")
 $AgentSkills = @{
-    "technical-demo" = @("reasoning-first-narration", "narrative-transitions", "tts-setup", "cue-synced-demo")
+    "technical-demo" = @("reasoning-first-narration", "narrative-transitions", "tts-setup", "cue-synced-demo", "pr-video")
     "bmad-orchestrator" = @("promptlings-bmad-setup", "promptlings-bmad-bootstrap")
 }
 
@@ -64,6 +64,7 @@ $SkillPaths = @{
     "narrative-transitions" = "skills/narrative-transitions/SKILL.md"
     "tts-setup" = "skills/tts-setup/SKILL.md"
     "cue-synced-demo" = "skills/cue-synced-demo/SKILL.md"
+    "pr-video" = "skills/pr-video/SKILL.md"
     "promptlings-bmad-setup" = "skills/promptlings-bmad-setup/SKILL.md"
     "promptlings-bmad-bootstrap" = "skills/promptlings-bmad-bootstrap/SKILL.md"
 }
@@ -73,6 +74,7 @@ $SkillFiles = @{
     "narrative-transitions" = @("SKILL.md")
     "tts-setup" = @("SKILL.md")
     "cue-synced-demo" = @("SKILL.md")
+    "pr-video" = @("SKILL.md")
     "promptlings-bmad-setup" = @("SKILL.md")
     "promptlings-bmad-bootstrap" = @("SKILL.md", "startup.md")
 }
