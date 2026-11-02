@@ -34,6 +34,7 @@ $ReadSidePath = "agents/context/memory-manager-read-side.md"
 $BmadSetupPath = "skills/promptlings-bmad-setup/SKILL.md"
 $BmadBootstrapPath = "skills/promptlings-bmad-bootstrap"
 $BmadBootstrapMarker = "promptlings-bmad-bootstrap-start"
+$MemoryCapturePath = "skills/promptlings-memory-capture/SKILL.md"
 
 $AllAgents = @(
     "the-nitcracker"
@@ -83,7 +84,8 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 Files written by default: one .agent.md per selected agent, under %USERPROFILE%\.copilot\agents\
 and/or %USERPROFILE%\.claude\agents\. Selecting bmad-orchestrator also installs its setup
 SKILL.md under each host's skills\promptlings-bmad-setup directory, plus SKILL.md and
-startup.md under skills\promptlings-bmad-bootstrap. No global instruction file is changed
+startup.md under skills\promptlings-bmad-bootstrap. Selecting memory-manager also installs
+skills\promptlings-memory-capture\SKILL.md. No global instruction file is changed
 unless -WithBmadBootstrap or -WithReadSide is given or you confirm the read-side prompt.
 COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.
 
@@ -262,6 +264,9 @@ foreach ($t in $targets) {
         Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-bootstrap\SKILL.md')"
         Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-bmad-bootstrap\startup.md')"
     }
+    if ($selectionHasMemoryManager) {
+        Write-Host "  $(Join-Path (Split-Path $t -Parent) 'skills\promptlings-memory-capture\SKILL.md')"
+    }
 }
 Write-Host ""
 
@@ -338,6 +343,11 @@ foreach ($t in $targets) {
         foreach ($file in @("SKILL.md", "startup.md")) {
             Get-Remote -Remote "$BmadBootstrapPath/$file" -Dest (Join-Path $bootstrapDir $file)
         }
+    }
+    if ($selectionHasMemoryManager) {
+        $captureDir = Join-Path (Split-Path $t -Parent) "skills\promptlings-memory-capture"
+        New-Item -ItemType Directory -Force -Path $captureDir | Out-Null
+        Get-Remote -Remote $MemoryCapturePath -Dest (Join-Path $captureDir "SKILL.md")
     }
 }
 

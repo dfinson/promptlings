@@ -143,9 +143,10 @@ an assignment whose liveness is unknown.
 
 Generic coding children are normal when BMAD's installed handoff uses them.
 They follow the spec rather than invoking a second Build. The parent owns
-workflow verification and progression. A launcher failure does not authorize an
-ordinary-tool bypass. An explicit user exception retains its scope, and an
-unbounded instruction to abandon BMAD remains until the user changes it.
+workflow verification and progression. A launcher failure stops dispatch until
+an approved repair. The orchestrator is a BMAD-only coach: a request to work
+outside BMAD gets two choices, the matching BMAD workflow or a separate ordinary
+session, and the orchestrator never does that work itself.
 
 ## Observed acceptance on 2026-10-29
 

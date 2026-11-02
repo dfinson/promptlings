@@ -153,10 +153,15 @@ class InstallerTests(unittest.TestCase):
                         content.decode(), "Unrelated instructions.\n" + BLOCK
                     )
                 expected = (ROOT / "agents/context/memory-manager.agent.md").read_bytes()
+                skill = (ROOT / "skills/promptlings-memory-capture/SKILL.md").read_bytes()
                 for tool in [".copilot", ".claude"]:
                     self.assertEqual(
                         (home / tool / "agents/memory-manager.agent.md").read_bytes(),
                         expected,
+                    )
+                    self.assertEqual(
+                        (home / tool / "skills/promptlings-memory-capture/SKILL.md").read_bytes(),
+                        skill,
                     )
                 self.run_installer(shell, home, script)
                 self.assertEqual(before, [p.read_bytes() for p in self.instructions(home)])

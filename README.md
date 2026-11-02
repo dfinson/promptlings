@@ -15,8 +15,8 @@ Focused custom agents for code review, session continuity, technical demos, and 
 | [PR Walkthrough](agents/code-review/pr-walkthrough.agent.md) | A narrative map of a PR before reviewing it: architecture, important files, design forks, and implicit bets. |
 | [Memory Manager](agents/context/memory-manager.agent.md) | Capture a session's purpose, reasoning, decisions, and continuation state in Basic Memory, then recall and maintain scoped knowledge. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
-| [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Adaptive BMAD delivery through one interface, from verified setup and bounded fixes to full-assurance initiatives. |
-| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | Anchor every change in Spec-Kit specification, plan, and tasks, then use only the additional phases and Fleet capabilities that add value. |
+| [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | A BMAD-only coach: every delivery runs through installed BMAD workflows, and work outside BMAD goes to a separate session. |
+| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | A Spec-Kit-only coach: anchored spec, plan, and tasks, implementation through the implement and converge loop, and Fleet on request. |
 
 ## Install
 
@@ -112,7 +112,7 @@ Repository/domain project ID: <actual Basic Memory project ID>
 Canonical repository identity: <credential-free remote identity, if applicable>
 ```
 
-The companion [read-side instruction](agents/context/memory-manager-read-side.md) makes future sessions retrieve relevant context and use session capture. It affects **every future session in every repository**, so the installer never adds or replaces it without `--with-readside`, `-WithReadSide`, or interactive confirmation:
+The companion [read-side instruction](agents/context/memory-manager-read-side.md) makes future sessions retrieve relevant context and save decisions, verified outcomes, failed approaches, and handoffs on their own through the [memory capture skill](skills/promptlings-memory-capture/SKILL.md), which the installer adds with Memory Manager. Memory Manager handles setup, full session capture, and graph maintenance. The read-side block affects **every future session in every repository**, so the installer never adds or replaces it without `--with-readside`, `-WithReadSide`, or interactive confirmation:
 
 ```bash
 bash install.sh --agents memory-manager --with-readside

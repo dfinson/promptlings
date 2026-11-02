@@ -22,6 +22,7 @@ READSIDE_PATH="agents/context/memory-manager-read-side.md"
 BMAD_SETUP_PATH="skills/promptlings-bmad-setup/SKILL.md"
 BMAD_BOOTSTRAP_PATH="skills/promptlings-bmad-bootstrap"
 BMAD_BOOTSTRAP_MARKER="promptlings-bmad-bootstrap-start"
+MEMORY_CAPTURE_PATH="skills/promptlings-memory-capture/SKILL.md"
 
 ALL_AGENTS="the-nitcracker pr-walkthrough memory-manager technical-demo bmad-orchestrator speckit-flow"
 REVIEW_AGENTS="the-nitcracker pr-walkthrough"
@@ -67,7 +68,8 @@ With no selection flag, an interactive run asks which set you want. A non-intera
 Files written by default: one .agent.md per selected agent, under ~/.copilot/agents/ and/or
 ~/.claude/agents/. Selecting bmad-orchestrator also installs its setup SKILL.md under each
 host's skills/promptlings-bmad-setup directory, plus SKILL.md and startup.md under
-skills/promptlings-bmad-bootstrap. No global instruction file is changed unless
+skills/promptlings-bmad-bootstrap. Selecting memory-manager also installs
+skills/promptlings-memory-capture/SKILL.md. No global instruction file is changed unless
 --with-bmad-bootstrap or --with-readside is given or you confirm the read-side prompt.
 COPILOT_HOME overrides the Copilot root for agent, skill, and opted-in instruction paths.
 
@@ -279,6 +281,9 @@ plan_files() {
     echo "  $(dirname "$1")/$BMAD_BOOTSTRAP_PATH/SKILL.md"
     echo "  $(dirname "$1")/$BMAD_BOOTSTRAP_PATH/startup.md"
   fi
+  if [ "$selection_has_memory_manager" -eq 1 ]; then
+    echo "  $(dirname "$1")/$MEMORY_CAPTURE_PATH"
+  fi
 }
 if [ "$copilot_selected" -eq 1 ]; then plan_files "$copilot_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then plan_files "$claude_dir"; fi
@@ -364,6 +369,10 @@ install_to() {
     mkdir -p "$skill_dir"
     download "$BMAD_BOOTSTRAP_PATH/SKILL.md" "$skill_dir/SKILL.md"
     download "$BMAD_BOOTSTRAP_PATH/startup.md" "$skill_dir/startup.md"
+  fi
+  if [ "$selection_has_memory_manager" -eq 1 ]; then
+    mkdir -p "$(dirname "$1")/skills/promptlings-memory-capture"
+    download "$MEMORY_CAPTURE_PATH" "$(dirname "$1")/$MEMORY_CAPTURE_PATH"
   fi
 }
 if [ "$copilot_selected" -eq 1 ]; then install_to "$copilot_dir"; fi
