@@ -1,15 +1,15 @@
 # Earlier BMAD Setup and Acceptance
 
 This is the historical private-source design and its observed acceptance,
-superseded on 2026-10-29 by [parent-first provisioning](bmad-setup.md).
+superseded on 2026-10-29 by parent-first provisioning. The current
+[opt-in isolation policy](bmad-setup.md) superseded global discovery on 2026-11-02.
 It is evidence of what was tested then, not current setup instructions.
 Do not apply its source relocation or global exposure policy to new work.
 
-The [BMAD orchestrator](../agents/orchestration/bmad-orchestrator.agent.md) loads
-[promptlings-bmad-setup](../skills/promptlings-bmad-setup/SKILL.md) for explicit
-setup, repair, or later settings changes. It is an instruction skill, not a
-Python program. It uses the host's existing file, shell, Git, and skill controls.
-Ordinary implementation requests are not setup consent.
+The [BMAD orchestrator](../agents/orchestration/bmad-orchestrator.agent.md) now reads
+the [setup procedure](../agents/orchestration/bmad/setup.md) directly for explicit
+setup, repair, or later settings changes. It is no longer a discoverable skill.
+The installation paths and behavior below describe only the historical version.
 
 ## Installation
 

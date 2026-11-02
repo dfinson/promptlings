@@ -185,6 +185,7 @@ class InstallerTests(unittest.TestCase):
                     self.assertEqual(
                         {p.name for p in (home / tool / "agents").iterdir()}, expected
                     )
+                    self.assertFalse((home / tool / "skills").exists())
                 self.assertFalse(any(p.exists() for p in self.instructions(home)))
 
     def test_legacy_and_current_duplicates_replaced_without_losing_other_text(self):
