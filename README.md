@@ -108,7 +108,7 @@ bash install.sh --skills design-writing,reasoning-first-narration
 .\install.ps1 -Agents sparring-partner
 .\install.ps1 -Skills review-ensemble
 .\install.ps1 -Agents artifact-inspector
-.\install.ps1 -Skills design-writing,reasoning-first-narration
+.\install.ps1 -Skills 'design-writing,reasoning-first-narration'
 ```
 
 Selecting `review-ensemble` includes both Promptlings reviewers and `evidence-verification`. Selecting Sparring Partner includes `technical-investigation`, `test-analysis`, `design-analysis`, and `evidence-verification`. Selecting Artifact Inspector includes `artifact-inspection` and its Python mechanical checker. The checker uses only the Python standard library. The installer installs neither Python nor external agent runtimes.
