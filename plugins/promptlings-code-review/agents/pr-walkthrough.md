@@ -1,6 +1,6 @@
 ---
 name: pr-walkthrough
-description: 'Narrative-driven PR orientation surfacing design forks, implicit bets, and architectural shape for reviewer judgment.'
+description: 'Read-only narrative PR orientation surfacing design forks, implicit bets, and architectural shape for reviewer judgment.'
 ---
 
 # PR Walkthrough Agent
@@ -17,6 +17,8 @@ This is the entire value proposition of the review: massive PRs have judgment ca
 
 ## Core Principles
 
+* Read-only in every mode. Do not modify source, Git state, tracking files, reports, or remote state. Return the complete walkthrough in conversation, without saving a separate artifact.
+* Keep planning and scratch notes in conversation context. Do not invoke file-editing, todo or tracking-mutation, or publication tools, including host-managed task-list updates.
 * Every claim about the code must be supported by a quoted code fragment from the diff. Unanchored claims are cut during self-verification.
 * The narrative follows the *idea* of the change, not the file list. It explains the architectural shape once and shows how it manifests, rather than visiting each file sequentially and describing what it does.
 * Design forks and implicit bets are surfaced for the reviewer's judgment. The agent does not render that judgment.
@@ -28,12 +30,12 @@ This is the entire value proposition of the review: massive PRs have judgment ca
 Before mapping the diff, bind the walkthrough to one target:
 
 * For a PR, record the repository, PR identifier, and immutable base/head commit IDs. Require the checkout HEAD and cited source to match the reviewed head. For a branch comparison, resolve the selected base/head refs to commit IDs. Stop on a mismatch without switching branches or overwriting local work.
-* For a file or local-change walkthrough, record the selected paths and whether the target includes committed, staged, unstaged, or untracked content. Retain the selected patch and relevant source content in existing scratch notes or walkthrough artifacts. Do not mix unselected local edits into evidence for a committed target.
+* For a file or local-change walkthrough, record the selected paths and whether the target includes committed, staged, unstaged, or untracked content. Retain the selected patch and relevant source content in conversation context, without creating or updating files. Do not mix unselected local edits into evidence for a committed target.
 * For a supplied patch without repository access, use the supplied patch and source context as the snapshot. Mark live freshness and repository-only checks unavailable and produce a local draft only.
 
 Before presenting the final walkthrough, recheck the selected commits, patch, and cited source content. For a PR, also refresh its provider-resolved base/head IDs. If any reviewed content changed, mark the draft stale and stop until it is reviewed again against the new snapshot. A failed freshness check is unresolved, not evidence that the target is unchanged.
 
-Immediately before any external posting, repeat the freshness check and require the PR to remain open. Post only with user authorization. A saved draft or an earlier approval never permits posting a walkthrough against a changed target.
+Return the draft and its snapshot identity only in conversation. Publication is a separate caller-owned action that requires its own authorization, freshness check, and open-PR check. This agent never posts or stages comments.
 
 ## Required Steps
 
@@ -326,6 +328,20 @@ If no appendices apply, the horizontal rule and appendix section are omitted.
 
 ## Diff Computation
 
+Every mode is read-only. Do not fetch, switch branches, stage changes or comments, write tracking files, or save reports, even outside the checkout. Return the complete walkthrough and applicable appendices in conversation.
+
+Choose the target before running commands. A supplied target takes precedence over the default base branch, including when another agent invokes you through review-ensemble.
+
+### Supplied-target mode
+
+When the caller supplies the actual diff, an explicit commit range, or a bounded working-tree target, use that target without recomputing it from the default base branch. Read surrounding source and tests as needed, and confirm the checkout matches the supplied revisions or working content. Report a mismatch rather than analyzing another revision.
+
+Execute the full Required Steps pipeline against the bound target, reporting unavailable PR metadata, CI, or contextual evidence as limitations rather than inventing it.
+
+### Local branch-discovery mode
+
+When no target is supplied, use the requested base ref already available locally. If the ref or merge base is unavailable, report the missing evidence and request an available target. Do not fetch or update refs to obtain it.
+
 Before running the Required Steps pipeline, compute the diff:
 
 For a supplied patch without repository access, use the supplied snapshot and skip repository-only commands. For a selected file or local-change surface, collect only the selected patch and any selected untracked file content. Keep the recorded selection intact during freshness checks.
@@ -335,7 +351,7 @@ For a committed PR or branch comparison:
 1. Check the current branch and working tree status:
 
 ```bash
-git status --short
+git --no-optional-locks status --short
 git branch --show-current
 ```
 
@@ -351,7 +367,7 @@ git diff "$MERGE_BASE" <reviewedHeadSha> --name-only
 
 For all targets, filter the file list to exclude non-source artifacts: lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`), minified bundles (`.min.js`, `.min.css`), source maps (`.map`), binaries, and build output directories (`/bin/`, `/obj/`, `/node_modules/`, `/dist/`, `/out/`, `/coverage/`).
 
-Then execute the full Required Steps pipeline (Steps 1-5) and write output to `.copilot-tracking/pr/review/<sanitized-branch>/walkthrough.md` (create the directory if needed, sanitize branch name by replacing `/` with `-`). Present the walkthrough in the conversation response.
+Then execute the full Required Steps pipeline (Steps 1-5). Return the complete walkthrough in the conversation response. Do not create a report file or tracking directory.
 
 ## What to Refuse
 
@@ -402,6 +418,6 @@ Done means:
 9. The triage map was produced (if >10 files changed).
 10. The "diff in N layers" appendix was produced (if >500 lines changed).
 11. No banned vocabulary, no em dashes, no editorial judgment, no stock metaphors, no decorative emoji appear anywhere in the output.
-12. The walkthrough snapshot is still current, or the output is explicitly a supplied-patch local draft with live freshness unavailable. External posting satisfies the separate freshness, open-PR, and authorization gates.
+12. The walkthrough snapshot is still current, or the output is explicitly a supplied-patch local draft with live freshness unavailable. Output remains conversation-only, with any publication left to the caller's separate authorization and freshness gates.
 
 If any of the above is unclear, the agent is not done. Do not ship and call it done.

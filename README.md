@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-Focused custom agents for code review, session continuity, technical demos, and spec-driven delivery. Each promptling is one portable `.agent.md` file: YAML frontmatter, a Markdown body, no runtime.
+Focused custom agents and reusable skills for technical reasoning, complementary code review, session continuity, technical demos, and spec-driven delivery. Agents are portable Markdown with YAML frontmatter. Skills package reusable methods and workflows for the host's native agent system, without an orchestration service.
 
 ## Pick an Agent
 
@@ -13,10 +13,35 @@ Focused custom agents for code review, session continuity, technical demos, and 
 | --- | --- |
 | [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | A full PR review with inline defects, separate design judgments, and a candid narrative walkthrough. |
 | [PR Walkthrough](agents/code-review/pr-walkthrough.agent.md) | A narrative map of a PR before reviewing it: architecture, important files, design forks, and implicit bets. |
+| [Sparring Partner](agents/reasoning/sparring-partner.agent.md) | Work through an idea, design, plan, implementation, debugging hypothesis, or testing question with an evidence-driven reasoning partner. |
 | [Memory Manager](agents/context/memory-manager.agent.md) | Capture a session's purpose, reasoning, decisions, and continuation state in Basic Memory, then recall and maintain scoped knowledge. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | A polished technical demo video built from approved design, deterministic scenes, real evidence, narration, and review. |
 | [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Adaptive BMAD delivery through one interface, from verified setup and bounded fixes to full-assurance initiatives. |
 | [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | Anchor every change in Spec-Kit specification, plan, and tasks, then use only the additional phases and Fleet capabilities that add value. |
+
+For maintainers and CI callers, [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a thin, subagent-oriented wrapper around the shared [artifact-inspection](skills/artifact-inspection/SKILL.md) skill.
+
+## Invoke a Workflow
+
+Install the review set, then ask your current coding agent:
+
+```text
+Run the review ensemble on this branch against origin/main.
+Run the review ensemble on my staged and unstaged changes.
+Run the review ensemble, fix the verified in-scope issues, and verify the repairs.
+```
+
+The [review-ensemble](skills/review-ensemble/SKILL.md) skill dispatches **the-nitcracker**, **PR Walkthrough**, and the host's built-in **rubber-duck** independently in parallel. The invoking agent investigates their combined output, verifies claims, identifies additional gaps, and synthesizes defects, architectural reasoning, and judgment calls. A supported singleton finding survives even if the other reviewers missed it. Agreement alone establishes nothing.
+
+This needs a host that can invoke those identities as independent parallel subagents. The installer ships the two Promptlings reviewers, not the built-in rubber-duck. When a reviewer or parallel dispatch is missing, the skill reports the blocker instead of inventing an equivalent run. To choose another composition explicitly, say:
+
+```text
+Run the review ensemble with Sparring Partner instead of rubber-duck.
+```
+
+Install Sparring Partner separately for that composition. Claude Code users can use this explicit composition with the installed Promptlings agents. Plugin-only installs still contain just the two existing review agents, not this skill or Sparring Partner. Resolve actual names through the host's registry, including plugin namespaces.
+
+Review defaults to analysis, not source edits or publication. The caller resolves required report outputs to authorized scratch storage outside the source tree before dispatch. Review-and-repair requires an explicit request. No review request authorizes posting or staging comments, approving, or merging. The workflow retains complete substantive worker results, verifies claims against code and requirements, and reports incomplete execution explicitly. It does not claim exhaustive detection.
 
 ## Install
 
@@ -34,11 +59,18 @@ curl -fsSL -o ~/.copilot/agents/the-nitcracker.agent.md \
   https://raw.githubusercontent.com/dfinson/promptlings/main/agents/code-review/the-nitcracker.agent.md
 ```
 
-Restart your assistant to pick it up. For other frameworks, parse the YAML frontmatter and use the Markdown body as the system prompt.
+Restart your assistant to pick it up. For agents with companion skills, use the installer or copy the required skill directories as well. For other frameworks, parse the YAML frontmatter and use the Markdown body as the system prompt, preserving resource loading and authority boundaries.
+
+| Skill location | Copilot CLI | Claude Code |
+| --- | --- | --- |
+| User-wide | `~/.copilot/skills/<skill>/SKILL.md` | `~/.claude/skills/<skill>/SKILL.md` |
+| Repository-local | `.github/skills/<skill>/SKILL.md` | `.claude/skills/<skill>/SKILL.md` |
+
+Copy each complete directory from `skills/`, including bundled scripts. `COPILOT_HOME` overrides the Copilot root for installer-managed agents and skills.
 
 ### Installer script
 
-Handles tool detection and multiple targets. It downloads only the agents you select and prints every path it will write before writing anything.
+Handles tool detection and multiple targets. It downloads selected agents and skills plus their required companions, and prints every destination before writing anything.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/dfinson/promptlings/main/install.sh -o install.sh
@@ -54,12 +86,32 @@ Windows PowerShell 5.1 defaults to the `Restricted` execution policy, which bloc
 
 | Flag | Effect |
 | --- | --- |
-| `--all` / `-All` | Install all six agents |
-| `--review` / `-Review` | The two code-review agents only |
-| `--agents a,b` / `-Agents a,b` | Install by name |
+| `--all` / `-All` | Install all eight agents and six skills |
+| `--review` / `-Review` | Install the two code-review agents, review-ensemble, and evidence-verification (also the noninteractive default) |
+| `--agents a,b` / `-Agents a,b` | Install agents by name and their required companion skills |
+| `--skills a,b` / `-Skills a,b` | Install skills by name, alone or with an agent selection, including dependencies |
 | `--list` / `-List` | Print available agent names and exit |
+| `--list-skills` / `-ListSkills` | Print available skill names and exit |
 | `--dry-run` / `-DryRun` | Print every path that would be written, write nothing |
 | `--with-readside` / `-WithReadSide` | Opt in to installing or replacing the managed Basic Memory read-side instruction |
+
+```bash
+bash install.sh --review --dry-run
+bash install.sh --agents sparring-partner
+bash install.sh --skills review-ensemble
+bash install.sh --agents artifact-inspector
+```
+
+```powershell
+.\install.ps1 -Review -DryRun
+.\install.ps1 -Agents sparring-partner
+.\install.ps1 -Skills review-ensemble
+.\install.ps1 -Agents artifact-inspector
+```
+
+Selecting `review-ensemble` includes both Promptlings reviewers and `evidence-verification`. Selecting Sparring Partner includes `technical-investigation`, `test-analysis`, `design-analysis`, and `evidence-verification`. Selecting Artifact Inspector includes `artifact-inspection` and its Python mechanical checker. The checker uses only the Python standard library. The installer installs neither Python nor external agent runtimes.
+
+**Upgrade behavior:** the review/default selection now also installs two discoverable skills. Explicit `--agents the-nitcracker,pr-walkthrough` (or `-Agents`) preserves agent-only installation. Existing selected files are overwritten, with each download staged before replacement so a failed fetch preserves that destination's previous content. Installation is per-file, not a transaction across the full selection. Unselected files are preserved.
 
 By default the script writes selected agents and their companion resources. BMAD procedures
 go under `<host-root>/promptlings/bmad`, outside skill discovery. The installer does not
@@ -75,6 +127,23 @@ Also available as a Claude Code plugin, currently carrying the two code-review a
 
 ## Agent Notes
 
+### Sparring Partner
+
+One reasoning agent covers design exploration, investigation, debugging, implementation and plan critique, testing analysis, and decision support. Its four companion skills provide deeper methods without adding separate investigator or test-skeptic personas. It contributes reasoning and recommendations as well as questions, seeks counterevidence, and recommends whatever fully addresses a demonstrated problem. Correction size is not a review criterion.
+
+### Artifact Inspector
+
+This maintainer-facing wrapper uses the same canonical `artifact-inspection` skill that a current agent can invoke directly. `user-invocable: false` marks it for subagent use on hosts that honor that metadata. Its read-only boundary is an instruction, not a host-enforced permission sandbox.
+
+The skill checks purpose, activation, contradictions, required capabilities, resource discovery and loading, trust and authority boundaries, outputs, stopping rules, and obligations retained through maintenance. CI runs the bundled mechanical checker separately:
+
+```bash
+python skills/artifact-inspection/scripts/check_artifacts.py --root .
+python skills/artifact-inspection/scripts/check_artifacts.py --root . --base origin/main
+```
+
+The optional base selects the committed diff plus staged, unstaged, and untracked agent/skill changes. The default scans canonical agents and skills. Checks cover required single-line metadata, skill directory naming, agent em dash bans, and local inline Markdown links. They are intentionally not a full YAML parser, semantic inspection, or proof of native behavior. CI also runs checker regression tests and both installers' integration checks. Maintainers request semantic inspection through the skill or Artifact Inspector, with the original requirements and baseline.
+
 ### the-nitcracker and PR Walkthrough
 
 Both split their output into three channels and hold each to a different bar, instead of producing one ranked list of comments.
@@ -86,6 +155,8 @@ Both split their output into three channels and hold each to a different bar, in
 **Implicit bets** are choices already resolved in the diff that are costly to reverse. The agent states what the diff does, why it is defensible, what the road not taken would have cost, and a concrete question the reviewer has to answer before approving. That question is mandatory.
 
 The agent is forbidden from rendering judgment in the second and third channels. It surfaces the choice and stops.
+
+PR Walkthrough is read-only in every mode. It returns its full narrative in conversation, never saves a report or creates tracking files, and never fetches or updates Git refs. A supplied diff, commit range, or bounded working-tree scope takes precedence over its default base. Otherwise it uses locally available refs and reports missing evidence.
 
 Output from both agents on a real PR is in [`examples/`](examples/), along with how to reproduce it and a disclosed wording edit. Worth knowing before you rely on either: no codebase index, no memory between runs, no GitHub App, no CI integration. Run twice on a change that matters, since the severity floor is reproducible but which finding surfaces is not.
 
@@ -164,7 +235,11 @@ Starts from a software request and always establishes current `spec.md`, `plan.m
 
 ## Contributing
 
-PRs are welcome. The inclusion bar is simple: would you use this agent every day?
+PRs are welcome. Keep each agent's responsibility and judgment boundary explicit, and put reusable methods in skills instead of multiplying personas. Maintainer-facing helpers need not be everyday user-facing agents. Run the mechanical checker above and obtain semantic inspection for changed instruction contracts.
+
+### Design provenance
+
+The new reasoning and inspection prompts and review-ensemble procedure are original Promptlings text. Design influences include [HVE Core](https://github.com/microsoft/hve-core) (independent critique, evidence-based arbitration, artifact review, and requirements-led authoring) and the existing Promptlings review agents. HVE's report-specific workflows and framework-specific contracts are not imported. The workflow formalizes the established Promptlings reviewers plus Copilot's built-in rubber-duck without copying that built-in agent or silently replacing it.
 
 When changing an agent, keep its purpose, output channels, approval boundaries, and host capabilities intact unless the change explicitly targets them. Remove repeated rules only when their required behavior remains covered, resolve contradictory instructions, and state what happens when evidence is missing. These maintenance criteria adapt the [HVE Builder requirements](https://github.com/microsoft/hve-core/blob/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/hve-core/hve-builder/references/requirements-catalog.md), without adding an HVE dependency.
 

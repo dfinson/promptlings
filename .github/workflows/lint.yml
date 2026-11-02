@@ -42,3 +42,14 @@ jobs:
       - uses: DavidAnson/markdownlint-cli2-action@v19
         with:
           globs: "**/*.md"
+
+  artifact-contracts:
+    name: Agent and skill mechanical checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python skills/artifact-inspection/scripts/check_artifacts.py --root .
+      - run: python -m unittest discover -s tests -p "test_artifacts.py" -v

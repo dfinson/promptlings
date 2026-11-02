@@ -65,7 +65,9 @@ On Claude Code 2.1.220, `claude plugin list` can report `Status: disabled` immed
 
 ## What this plugin does not ship
 
-The promptlings repository contains six agents. This plugin contains two. Session Handoff, Technical Demo, BMAD Orchestrator, and Spec-Kit Flow stay in the repository and stay installable by hand; they are simply not in this plugin's `agents/` directory, which is the whole mechanism.
+The promptlings repository contains eight agents and six skills. This plugin still contains the two review agents only. Sparring Partner, Artifact Inspector, Memory Manager, Technical Demo, BMAD Orchestrator, Spec-Kit Flow, and the skills stay installable through the repository installers or by hand.
+
+For `review-ensemble`, use the repository installer with `--skills review-ensemble` or `-Skills review-ensemble`. It installs the two reviewers and required skills. The default roster also requires the host's built-in rubber-duck, which this plugin does not ship. On Claude Code, install Sparring Partner and explicitly request it instead of rubber-duck. This is a different, caller-selected composition rather than an automatic substitution. See the [workflow instructions](../../README.md#invoke-a-workflow).
 
 ## What the agents do at runtime
 
@@ -75,7 +77,7 @@ Worth knowing before you install, since these agents drive your tools:
 - They read files in your workspace around the changed lines, not only the diff fragment.
 - They make outbound web requests. Both agents treat contextual research as mandatory: pr-walkthrough looks for a CVE, RFC, postmortem, or named pattern relevant to the change, and the-nitcracker researches domain references for the narrative.
 - the-nitcracker writes its review to `$COPILOT_ARTIFACTS_DIR` when that variable is set, and otherwise to the system temp directory.
-- pr-walkthrough writes its walkthrough into your repository working tree, at `.copilot-tracking/pr/review/<sanitized-branch>/walkthrough.md`, creating that directory if it does not exist. This is the one write that lands inside your project rather than a scratch location, so add `.copilot-tracking/` to your `.gitignore` if you do not want it tracked. It fires when the agent computes the diff itself from a base branch. Hand it a diff or a commit range directly and it returns the walkthrough in the conversation without writing a file.
+- pr-walkthrough is read-only in every mode. It returns its full walkthrough in conversation and never saves a report, creates tracking files, fetches, or updates Git refs. A supplied diff, commit range, or bounded working-tree target takes precedence over its default base. Without a supplied target it uses locally available refs, reporting missing evidence instead of fetching it.
 
 This plugin ships no hooks, no MCP servers, no LSP servers, and no executable code. It is two markdown files and a manifest. It collects no telemetry and makes no network calls of its own; the requests above are ones the agent asks your Claude Code session to make, and you see them as normal tool calls.
 
