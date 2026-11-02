@@ -470,8 +470,33 @@ if [ "$project_only" -eq 0 ]; then
     (cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t "$RULESYNC_RULE_TARGETS" -f rules)
   fi
   if [ -n "$memory_command" ]; then
-    if [ "$startup" -eq 1 ]; then server=("http://127.0.0.1:$memory_port/mcp"); else server=("$memory_command" --args mcp); fi
-    npx --yes "$ADD_MCP_PACKAGE" "${server[@]}" -g -y -n basic-memory
+    if [ "$startup" -eq 1 ]; then
+      server=("http://127.0.0.1:$memory_port/mcp")
+      transport=http
+    else
+      server=("$memory_command" --args mcp)
+      transport=stdio
+    fi
+    # add-mcp aborts if any detected client lacks the transport, so pass only the detected clients that support it.
+    add_mcp="$temporary/add-mcp"
+    npm install --prefix "$add_mcp" --no-save --no-fund --no-audit "$ADD_MCP_PACKAGE"
+    cat >"$temporary/detect-mcp-clients.mjs" <<'EOF'
+const [library, transport] = process.argv.slice(2);
+const { pathToFileURL } = await import("node:url");
+const { agents, detectGlobalAgents } = await import(pathToFileURL(library).href);
+for (const agent of await detectGlobalAgents()) {
+  if (agents[agent].supportedTransports.includes(transport)) console.log(agent);
+  else console.error(`Skipping ${agents[agent].displayName}: no ${transport} MCP support.`);
+}
+EOF
+    clients="$(node "$temporary/detect-mcp-clients.mjs" "$add_mcp/node_modules/add-mcp/dist/lib.js" "$transport")"
+    targets=()
+    for client in $clients; do targets+=(-a "$client"); done
+    if [ "${#targets[@]}" -gt 0 ]; then
+      node "$add_mcp/node_modules/add-mcp/dist/index.js" "${server[@]}" -g -y -n basic-memory "${targets[@]}"
+    else
+      printf 'Warning: no MCP client supporting %s was detected. basic-memory was not registered.\n' "$transport" >&2
+    fi
   fi
   if [ -n "$memory_command" ] && [ "$startup" -eq 1 ]; then
     case "$os" in

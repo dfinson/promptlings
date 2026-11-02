@@ -246,6 +246,7 @@ function Test-LibreOffice {
 }
 
 $temporary = Join-Path ([IO.Path]::GetTempPath()) ("promptlings-" + [guid]::NewGuid())
+$taskName = "Promptlings Basic Memory"
 $null = New-Item -ItemType Directory -Path $temporary
 $framework = @()
 try {
@@ -288,7 +289,17 @@ try {
         if (-not $NoHyperframes) { $packages += $pins.HYPERFRAMES_PACKAGE }
         if (-not $NoDemo) { $packages += $pins.DIFF2HTML_PACKAGE }
         if ($packages.Count) { Invoke-Native npm.cmd install --global @packages }
-        if (-not $NoMemory) { Invoke-Native uv tool install --force --python 3.12 $pins.MEMORY_PACKAGE }
+        if (-not $NoMemory) {
+            if ($windows) {
+                # Windows cannot replace basic-memory while a previous server holds it, and stopping the task leaves its children running.
+                if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) { Stop-ScheduledTask -TaskName $taskName }
+                $memoryExe = Join-Path (Invoke-Native uv tool dir --bin) "basic-memory.exe"
+                $memoryEnv = Join-Path (Invoke-Native uv tool dir) "basic-memory\*"
+                Get-Process | Where-Object { $_.Path -eq $memoryExe -or $_.Path -like $memoryEnv } |
+                    ForEach-Object { & taskkill.exe /PID $_.Id /T /F 2>&1 | Out-Null }
+            }
+            Invoke-Native uv tool install --force --python 3.12 $pins.MEMORY_PACKAGE
+        }
         if (-not $NoSpeckit) { Invoke-Native uv tool install --force --python 3.12 $pins.SPECKIT_PACKAGE }
         Invoke-Native uv tool update-shell
         if ($windows) { Refresh-Path }
@@ -390,7 +401,6 @@ try {
         Test-Project
     }
     if (-not $ProjectOnly) {
-        $taskName = "Promptlings Basic Memory"
         if (-not (Get-Command npx.cmd -ErrorAction SilentlyContinue)) {
             throw "Node.js npx is required to publish agents and register MCP servers."
         }
@@ -452,8 +462,27 @@ try {
         }
         finally { Pop-Location }
         if ($memoryCommand) {
-            $server = if ($NoStartup) { @($memoryCommand, "--args", "mcp") } else { @("http://127.0.0.1:$MemoryPort/mcp") }
-            Invoke-Native npx.cmd --yes $pins.ADD_MCP_PACKAGE @server -g -y -n basic-memory
+            $server = @(if ($NoStartup) { $memoryCommand, "--args", "mcp" } else { "http://127.0.0.1:$MemoryPort/mcp" })
+            $transport = if ($NoStartup) { "stdio" } else { "http" }
+            # add-mcp aborts if any detected client lacks the transport, so pass only the detected clients that support it.
+            $addMcp = Join-Path $temporary "add-mcp"
+            Invoke-Native npm.cmd install --prefix $addMcp --no-save --no-fund --no-audit $pins.ADD_MCP_PACKAGE
+            $detect = Join-Path $temporary "detect-mcp-clients.mjs"
+            [IO.File]::WriteAllText($detect, @'
+const [library, transport] = process.argv.slice(2);
+const { pathToFileURL } = await import("node:url");
+const { agents, detectGlobalAgents } = await import(pathToFileURL(library).href);
+for (const agent of await detectGlobalAgents()) {
+  if (agents[agent].supportedTransports.includes(transport)) console.log(agent);
+  else console.error(`Skipping ${agents[agent].displayName}: no ${transport} MCP support.`);
+}
+'@, [Text.UTF8Encoding]::new($false))
+            $clients = @(Invoke-Native node $detect (Join-Path $addMcp "node_modules\add-mcp\dist\lib.js") $transport)
+            if ($clients.Count) {
+                $targets = @($clients | ForEach-Object { "-a"; $_ })
+                Invoke-Native node (Join-Path $addMcp "node_modules\add-mcp\dist\index.js") @server -g -y -n basic-memory @targets
+            }
+            else { Write-Warning "No MCP client supporting $transport was detected. basic-memory was not registered." }
         }
         if ($memoryCommand -and -not $NoStartup) {
             $action = New-ScheduledTaskAction -Execute $memoryCommand -Argument "mcp --transport streamable-http --host 127.0.0.1 --port $MemoryPort"
