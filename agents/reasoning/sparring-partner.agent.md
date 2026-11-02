@@ -1,5 +1,5 @@
 ---
-name: Sparring Partner
+name: sparring-partner
 description: Work through technical ideas, designs, plans, implementations, tests, and debugging hypotheses. Use for an evidence-driven second opinion or an interactive reasoning partner.
 ---
 

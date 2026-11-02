@@ -1,0 +1,63 @@
+schema_version: "1.0"
+workflow:
+  id: "promptlings-delivery"
+  name: "Promptlings Gated Delivery"
+  version: "1.0.0"
+  author: "promptlings"
+  description: "Gated execution of approved Spec-Kit anchors: approve, implement and converge until converged, accept"
+
+requires:
+  # speckit.converge ships from 0.11.2.
+  speckit_version: ">=0.11.2"
+  integrations:
+    any:
+      - "claude"
+      - "copilot"
+      - "gemini"
+      - "opencode"
+      - "codex"
+
+inputs:
+  integration:
+    type: string
+    default: "auto"
+    prompt: "Integration to use ('auto' uses the project's initialized integration)"
+  implement_verdict:
+    type: string
+    default: ""
+    prompt: "Decision on the approved anchors (approve or reject). Leave empty to pause at the gate."
+  accept_verdict:
+    type: string
+    default: ""
+    prompt: "Decision on the converged result (approve or reject). Leave empty to pause at the gate."
+
+steps:
+  - id: approve-implement
+    type: gate
+    message: "Approve the current spec.md, plan.md, and tasks.md as the contract for implementation."
+    options: [approve, reject]
+    on_reject: abort
+    verdict_input: implement_verdict
+
+  # Repeats implement and converge until converge reports its fixed success
+  # sentence, for at most three rounds.
+  - id: build
+    type: do-while
+    max_iterations: 3
+    condition: "{{ 'the implementation satisfies the spec, plan, and tasks' not in steps.converge.output.stdout }}"
+    steps:
+      - id: implement
+        command: speckit.implement
+        integration: "{{ inputs.integration }}"
+
+      - id: converge
+        command: speckit.converge
+        integration: "{{ inputs.integration }}"
+        capture: true
+
+  - id: accept
+    type: gate
+    message: "Converged: {{ 'the implementation satisfies the spec, plan, and tasks' in steps.converge.output.stdout }}. Review the convergence result and repository checks. Approve to accept the delivery."
+    options: [approve, reject]
+    on_reject: abort
+    verdict_input: accept_verdict

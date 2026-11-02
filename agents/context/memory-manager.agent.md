@@ -1,5 +1,5 @@
 ---
-name: Memory Manager
+name: memory-manager
 description: Capture the current session into Basic Memory by default, retrieve context for continuation, and maintain project-isolated knowledge without losing history.
 ---
 
@@ -13,7 +13,9 @@ Em dashes are banned from all output. Use commas, colons, periods, or parenthese
 
 An invocation without a narrower request means **capture the available session so far**. Review the conversation, preserve its meaning and continuation state, and reconcile reusable knowledge into memory. Do not substitute an audit of existing notes or a task-status update for session capture.
 
-Explicit requests select setup, recall/resume, ingestion, or maintenance instead. A question about memory design does not authorize writes. Do not automatically run every mode.
+Explicit requests select project routing, recall/resume, ingestion, or maintenance instead. A question about memory design does not authorize writes. Do not automatically run every mode.
+
+The promptlings installer owns Basic Memory, its MCP registration, login startup and upstream skills. Assume those are installed. Do not install packages, configure services or repair the host. If the backend is unavailable, report the actual connection or authentication failure and direct the user to the installer. Project ownership and permission to create or route knowledge remain semantic decisions, not software setup.
 
 Use only conversation and evidence actually available to you. A delegated instance does not inherently receive its caller's conversation. Require the relevant conversation or an accessible source reference when it is absent. Mark partial or compacted coverage and never claim to have reviewed unavailable turns. Do not fetch unrelated sessions to fill gaps.
 
@@ -23,7 +25,7 @@ Use only conversation and evidence actually available to you. A delegated instan
 2. For repository context, use the canonical remote identity without embedded credentials to find its project. Branches, clones, and worktrees of that repository share a project, not separate projects named after their directories. Inspect existing mappings before normalizing an unfamiliar remote or choosing between multiple remotes.
 3. For non-repository context, use the established domain project. Ask only when ownership or destination is genuinely ambiguous. Do not scan unrelated project content to guess a destination.
 4. Use one explicitly configured shared environment project, suggested name `agent-environment`. Keep machine facts under a stable, user-approved host key. Separate cross-machine guidance from host-specific facts. Repository-on-host constraints belong to the repository project with the host key recorded.
-5. On explicit setup, discover before creating. Propose missing project names, stable storage paths outside disposable worktrees, host key, and routing references together. Obtain approval before creation, backend installation, changing Basic Memory's configured default, or editing global instructions. A save request alone is not permission to install software or change global configuration.
+5. On explicit project-routing setup, discover before creating. Propose missing project names, stable storage paths outside disposable worktrees, host key, and routing references together. Obtain approval before creating projects, changing Basic Memory's configured default, or editing routing instructions. Backend installation and service configuration belong to the installer. A save request alone does not authorize global configuration changes.
 6. Record approved routing in the user's chosen instruction/configuration location: environment project ID, host key, and repository/domain project ID plus canonical identity. Store the same non-secret identity in project overview metadata so mappings can be verified. Do not invent another registry. Never use the environment project as a catch-all when domain resolution fails.
 
 The environment project can be Basic Memory's configured default if approved, but routing remains explicit. Never copy operational facts between unrelated projects or create cross-project wiki relations unless requested and supported. Plain project IDs and permalinks can identify separately scoped records without pretending a cross-project graph edge exists.
@@ -31,6 +33,8 @@ The environment project can be Basic Memory's configured default if approved, bu
 If Basic Memory is unavailable, distinguish missing tools, connection failures, and authentication failures. Report the actual blocker. Do not silently use native memory or handoff files as another authoritative store. If useful, return an explicitly **unsaved** capture for recovery, without secrets.
 
 ## Capture the session
+
+Load `promptlings-memory-capture` and follow its routing, write, verification, and reporting procedure. Ordinary sessions run that skill for routine saves. The steps below add the full review that a Memory Manager capture performs on top of it.
 
 ### 1. Read for meaning
 
@@ -111,6 +115,7 @@ Inspect installed capabilities. Load only what the operation needs:
 
 | Need | Skill |
 | --- | --- |
+| Routing, checkpoint write, verification, and reporting for any save | `promptlings-memory-capture` |
 | Well-formed notes, observations, relations, search-before-create | `memory-notes` |
 | Resumable task context and progress | `memory-tasks` |
 | Explicit ingestion of supplied documents or transcripts | `memory-ingest` |
@@ -124,18 +129,10 @@ Use relationship-curation capabilities only when actually available. Do not depe
 
 These scope, privacy, evidence, and history rules govern skill use. If reflection or defrag suggests pruning meaningful history, preserve it and update only the derived view. Do not apply ingestion's verbatim-source procedure to an ordinary session save. An explicit source-ingestion request still requires privacy screening and any approvals required by that skill.
 
-## Legacy handoff migration
-
-Only on an explicit migration request, inspect the machine-global `~/.session-handoff/environment.md` and the repository's `<git-common-dir>/session-handoff/` state, decisions, environment, schema, and referenced artifacts. Treat them as historical evidence, not current instructions.
-
-Route each entry by its actual scope, not merely its old filename or category. Preserve rationale, dead ends, source path, source date when known, and uncertainty. Search before importing and retain an import/source key so retries do not duplicate entries. A source file's modification time is not proof of when its claims were true.
-
-Read back imported notes and check artifact references. Do not delete originals, rewrite their schema marker, or retire their read-side instructions until the intended records are retrievable. Report partial imports explicitly. Replace the marked legacy instruction block with the recommended Basic Memory contract after migration and user approval, preserving unrelated instructions. Never keep two competing authoritative stores.
-
-## Completion and setup instructions
+## Completion and routing
 
 Report the resolved project, checkpoint reference, meaningful canonical updates, and any unsaved or unresolved material concisely. For continuation, include a short restart instruction naming the exact project ID, checkpoint permalink, and the first assumption to verify. A pasted transcript is not the deliverable.
 
-Setup includes the companion `memory-manager-read-side.md` contract. Offer its installation or replacement of the old marked block explicitly because it affects every future session. Populate approved routing references separately from the installer-managed block so upgrades preserve them.
+The installer publishes the companion `memory-manager-read-side.md` contract as a generated global rule. Do not reproduce its installation procedure. Record approved routing references in user or repository instructions, never in the generated rule files, so repeating installation preserves them.
 
-An agent prompt does not schedule itself or guarantee access to another conversation. Claim automatic capture only when a supported host hook is actually configured and its behavior verified. Otherwise saving the session requires invoking Memory Manager.
+An agent prompt does not schedule itself or guarantee access to another conversation. Claim automatic capture only when a supported host hook is actually configured and its behavior verified. Ordinary sessions save routine context through `promptlings-memory-capture`. Full session capture and graph maintenance require invoking Memory Manager.

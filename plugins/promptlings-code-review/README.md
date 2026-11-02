@@ -67,7 +67,7 @@ On Claude Code 2.1.220, `claude plugin list` can report `Status: disabled` immed
 
 The promptlings repository contains eight agents and six skills. This plugin still contains the two review agents only. Sparring Partner, Artifact Inspector, Memory Manager, Technical Demo, BMAD Orchestrator, Spec-Kit Flow, and the skills stay installable through the repository installers or by hand.
 
-For `review-ensemble`, use the repository installer with `--skills review-ensemble` or `-Skills review-ensemble`. It installs the two reviewers and required skills. The default roster also requires the host's built-in rubber-duck, which this plugin does not ship. On Claude Code, install Sparring Partner and explicitly request it instead of rubber-duck. This is a different, caller-selected composition rather than an automatic substitution. See the [workflow instructions](../../README.md#invoke-a-workflow).
+For `review-ensemble`, use the repository installer, which publishes the two reviewers and every promptlings skill. The default roster also requires the host's built-in rubber-duck, which this plugin does not ship. On Claude Code, install Sparring Partner and explicitly request it instead of rubber-duck. This is a different, caller-selected composition rather than an automatic substitution. See the [workflow instructions](../../README.md#invoke-a-workflow).
 
 ## What the agents do at runtime
 

@@ -1,5 +1,5 @@
 ---
-name: PR Walkthrough
+name: pr-walkthrough
 description: 'Read-only narrative PR orientation surfacing design forks, implicit bets, and architectural shape for reviewer judgment.'
 ---
 

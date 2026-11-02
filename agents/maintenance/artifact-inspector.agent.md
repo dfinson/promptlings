@@ -1,5 +1,5 @@
 ---
-name: Artifact Inspector
+name: artifact-inspector
 description: Inspect contributed agents, skills, prompts, and instructions against their stated purpose, execution contracts, dependencies, and repository conventions. Use as a maintainer or CI helper, not a general code reviewer.
 user-invocable: false
 ---
