@@ -263,7 +263,15 @@ The [shared writing sources](skills/reasoning-first-writing/references/sources.m
 | [cue-synced-demo](skills/cue-synced-demo/SKILL.md) | Record real browser or editor events, including human-style code walkthroughs, and bind narration to them |
 | [pr-video](skills/pr-video/SKILL.md) | Find the story in a pull request and plan a video that shows the change |
 
-Technical Demo or any agent producing a demo can load these alongside `reasoning-first-narration`. The installer publishes them with the other promptlings skills.
+Technical Demo invokes these alongside `reasoning-first-narration`, and any other agent producing a demo can load them too. The installer publishes them with the other promptlings skills.
+
+### Technical Demo
+
+The director supports technical explainers, verified hands-on demos, and hybrids built around a concrete case and outcome. It owns audience, story, evidence, script approval, semantic coverage, readiness and final acceptance. It invokes Reasoning-First Narration for explanation writing, Narrative Transitions for joins between scenes, TTS Setup for listening-accepted synthetic speech, HyperFrames and its specialist skills for authored compositions, and Cue-Synced Demo for event-bound footage and timing. For a pull request or diff it invokes PR Video, which opens with why the change exists, shows the changed behavior, and tours the code in order of consequence.
+
+Real browser or window capture supplies runtime evidence and does not require HyperFrames for ordinary editing. Code walkthroughs look like a person giving them: the full VS Code workbench, a visible pointer moving through the file tree and the file, and brisk navigation: code never scrolls for more than two or three seconds, and long distances jump through the scrollbar, minimap or Outline view. Composed terminals and windows default to a macOS-style presentation. Diff scenes use the diff2html CLI or Shiki Magic Move. Produced documents are shown as real pages rendered through Word or LibreOffice, then Poppler `pdftoppm` or pdf.js. When an installed tool is missing or fails, the agent reports it and asks you to rerun the installer instead of hand-rolling a substitute.
+
+Script approval is recorded verbatim with a hash of the approved script. A representative finished scene is judged by someone who watched and listened before full production. The finished demo is handed to you for review, and it counts as accepted once someone has watched and listened to the final file.
 
 ### Sparring Partner
 
