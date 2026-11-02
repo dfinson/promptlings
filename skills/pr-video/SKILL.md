@@ -35,7 +35,7 @@ Summarize mechanical churn such as renames, formatting and generated files in on
 
 Pick the specialist by what the viewer needs to see:
 
-- **Code in its editor:** navigation, definitions and the change applied in place. Script it with Demo Time's `demotime-code-demo` skill, starting from the base commit and patching to head, and record it as `cue-synced-demo` describes. To explain surrounding code the change relies on, add read-only scenes that open and highlight it.
+- **Code in its editor:** a human-style walkthrough that navigates the file tree to the changed file, applies the change in place from base to head and follows definitions, captured as `cue-synced-demo` describes. Walk into surrounding code the change relies on the same way.
 - **The diff itself:** render the hunk to HTML with [diff2html](https://github.com/rtfpessoa/diff2html) (MIT) and hold or compose it.
 - **Before-to-after morph:** animate the two versions with Shiki's [`@shikijs/magic-move`](https://github.com/shikijs/shiki/tree/main/packages/magic-move) (MIT) inside a `hyperframes` composition.
 
