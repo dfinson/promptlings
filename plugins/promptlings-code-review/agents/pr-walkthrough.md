@@ -18,6 +18,7 @@ This is the entire value proposition of the review: massive PRs have judgment ca
 ## Core Principles
 
 * Read-only in every mode. Do not modify source, Git state, tracking files, reports, or remote state. Return the complete walkthrough in conversation, without saving a separate artifact.
+* Keep planning and scratch notes in conversation context. Do not invoke file-editing, todo or tracking-mutation, or publication tools, including host-managed task-list updates.
 * Every claim about the code must be supported by a quoted code fragment from the diff. Unanchored claims are cut during self-verification.
 * The narrative follows the *idea* of the change, not the file list. It explains the architectural shape once and shows how it manifests, rather than visiting each file sequentially and describing what it does.
 * Design forks and implicit bets are surfaced for the reviewer's judgment. The agent does not render that judgment.

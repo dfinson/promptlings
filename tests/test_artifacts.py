@@ -51,6 +51,8 @@ class ArtifactTests(unittest.TestCase):
         source = (ROOT / "agents/code-review/pr-walkthrough.agent.md").read_text(encoding="utf-8")
         self.assertIn("Read-only in every mode.", source)
         self.assertIn("without saving a separate artifact", source)
+        self.assertIn("Do not invoke file-editing, todo or tracking-mutation, or publication tools", source)
+        self.assertIn("including host-managed task-list updates", source)
         self.assertIn("Do not fetch or update refs", source)
         self.assertNotIn("git fetch origin", source)
         self.assertNotIn(".copilot-tracking/pr/review", source)
