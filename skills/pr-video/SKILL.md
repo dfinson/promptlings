@@ -7,13 +7,13 @@ description: 'Turn a pull request or diff into a short narrated video that expla
 
 A PR video explains a change to someone who has not read it. It opens with why the change exists, shows the behavior it changes, then walks the code that carries it in order of consequence. Review findings and verdicts belong to review tools such as The Nitcracker; this video builds understanding.
 
-This skill supplies the change-specific discovery and story. Narration, transitions, speech, capture and composition come from the companion skills named below, directed by the `technical-demo` agent when it is installed.
+This skill supplies the change-specific discovery and story practice. The `technical-demo` agent owns the video when it is installed: audience, story, script approval and acceptance. Narration, transitions, speech, capture and composition come from the companion skills named below.
 
 ## Read the change
 
 - Gather the PR title and description, linked issues, commits and the full diff, for example with `gh pr view` and `gh pr diff`, or `git diff base...head` for a branch. For a bare diff, use its commit messages and the surrounding code.
 - Read every changed file and the code that calls into the changed paths before choosing the story. Descriptions are indexes, not evidence.
-- When the PR Walkthrough agent is available, use its orientation as the spine: intent, design forks, implicit bets and architectural shape.
+- When the PR Walkthrough agent is available, treat its orientation as one input alongside the diff, the PR description and observed behavior. The video's story, order and emphasis remain the director's decisions.
 - Establish who watches and what they need to decide: approve, adopt, integrate or learn.
 - Write the change's intent in one sentence and confirm it with the author or user when the PR does not state it.
 - Rank changed files by consequence: entry points, public contracts, schemas, configuration and data shape first; internal implementation next; mechanical edits last.
