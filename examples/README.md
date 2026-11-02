@@ -15,9 +15,8 @@ the code path in question, concluding: "Both branches are unreachable today. Tha
 moment anything assigns `DoneReasonConnectionClosed`." Its premise is that
 `server/routes.go:2777` is the only assignment on the chat path.
 [`ollama-17485-walkthrough.md`](ollama-17485-walkthrough.md) identifies the cloud passthrough branch,
-which never goes through that assignment, so "only assignment on the chat path" does not hold. The
-[top-level README](../README.md#real-output-unedited) walks the full mechanism if you want to
-adjudicate it yourself.
+which never goes through that assignment, so "only assignment on the chat path" does not hold.
+Compare the two accounts against the source at the reviewed commits to adjudicate it.
 
 ## What was reviewed
 
@@ -54,6 +53,5 @@ git checkout cb5871d5
 
 Then invoke either agent with `a199313eb334d59486160fcfc3f8f2d30fc576be` as the comparison base.
 
-Expect the output to differ from what is committed here. See the reproducibility note in the
-[top-level README](../README.md#what-these-agents-cannot-do) for measured run-to-run variance on
-this exact pull request.
+Expect the output to differ from what is committed here. These are individual runs,
+not a guarantee that another run will surface the same findings.
