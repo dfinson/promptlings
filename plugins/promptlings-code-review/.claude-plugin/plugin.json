@@ -3,7 +3,7 @@
   "name": "promptlings-code-review",
   "displayName": "Promptlings Code Review",
   "description": "Two pull request review agents. the-nitcracker flags defects inline and writes a narrative walkthrough; pr-walkthrough writes orientation only. Both split output into defects, design forks, and implicit bets, and render judgment on defects alone.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": {
     "name": "dfinson",
     "url": "https://github.com/dfinson"

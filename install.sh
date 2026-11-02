@@ -21,8 +21,10 @@ BASE_URL="https://raw.githubusercontent.com/$REPO/$BRANCH"
 READSIDE_PATH="agents/context/memory-manager-read-side.md"
 BMAD_PROCEDURE_PATH="agents/orchestration/bmad"
 
-ALL_AGENTS="the-nitcracker pr-walkthrough memory-manager technical-demo bmad-orchestrator speckit-flow"
+ALL_AGENTS="the-nitcracker pr-walkthrough memory-manager technical-demo bmad-orchestrator speckit-flow sparring-partner artifact-inspector"
 REVIEW_AGENTS="the-nitcracker pr-walkthrough"
+REASONING_SKILLS="technical-investigation test-analysis design-analysis evidence-verification"
+ALL_SKILLS="$REASONING_SKILLS review-ensemble artifact-inspection"
 
 agent_path() {
   case "$1" in
@@ -32,6 +34,8 @@ agent_path() {
     technical-demo)    echo "agents/media/technical-demo.agent.md" ;;
     bmad-orchestrator) echo "agents/orchestration/bmad-orchestrator.agent.md" ;;
     speckit-flow)      echo "agents/orchestration/speckit-flow.agent.md" ;;
+    sparring-partner)  echo "agents/reasoning/sparring-partner.agent.md" ;;
+    artifact-inspector) echo "agents/maintenance/artifact-inspector.agent.md" ;;
     *) return 1 ;;
   esac
 }
@@ -42,11 +46,15 @@ promptlings installer
 
 Usage: bash install.sh [options]
 
-Selection (pick at most one):
-  --review              Install the two code-review agents (the-nitcracker, pr-walkthrough)
-  --all                 Install all six agents
+Agent selection (pick at most one):
+  --review              Install the two code-review agents and review-ensemble skill
+  --all                 Install all eight agents and six skills
   --agents a,b,c        Install agents by name (comma separated)
   --list                Print available agent names and exit
+
+Skills (can be combined with an agent selection):
+  --skills a,b,c        Install skills by name, alone or with an agent selection
+  --list-skills         Print available skill names and exit
 
 Behavior:
   --dry-run             Print every path that would be written, write nothing
@@ -58,7 +66,7 @@ Behavior:
   --help                Print this message and exit
 
 With no selection flag, an interactive run asks which set you want. A non-interactive run
-(a piped one-liner) installs the two code-review agents and prints how to ask for more.
+(a piped one-liner) installs the review set and prints how to ask for more.
 
 Files written by default: one .agent.md per selected agent, under ~/.copilot/agents/ and/or
 ~/.claude/agents/. Selecting bmad-orchestrator also installs setup.md and bootstrap.md
@@ -66,6 +74,9 @@ under each host's promptlings/bmad directory, outside skill discovery.
 BMAD never adds global startup instructions or globally discovered skills.
 No global instruction file is changed unless --with-readside is given or you confirm
 the read-side prompt. COPILOT_HOME overrides the Copilot root.
+Skills install under each host's skills directory. Required companion skills and agents
+are included automatically. The default ensemble needs the host's built-in rubber-duck;
+this installer does not install it or silently substitute another agent.
 
 session-handoff is a deprecated selection alias for memory-manager. Existing agent files
 and legacy handoff data are never deleted. Basic Memory setup is performed by the agent.
@@ -76,6 +87,8 @@ EOF
 
 selection=""
 selection_source=""
+skill_selection=""
+skills_requested=0
 dry_run=0
 assume_yes=0
 want_readside=0
@@ -104,8 +117,25 @@ while [ "$#" -gt 0 ]; do
     --agents=*)
       set_selection "--agents" "$(echo "${1#--agents=}" | tr ',' ' ')"
       ;;
+    --skills)
+      if [ "$#" -lt 2 ]; then
+        echo "Error: --skills requires a comma separated list of skill names." >&2
+        exit 2
+      fi
+      skills_requested=1
+      skill_selection="$skill_selection $(echo "$2" | tr ',' ' ')"
+      shift
+      ;;
+    --skills=*)
+      skills_requested=1
+      skill_selection="$skill_selection $(echo "${1#--skills=}" | tr ',' ' ')"
+      ;;
     --list)
       for a in $ALL_AGENTS; do echo "$a"; done
+      exit 0
+      ;;
+    --list-skills)
+      for s in $ALL_SKILLS; do echo "$s"; done
       exit 0
       ;;
     --dry-run) dry_run=1 ;;
@@ -138,29 +168,57 @@ fi
 
 # ----- resolve the selection -----
 
-if [ -z "$selection" ]; then
+if [ -z "$selection_source" ] && [ "$skills_requested" -eq 0 ]; then
   if [ "$interactive" -eq 1 ]; then
     echo "Which agents do you want?"
-    echo "  1) The two code-review agents: the-nitcracker, pr-walkthrough (default)"
-    echo "  2) All six agents"
+    echo "  1) The two code-review agents and review-ensemble skill (default)"
+    echo "  2) All eight agents and six skills"
     echo "  3) Cancel"
     printf 'Choice [1]: '
     read -r choice || choice=""
     case "${choice:-1}" in
-      1|"") selection="$REVIEW_AGENTS" ;;
-      2)    selection="$ALL_AGENTS" ;;
+      1|"") selection="$REVIEW_AGENTS"; selection_source="--review" ;;
+      2)    selection="$ALL_AGENTS"; selection_source="--all" ;;
       *)    echo "Cancelled. Nothing was written."; exit 0 ;;
     esac
   else
     selection="$REVIEW_AGENTS"
-    echo "No selection flag and no terminal to ask on, so defaulting to the two code-review agents."
+    selection_source="--review"
+    echo "No selection flag and no terminal to ask on, so defaulting to the review set."
     echo "For everything else, download the script and pass a flag:"
     echo "  curl -fsSL $BASE_URL/install.sh -o install.sh"
-    echo "  bash install.sh --all          # all six agents"
+    echo "  bash install.sh --all          # all eight agents and six skills"
     echo "  bash install.sh --list         # available agent names"
     echo ""
   fi
 fi
+
+if [ "$selection_source" = "--all" ]; then skill_selection="$skill_selection $ALL_SKILLS"; fi
+if [ "$selection_source" = "--review" ]; then skill_selection="$skill_selection review-ensemble"; fi
+for a in $selection; do
+  case "$a" in
+    sparring-partner) skill_selection="$skill_selection $REASONING_SKILLS" ;;
+    artifact-inspector) skill_selection="$skill_selection artifact-inspection" ;;
+  esac
+done
+for s in $skill_selection; do
+  if [ "$s" = "review-ensemble" ]; then
+    selection="$selection $REVIEW_AGENTS"
+    skill_selection="$skill_selection evidence-verification"
+  fi
+done
+resolved_skills=""
+for s in $skill_selection; do
+  case " $ALL_SKILLS " in
+    *" $s "*) ;;
+    *) echo "Error: unknown skill '$s'. Run with --list-skills to see valid names." >&2; exit 2 ;;
+  esac
+  case " $resolved_skills " in
+    *" $s "*) ;;
+    *) resolved_skills="$resolved_skills $s" ;;
+  esac
+done
+skill_selection="$resolved_skills"
 
 # validate and de-duplicate
 resolved=""
@@ -180,8 +238,8 @@ for a in $selection; do
 done
 selection="$(echo "$resolved" | sed 's/^ *//;s/ *$//')"
 
-if [ -z "$selection" ]; then
-  echo "Error: no agents selected." >&2
+if [ -z "$selection" ] && [ -z "$skill_selection" ]; then
+  echo "Error: no agents or skills selected." >&2
   exit 2
 fi
 
@@ -250,6 +308,8 @@ fi
 
 agent_count=0
 for a in $selection; do agent_count=$((agent_count + 1)); done
+skill_count=0
+for s in $skill_selection; do skill_count=$((skill_count + 1)); done
 
 echo "Plan"
 echo "===="
@@ -268,6 +328,12 @@ plan_files() {
     echo "  $(dirname "$1")/promptlings/bmad/setup.md"
     echo "  $(dirname "$1")/promptlings/bmad/bootstrap.md"
   fi
+  for s in $skill_selection; do
+    echo "  $(dirname "$1")/skills/$s/SKILL.md"
+    if [ "$s" = "artifact-inspection" ]; then
+      echo "  $(dirname "$1")/skills/$s/scripts/check_artifacts.py"
+    fi
+  done
 }
 if [ "$copilot_selected" -eq 1 ]; then plan_files "$copilot_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then plan_files "$claude_dir"; fi
@@ -343,12 +409,22 @@ install_to() {
     download "$BMAD_PROCEDURE_PATH/setup.md" "$procedure_dir/setup.md"
     download "$BMAD_PROCEDURE_PATH/bootstrap.md" "$procedure_dir/bootstrap.md"
   fi
+  for s in $skill_selection; do
+    local skill_dir
+    skill_dir="$(dirname "$1")/skills/$s"
+    mkdir -p "$skill_dir"
+    download "skills/$s/SKILL.md" "$skill_dir/SKILL.md"
+    if [ "$s" = "artifact-inspection" ]; then
+      mkdir -p "$skill_dir/scripts"
+      download "skills/$s/scripts/check_artifacts.py" "$skill_dir/scripts/check_artifacts.py"
+    fi
+  done
 }
 if [ "$copilot_selected" -eq 1 ]; then install_to "$copilot_dir"; fi
 if [ "$claude_selected" -eq 1 ]; then install_to "$claude_dir"; fi
 
 echo ""
-echo "Installed $agent_count agent(s). Restart your assistant to pick them up."
+echo "Installed $agent_count agent(s) and $skill_count skill(s). Restart your assistant to pick them up."
 
 # ----- read-side block, opt-in only -----
 

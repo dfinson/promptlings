@@ -17,7 +17,9 @@ param(
     [switch]$Review,
     [switch]$All,
     [string]$Agents,
+    [string]$Skills,
     [switch]$List,
+    [switch]$ListSkills,
     [switch]$DryRun,
     [switch]$Yes,
     [switch]$WithReadSide,
@@ -42,8 +44,12 @@ $AllAgents = @(
     "technical-demo"
     "bmad-orchestrator"
     "speckit-flow"
+    "sparring-partner"
+    "artifact-inspector"
 )
 $ReviewAgents = @("the-nitcracker", "pr-walkthrough")
+$ReasoningSkills = @("technical-investigation", "test-analysis", "design-analysis", "evidence-verification")
+$AllSkills = $ReasoningSkills + @("review-ensemble", "artifact-inspection")
 
 $AgentPaths = @{
     "pr-walkthrough"    = "agents/code-review/pr-walkthrough.agent.md"
@@ -52,6 +58,8 @@ $AgentPaths = @{
     "technical-demo"    = "agents/media/technical-demo.agent.md"
     "bmad-orchestrator" = "agents/orchestration/bmad-orchestrator.agent.md"
     "speckit-flow"      = "agents/orchestration/speckit-flow.agent.md"
+    "sparring-partner"  = "agents/reasoning/sparring-partner.agent.md"
+    "artifact-inspector" = "agents/maintenance/artifact-inspector.agent.md"
 }
 
 function Show-Usage {
@@ -60,11 +68,15 @@ promptlings installer
 
 Usage: .\install.ps1 [options]
 
-Selection (pick at most one):
-  -Review               Install the two code-review agents (the-nitcracker, pr-walkthrough)
-  -All                  Install all six agents
+Agent selection (pick at most one):
+  -Review               Install the two code-review agents and review-ensemble skill
+  -All                  Install all eight agents and six skills
   -Agents a,b,c         Install agents by name (comma separated)
   -List                 Print available agent names and exit
+
+Skills (can be combined with an agent selection):
+  -Skills a,b,c         Install skills by name, alone or with an agent selection
+  -ListSkills           Print available skill names and exit
 
 Behavior:
   -DryRun               Print every path that would be written, write nothing
@@ -76,7 +88,7 @@ Behavior:
   -Help                 Print this message and exit
 
 With no selection flag, an interactive run asks which set you want. A non-interactive run
-(a piped one-liner) installs the two code-review agents and prints how to ask for more.
+(a piped one-liner) installs the review set and prints how to ask for more.
 
 Files written by default: one .agent.md per selected agent, under %USERPROFILE%\.copilot\agents\
 and/or %USERPROFILE%\.claude\agents\. Selecting bmad-orchestrator also installs setup.md
@@ -84,6 +96,9 @@ and bootstrap.md under each host's promptlings\bmad directory, outside
 skill discovery. BMAD never adds global startup instructions or globally discovered skills.
 No global instruction file is changed unless -WithReadSide is given or you confirm the
 read-side prompt. COPILOT_HOME overrides the Copilot root.
+Skills install under each host's skills directory. Required companion skills and agents
+are included automatically. The default ensemble needs the host's built-in rubber-duck;
+this installer does not install it or silently substitute another agent.
 
 session-handoff is a deprecated selection alias for memory-manager. Existing agent files
 and legacy handoff data are never deleted. Basic Memory setup is performed by the agent.
@@ -98,11 +113,13 @@ function Write-Fail {
 
 if ($Help) { Show-Usage; return }
 if ($List) { $AllAgents | ForEach-Object { Write-Host $_ }; return }
+if ($ListSkills) { $AllSkills | ForEach-Object { Write-Host $_ }; return }
 
 # ----- resolve the selection flags -----
 
 $selection = @()
 $selectionSource = $null
+$skillSelection = @($Skills -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" })
 
 if ($Review) {
     $selectionSource = "-Review"
@@ -136,30 +153,49 @@ $interactive = $scriptIsFile -and [Environment]::UserInteractive -and (-not [Con
 
 # ----- resolve the selection -----
 
-if ($selection.Count -eq 0) {
+if (-not $selectionSource -and -not $Skills) {
     if ($interactive) {
         Write-Host "Which agents do you want?"
-        Write-Host "  1) The two code-review agents: the-nitcracker, pr-walkthrough (default)"
-        Write-Host "  2) All six agents"
+        Write-Host "  1) The two code-review agents and review-ensemble skill (default)"
+        Write-Host "  2) All eight agents and six skills"
         Write-Host "  3) Cancel"
         $choice = Read-Host "Choice [1]"
         switch (("$choice").Trim()) {
-            "" { $selection = $ReviewAgents }
-            "1" { $selection = $ReviewAgents }
-            "2" { $selection = $AllAgents }
+            "" { $selection = $ReviewAgents; $selectionSource = "-Review" }
+            "1" { $selection = $ReviewAgents; $selectionSource = "-Review" }
+            "2" { $selection = $AllAgents; $selectionSource = "-All" }
             default { Write-Host "Cancelled. Nothing was written."; return }
         }
     }
     else {
         $selection = $ReviewAgents
-        Write-Host "No selection flag and no console to ask on, so defaulting to the two code-review agents."
+        $selectionSource = "-Review"
+        Write-Host "No selection flag and no console to ask on, so defaulting to the review set."
         Write-Host "For everything else, download the script and pass a flag:"
         Write-Host "  irm $BaseUrl/install.ps1 -OutFile install.ps1"
-        Write-Host "  .\install.ps1 -All            # all six agents"
+        Write-Host "  .\install.ps1 -All            # all eight agents and six skills"
         Write-Host "  .\install.ps1 -List           # available agent names"
         Write-Host ""
     }
 }
+
+if ($selectionSource -eq "-All") { $skillSelection += $AllSkills }
+if ($selectionSource -eq "-Review") { $skillSelection += "review-ensemble" }
+if ($selection -contains "sparring-partner") { $skillSelection += $ReasoningSkills }
+if ($selection -contains "artifact-inspector") { $skillSelection += "artifact-inspection" }
+if ($skillSelection -contains "review-ensemble") {
+    $selection += $ReviewAgents
+    $skillSelection += "evidence-verification"
+}
+$resolvedSkills = @()
+foreach ($s in $skillSelection) {
+    if ($AllSkills -notcontains $s) {
+        Write-Fail "Unknown skill '$s'. Run with -ListSkills to see valid names."
+        exit 2
+    }
+    if ($resolvedSkills -notcontains $s) { $resolvedSkills += $s }
+}
+$skillSelection = $resolvedSkills
 
 # validate and de-duplicate
 $resolved = @()
@@ -176,8 +212,8 @@ foreach ($a in $selection) {
 }
 $selection = $resolved
 
-if ($selection.Count -eq 0) {
-    Write-Fail "No agents selected."
+if ($selection.Count -eq 0 -and $skillSelection.Count -eq 0) {
+    Write-Fail "No agents or skills selected."
     exit 2
 }
 
@@ -251,6 +287,13 @@ foreach ($t in $targets) {
             Write-Host "  $(Join-Path (Split-Path $t -Parent) "promptlings\bmad\$($pair[1])")"
         }
     }
+    foreach ($s in $skillSelection) {
+        $skillDir = Join-Path (Split-Path $t -Parent) "skills\$s"
+        Write-Host "  $(Join-Path $skillDir 'SKILL.md')"
+        if ($s -eq "artifact-inspection") {
+            Write-Host "  $(Join-Path $skillDir 'scripts\check_artifacts.py')"
+        }
+    }
 }
 Write-Host ""
 
@@ -318,10 +361,20 @@ foreach ($t in $targets) {
             Get-Remote -Remote $pair[0] -Dest (Join-Path $procedureDir $pair[1])
         }
     }
+    foreach ($s in $skillSelection) {
+        $skillDir = Join-Path (Split-Path $t -Parent) "skills\$s"
+        New-Item -ItemType Directory -Force -Path $skillDir | Out-Null
+        Get-Remote -Remote "skills/$s/SKILL.md" -Dest (Join-Path $skillDir "SKILL.md")
+        if ($s -eq "artifact-inspection") {
+            $scriptsDir = Join-Path $skillDir "scripts"
+            New-Item -ItemType Directory -Force -Path $scriptsDir | Out-Null
+            Get-Remote -Remote "skills/$s/scripts/check_artifacts.py" -Dest (Join-Path $scriptsDir "check_artifacts.py")
+        }
+    }
 }
 
 Write-Host ""
-Write-Host "Installed $($selection.Count) agent(s). Restart your assistant to pick them up."
+Write-Host "Installed $($selection.Count) agent(s) and $($skillSelection.Count) skill(s). Restart your assistant to pick them up."
 
 # ----- read-side block, opt-in only -----
 

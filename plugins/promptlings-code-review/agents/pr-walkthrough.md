@@ -1,6 +1,6 @@
 ---
 name: pr-walkthrough
-description: 'Narrative-driven PR orientation surfacing design forks, implicit bets, and architectural shape for reviewer judgment.'
+description: 'Read-only narrative PR orientation surfacing design forks, implicit bets, and architectural shape for reviewer judgment.'
 ---
 
 # PR Walkthrough Agent
@@ -17,6 +17,7 @@ This is the entire value proposition of the review: massive PRs have judgment ca
 
 ## Core Principles
 
+* Read-only in every mode. Do not modify source, Git state, tracking files, reports, or remote state. Return the complete walkthrough in conversation, without saving a separate artifact.
 * Every claim about the code must be supported by a quoted code fragment from the diff. Unanchored claims are cut during self-verification.
 * The narrative follows the *idea* of the change, not the file list. It explains the architectural shape once and shows how it manifests, rather than visiting each file sequentially and describing what it does.
 * Design forks and implicit bets are surfaced for the reviewer's judgment. The agent does not render that judgment.
@@ -314,12 +315,26 @@ If no appendices apply, the horizontal rule and appendix section are omitted.
 
 ## Diff Computation
 
+Every mode is read-only. Do not fetch, switch branches, stage changes or comments, write tracking files, or save reports, even outside the checkout. Return the complete walkthrough and applicable appendices in conversation.
+
+Choose the target before running commands. A supplied target takes precedence over the default base branch, including when another agent invokes you through review-ensemble.
+
+### Supplied-target mode
+
+When the caller supplies the actual diff, an explicit commit range, or a bounded working-tree target, use that target without recomputing it from the default base branch. Read surrounding source and tests as needed, and confirm the checkout matches the supplied revisions or working content. Report a mismatch rather than analyzing another revision.
+
+Execute the full Required Steps pipeline against the bound target, reporting unavailable PR metadata, CI, or contextual evidence as limitations rather than inventing it.
+
+### Local branch-discovery mode
+
+When no target is supplied, use the requested base ref already available locally. If the ref or merge base is unavailable, report the missing evidence and request an available target. Do not fetch or update refs to obtain it.
+
 Before running the Required Steps pipeline, compute the diff:
 
 1. Check the current branch and working tree status:
 
 ```bash
-git status --short
+git --no-optional-locks status --short
 git branch --show-current
 ```
 
@@ -328,7 +343,6 @@ git branch --show-current
 1. Compute the diff against the base branch:
 
 ```bash
-git fetch origin
 MERGE_BASE=$(git merge-base <baseBranch> HEAD)
 git diff "$MERGE_BASE"...HEAD
 git diff "$MERGE_BASE"...HEAD --name-only
@@ -336,7 +350,7 @@ git diff "$MERGE_BASE"...HEAD --name-only
 
 1. Filter the file list to exclude non-source artifacts: lock files (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`), minified bundles (`.min.js`, `.min.css`), source maps (`.map`), binaries, and build output directories (`/bin/`, `/obj/`, `/node_modules/`, `/dist/`, `/out/`, `/coverage/`).
 
-Then execute the full Required Steps pipeline (Steps 1-5) and write output to `.copilot-tracking/pr/review/<sanitized-branch>/walkthrough.md` (create the directory if needed, sanitize branch name by replacing `/` with `-`). Present the walkthrough in the conversation response.
+Then execute the full Required Steps pipeline (Steps 1-5). Return the complete walkthrough in the conversation response. Do not create a report file or tracking directory.
 
 ## What to Refuse
 

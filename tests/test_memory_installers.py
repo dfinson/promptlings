@@ -28,9 +28,10 @@ STALE = (
 
 class FixtureHandler(http.server.SimpleHTTPRequestHandler):
     fault = None
+    fault_path = READSIDE
 
     def do_GET(self):
-        if self.path == "/" + READSIDE and self.fault:
+        if self.path == "/" + self.fault_path and self.fault:
             if self.fault == "http":
                 self.send_error(503, "fixture download failure")
                 return
@@ -71,6 +72,7 @@ class InstallerTests(unittest.TestCase):
 
     def setUp(self):
         FixtureHandler.fault = None
+        FixtureHandler.fault_path = READSIDE
         self.temp = tempfile.TemporaryDirectory(prefix="promptlings-test-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
@@ -107,16 +109,29 @@ class InstallerTests(unittest.TestCase):
 
     def run_installer(
         self, shell, home, script, *, readside=True, dry=False,
-        agents="memory-manager", list_only=False, all_agents=False, expect_success=True
+        agents="memory-manager", list_only=False, all_agents=False, expect_success=True,
+        skills=None, review=False, default_selection=False, list_skills=False,
+        copilot_home=None,
     ):
         env = os.environ.copy()
+        env.pop("COPILOT_HOME", None)
         env.update(HOME=str(home), USERPROFILE=str(home))
+        if copilot_home is not None:
+            env["COPILOT_HOME"] = str(copilot_home)
         if shell == "bash":
             command = [self.shells[shell], "--noprofile", "--norc", str(script)]
-            args = ["--list"] if list_only else ["--agents", agents, "--yes"]
+            args = ["--yes"]
+            if agents is not None and not default_selection:
+                args += ["--agents", agents]
             if all_agents:
                 args = ["--all", "--yes"]
-            if readside and not list_only:
+            if review:
+                args = ["--review", "--yes"]
+            if skills is not None:
+                args += ["--skills", skills]
+            if list_only or list_skills:
+                args = ["--list-skills" if list_skills else "--list"]
+            if readside and not (list_only or list_skills):
                 args.append("--with-readside")
             if dry:
                 args.append("--dry-run")
@@ -125,10 +140,18 @@ class InstallerTests(unittest.TestCase):
                 self.shells[shell], "-NoProfile", "-NonInteractive",
                 "-ExecutionPolicy", "Bypass", "-File", str(script),
             ]
-            args = ["-List"] if list_only else ["-Agents", agents, "-Yes"]
+            args = ["-Yes"]
+            if agents is not None and not default_selection:
+                args += ["-Agents", agents]
             if all_agents:
                 args = ["-All", "-Yes"]
-            if readside and not list_only:
+            if review:
+                args = ["-Review", "-Yes"]
+            if skills is not None:
+                args += ["-Skills", skills]
+            if list_only or list_skills:
+                args = ["-ListSkills" if list_skills else "-List"]
+            if readside and not (list_only or list_skills):
                 args.append("-WithReadSide")
             if dry:
                 args.append("-DryRun")
@@ -171,11 +194,12 @@ class InstallerTests(unittest.TestCase):
                     for path in self.instructions(home):
                         self.assertEqual(path.read_text(), expected)
 
-    def test_all_installs_six_canonical_agents_without_global_opt_in(self):
+    def test_all_installs_eight_canonical_agents_and_six_skills_without_global_opt_in(self):
         expected = {
             "the-nitcracker.agent.md", "pr-walkthrough.agent.md",
             "memory-manager.agent.md", "technical-demo.agent.md",
             "bmad-orchestrator.agent.md", "speckit-flow.agent.md",
+            "sparring-partner.agent.md", "artifact-inspector.agent.md",
         }
         for shell in self.shells:
             with self.subTest(shell=shell):
@@ -185,8 +209,114 @@ class InstallerTests(unittest.TestCase):
                     self.assertEqual(
                         {p.name for p in (home / tool / "agents").iterdir()}, expected
                     )
-                    self.assertFalse((home / tool / "skills").exists())
+                    self.assert_skills(home / tool, {
+                        "technical-investigation", "test-analysis", "design-analysis",
+                        "evidence-verification", "review-ensemble", "artifact-inspection",
+                    })
                 self.assertFalse(any(p.exists() for p in self.instructions(home)))
+
+    def assert_skills(self, host, expected):
+        skill_root = host / "skills"
+        self.assertEqual({p.name for p in skill_root.iterdir()}, expected)
+        for name in expected:
+            source = ROOT / "skills" / name
+            installed = skill_root / name
+            expected_files = {p.relative_to(source) for p in source.rglob("*")
+                              if p.is_file() and "__pycache__" not in p.parts}
+            self.assertEqual({p.relative_to(installed) for p in installed.rglob("*")
+                              if p.is_file()}, expected_files)
+            for relative in expected_files:
+                self.assertEqual((installed / relative).read_bytes(),
+                                 (source / relative).read_bytes())
+
+    def test_review_and_default_and_skill_selection_install_ensemble_dependencies(self):
+        for shell in self.shells:
+            for number, selection in enumerate((
+                {"review": True}, {"default_selection": True},
+                {"agents": None, "skills": " \treview-ensemble,review-ensemble "},
+            )):
+                with self.subTest(shell=shell, selection=selection):
+                    home, script = self.prepare_case(shell, number, "Keep these instructions.\n")
+                    before = [p.read_bytes() for p in self.instructions(home)]
+                    self.run_installer(shell, home, script, readside=False, **selection)
+                    for tool in (".copilot", ".claude"):
+                        self.assertEqual({p.name for p in (home / tool / "agents").iterdir()},
+                                         {"the-nitcracker.agent.md", "pr-walkthrough.agent.md"})
+                        self.assert_skills(home / tool, {"review-ensemble", "evidence-verification"})
+                    self.assertEqual(before, [p.read_bytes() for p in self.instructions(home)])
+
+    def test_new_agents_install_exact_companions_at_custom_root(self):
+        for shell in self.shells:
+            for number, (agent, expected) in enumerate((
+                ("sparring-partner", {
+                    "technical-investigation", "test-analysis", "design-analysis",
+                    "evidence-verification",
+                }),
+                ("artifact-inspector", {"artifact-inspection"}),
+            )):
+                with self.subTest(shell=shell, agent=agent):
+                    home, script = self.prepare_case(shell, number, LEGACY)
+                    custom = home / "custom copilot root"
+                    before = [p.read_bytes() for p in self.instructions(home)]
+                    plan = self.run_installer(
+                        shell, home, script, agents=agent, dry=True,
+                        readside=False, copilot_home=custom,
+                    )
+                    self.assertFalse(custom.exists())
+                    for name in expected:
+                        self.assertIn(name, plan.stdout)
+                    self.run_installer(shell, home, script, agents=f" \t{agent}\t ",
+                                       readside=False, copilot_home=custom)
+                    for host in (custom, home / ".claude"):
+                        self.assertEqual({p.name for p in (host / "agents").iterdir()},
+                                         {f"{agent}.agent.md"})
+                        self.assert_skills(host, expected)
+                    self.assertEqual(before, [p.read_bytes() for p in self.instructions(home)])
+                    self.assertFalse(list((home / ".copilot/agents").iterdir()))
+
+    def test_standalone_skill_and_list_do_not_install_unrelated_agents(self):
+        for shell in self.shells:
+            with self.subTest(shell=shell):
+                home, script = self.prepare(shell)
+                result = self.run_installer(shell, home, script, list_skills=True)
+                self.assertIn("review-ensemble", result.stdout)
+                self.assertFalse((home / ".copilot/skills").exists())
+                self.run_installer(shell, home, script, agents=None,
+                                   skills="technical-investigation", readside=False)
+                for tool in (".copilot", ".claude"):
+                    self.assertFalse(list((home / tool / "agents").iterdir()))
+                    self.assert_skills(home / tool, {"technical-investigation"})
+
+    def test_invalid_skills_fail_before_writing(self):
+        for shell in self.shells:
+            for number, name in enumerate(("missing", "../outside", ",")):
+                with self.subTest(shell=shell, skill=name):
+                    home, script = self.prepare_case(shell, number, LEGACY)
+                    before = [p.read_bytes() for p in self.instructions(home)]
+                    self.run_installer(
+                        shell, home, script, agents=None, skills=name, readside=False,
+                        expect_success=False,
+                    )
+                    self.assertFalse((home / ".copilot/skills").exists())
+                    self.assertFalse(list((home / ".copilot/agents").iterdir()))
+                    self.assertEqual(before, [p.read_bytes() for p in self.instructions(home)])
+
+    def test_failed_skill_download_preserves_existing_content(self):
+        for shell in self.shells:
+            with self.subTest(shell=shell):
+                home, script = self.prepare(shell, LEGACY)
+                self.run_installer(shell, home, script, agents="sparring-partner", readside=False)
+                installed = home / ".copilot/skills/design-analysis/SKILL.md"
+                installed.write_text("Existing customized skill.\n", encoding="utf-8")
+                FixtureHandler.fault_path = "skills/design-analysis/SKILL.md"
+                FixtureHandler.fault = "http"
+                self.run_installer(
+                    shell, home, script, agents="sparring-partner", readside=False,
+                    expect_success=False,
+                )
+                self.assertEqual(installed.read_text(), "Existing customized skill.\n")
+                self.assertEqual({p.name for p in installed.parent.iterdir()}, {"SKILL.md"})
+                FixtureHandler.fault = None
 
     def test_legacy_and_current_duplicates_replaced_without_losing_other_text(self):
         original = "Before.\n" + LEGACY + "Between.\n" + STALE + "After.\n" + LEGACY
