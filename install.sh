@@ -22,14 +22,14 @@ HYPERFRAMES_SKILLS=https://github.com/heygen-com/hyperframes/tree/618c486734b3cb
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_url="${PROMPTLINGS_SOURCE:-https://raw.githubusercontent.com/dfinson/promptlings/main}"
-all_agents="the-nitcracker,pr-walkthrough,sparring-partner,memory-manager,artifact-inspector,technical-demo,bmad-orchestrator,speckit-flow"
+all_agents="the-nitcracker,pr-walkthrough,sparring-partner,memory-manager,artifact-inspector,technical-demo,interactive-presentation,bmad-orchestrator,speckit-flow"
 agent_path() {
   case "$1" in
     the-nitcracker|pr-walkthrough) echo "agents/code-review/$1.agent.md" ;;
     sparring-partner) echo "agents/reasoning/$1.agent.md" ;;
     memory-manager) echo "agents/context/$1.agent.md" ;;
     artifact-inspector) echo "agents/maintenance/$1.agent.md" ;;
-    technical-demo) echo "agents/media/$1.agent.md" ;;
+    technical-demo|interactive-presentation) echo "agents/media/$1.agent.md" ;;
     bmad-orchestrator|speckit-flow) echo "agents/orchestration/$1.agent.md" ;;
   esac
 }
@@ -45,8 +45,13 @@ skill_files=(
   skills/design-writing/references/specification.md
   skills/design-writing/references/tickets.md
   skills/evidence-verification/SKILL.md
+  skills/interactive-deck/SKILL.md
+  skills/interactive-deck/references/interaction-patterns.md
+  skills/interactive-deck/references/runtime.md
+  skills/interactive-deck/references/sources.md
   skills/narrative-transitions/SKILL.md
   skills/pr-video/SKILL.md
+  skills/presenter-script/SKILL.md
   skills/reasoning-first-narration/SKILL.md
   skills/reasoning-first-writing/SKILL.md
   skills/reasoning-first-writing/references/sources.md

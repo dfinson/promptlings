@@ -2,7 +2,7 @@
 
 ## Choose what to install
 
-The default installation includes all eight agents, bundled Promptlings skills,
+The default installation includes all nine agents, bundled Promptlings skills,
 and the supporting toolchain. Agent selection and dependency selection are
 separate: `--review` selects two agents but still installs the default tools.
 Use `--no-dependencies` to publish agents and bundled skills using an existing
@@ -55,7 +55,7 @@ revisions are pinned at the top of both installers.
 
 | Bash / PowerShell | Effect |
 | --- | --- |
-| `--all` / `-All` | Select all eight agents, the default |
+| `--all` / `-All` | Select all nine agents, the default |
 | `--review` / `-Review` | Select the three ensemble agents: the-nitcracker, PR Walkthrough, and Sparring Partner |
 | `--agents a,b` / `-Agents "a,b"` | Select agents by name |
 | `--no-dependencies` / `-NoDependencies` | Publish agents and bundled skills without installing tools, external skills, MCP, or startup. Requires Node.js |
