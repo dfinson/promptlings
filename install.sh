@@ -56,6 +56,10 @@ skill_files=(
   skills/narrative-transitions/SKILL.md
   skills/pr-video/SKILL.md
   skills/presenter-script/SKILL.md
+  skills/promptlings-repo-init/SKILL.md
+  skills/promptlings-repo-init/scripts/init.ps1
+  skills/promptlings-repo-init/scripts/init.sh
+  skills/promptlings-repo-init/workflows/promptlings-delivery.yml
   skills/reasoning-first-narration/SKILL.md
   skills/reasoning-first-writing/SKILL.md
   skills/reasoning-first-writing/references/sources.md
@@ -130,6 +134,7 @@ experience=0
 [ "$project_only" -eq 1 ] || [[ ",$agents," != *,interactive-presentation,* ]] || experience=1
 [ "$experience" -eq 0 ] || [ "$dependencies" -eq 1 ] || fail "interactive-presentation requires its dependencies. Remove --no-dependencies or deselect the agent."
 [ "$experience" -eq 0 ] || playwright=1
+[ -z "$project" ] || [ "$bmad" -eq 1 ] || [ "$speckit" -eq 1 ] || fail "--project needs BMAD or Spec-Kit."
 
 echo "Agents: $agents"
 [ "$experience" -eq 0 ] || echo "interactive-presentation: installs Playwright CLI, the skills CLI, its design skills and the pinned experience toolkit regardless of opt-outs."
@@ -225,106 +230,20 @@ for candidate in python3.12 python3 python; do
   fi
 done
 
-exclude=""
-framework=()
-# Validates the repository root and promptlings-managed blocks before anything is installed.
-project_exclude() {
-  local top name start end
-  top="$(git -C "$project" rev-parse --show-toplevel)" || fail "--project must name a Git repository."
-  [ "$(cd "$top" && pwd -P)" = "$(cd "$project" && pwd -P)" ] ||
-    fail "--project must name the Git repository or linked worktree root."
-  exclude="$(git -C "$project" rev-parse --path-format=absolute --git-path info/exclude)"
-  [ -f "$exclude" ] || return 0
-  for name in personal bmad speckit; do
-    start="$(grep -nFx -- "# promptlings $name start" "$exclude" | cut -d: -f1 || true)"
-    end="$(grep -nFx -- "# promptlings $name end" "$exclude" | cut -d: -f1 || true)"
-    if [ -n "$start$end" ] && { [[ "$start" == *$'\n'* || "$end" == *$'\n'* ]] ||
-      [ -z "$start" ] || [ -z "$end" ] || [ "$start" -ge "$end" ]; }; then
-      fail "Malformed promptlings $name exclusion block in $exclude. Existing rules were not changed."
-    fi
-  done
+# Repository initialization is the installed promptlings-repo-init skill, staged here with its bundled workflow.
+project_init() {
+  local init="$temporary/repo-init/scripts/init.sh" arguments=()
+  if [ ! -f "$init" ]; then
+    mkdir -p "$temporary/repo-init/scripts" "$temporary/repo-init/workflows"
+    fetch skills/promptlings-repo-init/scripts/init.sh "$init"
+    fetch skills/promptlings-repo-init/workflows/promptlings-delivery.yml "$temporary/repo-init/workflows/promptlings-delivery.yml"
+  fi
+  [ "$bmad" -eq 0 ] || arguments+=(--method bmad)
+  [ "$speckit" -eq 0 ] || arguments+=(--method speckit)
+  [ "$shared_frameworks" -eq 0 ] || arguments+=(--shared-frameworks)
+  bash "$init" --project "$project" --integration "$integration" "${arguments[@]}" "$@"
 }
-exclude_block() {
-  local start="# promptlings $1 start" end="# promptlings $1 end"
-  shift
-  touch "$exclude"
-  awk -v s="$start" -v e="$end" '{ sub(/\r$/, "") } $0 == s { skip = 1 } !skip { print } $0 == e { skip = 0 }' \
-    "$exclude" > "$exclude.promptlings"
-  printf '%s\n' "$start" "$@" "$end" >> "$exclude.promptlings"
-  mv "$exclude.promptlings" "$exclude"
-}
-configure_exclusions() {
-  local rules machinery candidate context
-  mkdir -p "$(dirname "$exclude")"
-  exclude_block personal /.claude/settings.local.json /CLAUDE.local.md
-  if [ "$bmad" -eq 1 ]; then
-    rules=(/_bmad/config.user.toml '/_bmad/custom/*.user.toml' /_bmad/render/ '/_bmad/**/__pycache__/' .memlog.md)
-    machinery=(/_bmad/ /_bmad-output/ '/.agents/skills/bmad-*/' '/.claude/skills/bmad-*/'
-      '/.github/skills/bmad-*/' '/.github/agents/bmad-*.agent.md')
-    framework+=("${machinery[@]}")
-    [ "$shared_frameworks" -eq 1 ] || rules+=("${machinery[@]}")
-    exclude_block bmad "${rules[@]}"
-  fi
-  if [ "$speckit" -eq 1 ]; then
-    rules=(/.specify/feature.json /.specify/extensions/.cache/ /.specify/extensions/.backup/
-      '/.specify/extensions/*/local-config.yml' '/.specify/extensions/*/*-config.local.yml')
-    machinery=(/.specify/ /specs/ '/.github/skills/speckit-*/' '/.claude/skills/speckit-*/'
-      '/.agents/skills/speckit-*/' '/.github/agents/speckit.*.agent.md'
-      '/.github/prompts/speckit.*.prompt.md' '/.claude/commands/speckit.*.md')
-    framework+=("${machinery[@]}")
-    if [ "$shared_frameworks" -eq 0 ]; then
-      rules+=("${machinery[@]}")
-      if [ "$integration" = copilot ]; then context=.github/copilot-instructions.md; else context=CLAUDE.md; fi
-      # Only reserve a generic instruction file when the framework creates it.
-      for candidate in .github/copilot-instructions.md CLAUDE.md; do
-        if grep -qFx "/$candidate" "$exclude" || { [ "$candidate" = "$context" ] && [ ! -e "$project/$candidate" ]; }; then
-          rules+=("/$candidate"); framework+=("/$candidate")
-        fi
-      done
-    fi
-    exclude_block speckit "${rules[@]}"
-  fi
-}
-verify_project() {
-  local required=() relative directory rule pathspecs=() leaks
-  if [ "$bmad" -eq 1 ]; then
-    required+=(_bmad/scripts/render_skill.py _bmad/_config/manifest.yaml _bmad/config.toml
-      .agents/skills/bmad-build/SKILL.md .claude/skills/bmad-build/SKILL.md)
-  fi
-  if [ "$speckit" -eq 1 ]; then
-    if [ "$integration" = copilot ]; then directory=.github/skills; else directory=.claude/skills; fi
-    required+=(.specify/integration.json "$directory/speckit-specify/SKILL.md" "$directory/speckit-converge/SKILL.md"
-      .specify/workflows/promptlings-delivery/workflow.yml)
-  fi
-  for relative in ${required[@]+"${required[@]}"}; do
-    [ -f "$project/$relative" ] || fail "Framework installation is incomplete in $project: $relative."
-  done
-  if [ "$shared_frameworks" -eq 1 ]; then
-    required=()
-    [ "$bmad" -eq 0 ] || required+=(_bmad/config.toml)
-    [ "$speckit" -eq 0 ] || required+=(.specify/memory/constitution.md specs/001-example/spec.md)
-    for relative in ${required[@]+"${required[@]}"}; do
-      if git -C "$project" check-ignore --no-index -q "$relative"; then
-        fail "Shared framework path is ignored: $relative. Review existing Git exclusions."
-      fi
-    done
-    echo "Shared framework files and artifacts are eligible for tracking. Nothing was staged or committed."
-    return
-  fi
-  # Existing files expose rules, such as negations, that sample paths cannot.
-  for rule in ${framework[@]+"${framework[@]}"}; do
-    rule="${rule#/}"
-    case "$rule" in */) rule="$rule**" ;; esac
-    pathspecs+=(":(glob)$rule")
-  done
-  if [ "${#pathspecs[@]}" -gt 0 ]; then
-    leaks="$(git -C "$project" ls-files --others --exclude-standard -- "${pathspecs[@]}")"
-    [ -z "$leaks" ] || fail "Local framework files are not ignored: $(printf '%s\n' "$leaks" | head -n 5 | paste -sd, - | sed 's/,/, /g'). Review existing Git exclusions, including negations."
-  fi
-  echo "Framework machinery and generated artifacts are locally ignored. Nothing was staged or committed."
-}
-if [ -n "$project" ]; then project_exclude; fi
-
+if [ -n "$project" ]; then project_init --check-only; fi
 if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
   for command in uv node npm git gh; do command -v "$command" >/dev/null || fail "Missing prerequisite: $command."; done
   [ -n "$python" ] || fail "Python 3.11+ is required. Install it normally or rerun without --no-system-packages."
@@ -418,36 +337,7 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
   fi
 fi
 
-if [ -n "$project" ]; then
-  project="$(cd "$project" && pwd)"
-  if [ "$bmad" -eq 1 ]; then
-    [[ "$(bmad-method --version)" == *"${BMAD_PACKAGE##*@}"* ]] ||
-      fail "BMAD version does not match the installer pin. Run the machine installer first."
-  fi
-  if [ "$speckit" -eq 1 ]; then
-    [[ "$(specify version)" == *"${SPECKIT_PACKAGE##*@v}"* ]] ||
-      fail "Specify version does not match the installer pin. Run the machine installer first."
-  fi
-  configure_exclusions
-  if [ "$bmad" -eq 1 ] && [ ! -d "$project/_bmad" ]; then
-    bmad-method install --directory "$project" --modules bmm --tools github-copilot,claude-code --yes
-  fi
-  if [ "$speckit" -eq 1 ]; then
-    fetch workflows/speckit/promptlings-delivery/workflow.yml "$temporary/promptlings-delivery.yml"
-    (
-      cd "$project"
-      if [ ! -d .specify ]; then
-        options=()
-        [ "$integration" != copilot ] || options+=(--integration-options=--skills)
-        specify init --here --force --non-interactive --integration "$integration" --ignore-agent-tools "${options[@]}" </dev/null
-      fi
-      specify integration list
-      specify workflow add "$temporary/promptlings-delivery.yml"
-      specify workflow info promptlings-delivery >/dev/null
-    )
-  fi
-  verify_project
-fi
+if [ -n "$project" ]; then project_init; fi
 if [ "$project_only" -eq 0 ]; then
   command -v npx >/dev/null 2>&1 || fail "Node.js npx is required to publish agents and register MCP servers."
   memory_command=""
@@ -563,6 +453,8 @@ EOF
     <string>$memory_command</string><string>mcp</string><string>--transport</string><string>streamable-http</string>
     <string>--host</string><string>127.0.0.1</string><string>--port</string><string>$memory_port</string>
   </array>
+  <!-- HTTP requests cannot trigger the XPC activity boost used by Adaptive jobs. -->
+  <key>ProcessType</key><string>Interactive</string>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
   <key>StandardOutPath</key><string>$HOME/.basic-memory/mcp.log</string>
@@ -575,7 +467,7 @@ EOF
       Linux)
         unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/promptlings-memory.service"
         mkdir -p "$(dirname "$unit")"
-        printf '[Unit]\nDescription=Promptlings Basic Memory MCP\n[Service]\nExecStart="%s" mcp --transport streamable-http --host 127.0.0.1 --port %s\nRestart=on-failure\n[Install]\nWantedBy=default.target\n' \
+        printf '[Unit]\nDescription=Promptlings Basic Memory MCP\n[Service]\nExecStart="%s" mcp --transport streamable-http --host 127.0.0.1 --port %s\nNice=0\nCPUSchedulingPolicy=other\nIOSchedulingClass=best-effort\nIOSchedulingPriority=4\nRestart=on-failure\n[Install]\nWantedBy=default.target\n' \
           "$memory_command" "$memory_port" > "$unit"
         systemctl --user daemon-reload
         systemctl --user enable promptlings-memory.service
