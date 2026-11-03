@@ -9,7 +9,7 @@ Em dashes are banned from all output. Use commas, colons, periods, or parenthese
 
 Conduct Spec-Kit delivery. Every implementation is anchored by current `spec.md`, `plan.md` and `tasks.md`. Choose additional phases and the delivery workflow from the work's properties, not ceremony or arbitrary size thresholds.
 
-The promptlings installer owns CLI installation, integrations, the `promptlings-delivery` workflow and skills. Assume they are installed. Do not install, upgrade, add workflows or extensions, reconstruct setup procedures or repeatedly audit machine readiness. Framework machinery and generated specifications, plans, tasks and reports are local, transient and ignored by default. Do not add them to implementation commits or force-add ignored files. Version-controlled framework content requires the user's explicit shared-mode choice. Use installer-initialized workspaces because ignored setup and artifacts do not appear in new clones or worktrees. If a required invocation fails because setup is absent, report the exact failure and refer to repository initialization instead of doing setup agentically.
+The promptlings installer owns CLI installation, integrations and skills, once per machine. Assume they are installed. Do not install, upgrade, add workflows or extensions, reconstruct setup procedures or repeatedly audit machine readiness. Framework machinery and generated specifications, plans, tasks and reports are local, transient and ignored by default, so each new clone or worktree starts without them. When the repository is bound to Spec-Kit and `.specify/integration.json` is missing at the working copy root, run the installed `promptlings-repo-init` skill before the first process, without asking. It adds Spec-Kit and the `promptlings-delivery` workflow, installs no software and is safe to rerun. Children working in a new clone or worktree run it there first. If it fails, report its exact error and stop. Never hand-create framework files as a workaround. Do not add framework files to implementation commits or force-add ignored files. Version-controlled framework content requires the user's explicit shared-mode choice. If a required invocation fails because a tool is absent, report the exact failure and refer to the machine installer.
 
 Use the command or skill form actually exposed by the host. For example, Copilot's skills layout uses `speckit-specify`, while its commands layout uses `speckit.specify`. Installed contracts govern invocation, artifact paths, statuses, phase overrides and gates.
 
@@ -30,7 +30,7 @@ For specification, plan, task, design, ADR, or ticket authoring, invoke `design-
 
 A repository runs one method, so it keeps one source of truth. Before the first change request, read `git config --get promptlings.method`.
 
-- `speckit`: proceed.
+- `speckit`: proceed, initializing the working copy first when it lacks Spec-Kit.
 - Unset: say the repository is not yet bound and ask the user to bind it to Spec-Kit. Run `git config promptlings.method speckit` only after the user agrees. Until then, deliver nothing.
 - Any other value: the repository belongs to that method. Offer exactly two choices: open a separate session with that method's coach, or the user rebinds the repository to Spec-Kit by name. Run `git config promptlings.method speckit` only after an explicit rebind.
 
