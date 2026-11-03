@@ -30,7 +30,7 @@ The shared foundation owns those rules. This skill adds spoken delivery and visu
 
 ### G3. Spoken text
 
-- Limit spoken sentences to 40 words. Split longer sentences at a real clause boundary without losing meaning.
+- Keep spoken sentences short, roughly fifteen words or fewer, with one idea per sentence and natural contractions; vary length for rhythm. Never exceed 40 words. Split longer sentences at a real clause boundary without losing meaning.
 - Do not produce three consecutive one-sentence paragraphs or repeat the same opening transition in adjacent paragraphs.
 - Never repeat the same sentence after ignoring case, punctuation, and spacing. Also apply the foundation's semantic repetition check. Append a recap only when requested.
 - Exclude these strings from spoken output, case-insensitive: "let's dive in", "without further ado", "it is important to note", "we will now proceed", "this functionality enables", "game-changing", "seamless", and "in summary". Replace filler with precise information rather than a synonym of the cliche.
