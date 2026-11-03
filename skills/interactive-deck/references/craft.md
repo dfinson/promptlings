@@ -92,7 +92,7 @@ Every vendored library, font and icon set is under an OSI-approved open source l
 | --- | --- | --- |
 | [Open Props](https://open-props.style/) | MIT | Easing, spring `linear()` curves, shadow and radius tokens to vendor as CSS |
 | [shadcn/ui](https://ui.shadcn.com/) | MIT | Reference markup and proportions for UI mockups; port to plain HTML |
-| [Magic UI](https://magicui.design/) | MIT | Effect techniques (beams, text reveals, borders) for the signature moment only; port from React to plain DOM |
+| [Magic UI open-source repository](https://github.com/magicuidesign/magicui) | MIT | Components from the MIT repository only, never Magic UI Pro. Effect techniques (beams, text reveals, borders) for the signature moment only; port from React to plain DOM |
 | [Motion](https://motion.dev/) | MIT | Seekable sequences, stagger, path draw. Use only the open `motion` package, never Motion+ |
 | [Flubber](https://github.com/veltman/flubber) | MIT | SVG shape interpolation |
 | [Rough.js](https://roughjs.com/) | MIT | Sketch-direction shapes |

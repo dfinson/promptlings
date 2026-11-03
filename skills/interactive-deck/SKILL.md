@@ -31,8 +31,8 @@ Commit to one visual direction before building any step. Follow [visual directio
 
 Load these design skills for the direction and critique work:
 
-- `frontend-design`: the subject-grounded brainstorm, explore, critique loop and its restraint rules. Required.
-- `hyperframes-creative`: `references/visual-styles.md` (eight named styles with palettes and type), `references/house-style.md`, `references/typography.md`, `references/design-adherence.md` and `references/motion-principles.md`. Required.
+- `frontend-design`: the subject-grounded brainstorm, explore, critique loop and its restraint rules. Required; the promptlings installer installs it unless `-NoSkills` or `--no-skills` is set. When it is absent, stop and name the installer rerun.
+- `hyperframes-creative`: `references/visual-styles.md` (eight named styles with palettes and type), `references/house-style.md`, `references/typography.md`, `references/design-adherence.md` and `references/motion-principles.md`, when installed. Without it, [visual directions](references/visual-directions.md) and [craft](references/craft.md) are the complete baseline.
 - `demotime-slide-theme`: its slide-role and layout guidance. Write the deck's own CSS; copy nothing from its assets.
 - `hyperframes-animation`: `rules-index.md`, `transitions/catalog.md`, `adapters/waapi.md` and `adapters/css-animations.md`, when choreographing steps.
 - `mermaid-architecture-diagrams` for diagram semantics and `no-ai-slop` for headlines and labels, when installed.
@@ -45,7 +45,7 @@ Critique before handoff: put the step screenshots side by side, check each again
 
 Follow the [runtime contract](references/runtime.md): one self-contained HTML file on a fixed 16:9 stage, a pure `renderStep` state model with hash deep links, clicker-compatible keys, blackout, an in-document presenter mode with notes, timer and next-step preview, and an optional two-window mode served from localhost. Default to hand-authored HTML, CSS and JavaScript. Use reveal.js only when the presenter specifically wants its feature set and accepts serving from localhost for speaker view. Do not use Slidev, Spectacle or other build-pipeline frameworks for a single-file deliverable.
 
-Inline everything: fonts as base64 WOFF2 subsets, vendored libraries pinned to exact versions, pre-rendered syntax highlighting and pre-rendered diagrams. Never load from a CDN at show time. Keep large video fallbacks as sibling files in a self-contained folder rather than base64.
+Inline everything: fonts as base64 WOFF2 subsets, vendored libraries pinned to exact versions, pre-rendered syntax highlighting and pre-rendered diagrams. Embed the license notice of every inlined library, font and icon set in the deck file, as [runtime](references/runtime.md) describes. Never load from a CDN at show time. Keep large video fallbacks as sibling files in a self-contained folder rather than base64.
 
 ## Keep evidence honest
 
@@ -59,7 +59,7 @@ Drive the deck with the `playwright-cli` skill, or a project-local Playwright sc
 - Capture each step at 1920x1080 and 1280x720, and inspect them yourself for focal point, hierarchy and legibility.
 - Fail on any console error, page error or network request other than the deck file and its sibling assets.
 - Fail on clipped or overflowing text (`scrollWidth > clientWidth` or `scrollHeight > clientHeight` on text containers) and on text below the size floor.
-- Run an accessibility scan (for example `@axe-core/playwright`) for contrast and naming, and confirm reduced-motion mode renders every final state.
+- Run an accessibility scan for contrast and naming with `@axe-core/playwright`, installed at an exact version in the production workspace alongside the Playwright test runner, and confirm reduced-motion mode renders every final state.
 - Open presenter mode and confirm notes, timer and next-step preview track the current step; in two-window mode confirm both windows stay in sync.
 - Confirm the file opens from `file://` with networking disabled.
 

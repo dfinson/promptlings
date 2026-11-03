@@ -9,7 +9,7 @@ Reviewed on 2026-11-03. Evidence strength reflects the research base, not how of
 | Sweller, van Merriënboer and Paas (1998), *Educational Psychology Review* | Cognitive load, split attention, element interactivity | Strong |
 | Alley and Neeley (2005), *IEEE Transactions on Professional Communication*; Garner and Alley (2013), *International Journal of Engineering Education*; [assertion-evidence.com](https://www.assertion-evidence.com/) | Assertion-evidence slides over topic and bullet slides | Moderate to strong |
 | Tversky, Morrison and Betrancourt (2002), *International Journal of Human-Computer Studies* | Animation helps only when it carries change that statics cannot; controlled pace | Moderate |
-| Höffler and Leutner (2007), *Learning and Instruction* | Animation meta-analysis: small to moderate benefit, larger with learner or presenter control | Moderate |
+| Höffler and Leutner (2007), *Learning and Instruction* | Animation meta-analysis: small to moderate benefit, larger when the animation represents the content rather than decorating it and for procedural knowledge | Moderate |
 | Loewenstein (1994), *Psychological Bulletin*; Roediger and Karpicke (2006), *Psychological Science* | Curiosity gaps and retrieval for predict-then-reveal | Moderate to strong |
 | Bradbury (2016), *Advances in Physiology Education* | The fixed ten-minute attention span is a myth; vary activity instead | Moderate |
 | Pashler et al. (2008), *Psychological Science in the Public Interest* | Learning-style matching is unsupported; do not design for it | Strong (against) |
@@ -33,6 +33,6 @@ Reviewed on 2026-11-03. Evidence strength reflects the research base, not how of
 | [C4 model notation](https://c4model.com/diagrams/notation) | One abstraction level per diagram, typed elements | Practitioner canon |
 | [Shiki](https://shiki.style/), [Magic Move](https://github.com/shikijs/shiki-magic-move) | Pre-rendered highlighting, diff notation, token morphs | Documentation |
 | [google/fonts OFL directory](https://github.com/google/fonts/tree/main/ofl), [Lucide](https://lucide.dev/license), [Tabler Icons](https://github.com/tabler/tabler-icons/blob/main/LICENSE) | Licenses for inlined fonts and icons | License |
-| [Open Props](https://open-props.style/), [Magic UI](https://magicui.design/), [shadcn/ui](https://ui.shadcn.com/) | Token and effect techniques under MIT | License |
-| [Anthropic frontend-design skill](https://github.com/anthropics/skills/tree/main/skills/frontend-design) | Subject-grounded direction and critique loop | Practitioner canon |
+| [Open Props](https://open-props.style/), [Magic UI repository](https://github.com/magicuidesign/magicui), [shadcn/ui](https://ui.shadcn.com/) | Token and effect techniques under MIT | License |
+| [Anthropic frontend-design skill](https://github.com/anthropics/skills/tree/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design) (Apache 2.0) | Subject-grounded direction and critique loop | Practitioner canon |
 | Murrell, "The Age of Average"; Chayka, *Filterworld* (2024) | Default convergence as the cause of generic looks | Practitioner commentary |

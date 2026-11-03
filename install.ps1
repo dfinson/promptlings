@@ -321,11 +321,11 @@ try {
         if (-not $NoBmad) { Invoke-Native bmad-method.cmd --version }
         if (-not $NoSkills) {
             $env:DISABLE_TELEMETRY = "1"
-            $sources = @()
+            $sources = @($pins.FRONTEND_DESIGN_SKILL)
             if (-not $NoMemory) { $sources += $pins.MEMORY_SKILLS }
             if (-not $NoPlaywright) { $sources += $pins.PLAYWRIGHT_SKILLS }
             if (-not $NoHyperframes) { $sources += $pins.HYPERFRAMES_SKILLS }
-            if (-not $NoDemo) { $sources += $pins.DEMOTIME_SKILLS, $pins.VSCODE_PLAYWRIGHT_SKILL, $pins.FRONTEND_DESIGN_SKILL }
+            if (-not $NoDemo) { $sources += $pins.DEMOTIME_SKILLS, $pins.VSCODE_PLAYWRIGHT_SKILL }
             foreach ($source in $sources) {
                 Invoke-Native skills.cmd add $source --global --skill "*" --yes --copy
             }

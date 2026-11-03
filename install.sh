@@ -342,11 +342,11 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
   if [ "$bmad" -eq 1 ]; then bmad-method --version; fi
   if [ "$skills" -eq 1 ]; then
     export DISABLE_TELEMETRY=1
-    sources=()
+    sources=("$FRONTEND_DESIGN_SKILL")
     [ "$memory" -eq 0 ] || sources+=("$MEMORY_SKILLS")
     [ "$playwright" -eq 0 ] || sources+=("$PLAYWRIGHT_SKILLS")
     [ "$hyperframes" -eq 0 ] || sources+=("$HYPERFRAMES_SKILLS")
-    [ "$demo" -eq 0 ] || sources+=("$DEMOTIME_SKILLS" "$VSCODE_PLAYWRIGHT_SKILL" "$FRONTEND_DESIGN_SKILL")
+    [ "$demo" -eq 0 ] || sources+=("$DEMOTIME_SKILLS" "$VSCODE_PLAYWRIGHT_SKILL")
     for source in "${sources[@]}"; do
       skills add "$source" --global --skill '*' --yes --copy
     done

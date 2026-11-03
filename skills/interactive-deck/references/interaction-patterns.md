@@ -11,7 +11,7 @@ Most research on interactive explanations studies readers who control the pace. 
 | Code-to-visual link | A highlighted code range lights up the node or output it drives, advanced by key | Linking needs free hovering to discover | [Media for Thinking the Unthinkable](https://worrydream.com/MediaForThinkingTheUnthinkable/) |
 | Presenter-scrubbed parameter | One parameter changes the outcome continuously; pre-decide two or three landing values | Several parameters interact; use small multiples | [Up and Down the Ladder of Abstraction](https://worrydream.com/LadderOfAbstraction/) |
 | Small multiples | Showing the range of behavior across cases at once without running anything | The audience needs to follow one case to its end | Pre-rendered grids of real runs |
-| Predict then reveal | A result the audience can guess; pause, ask, then reveal. Stronger live than self-paced | No plausible wrong answer exists | [Hohman et al.](https://distill.pub/2020/communicating-with-interactive-articles/) on belief elicitation |
+| Predict then reveal | A result the audience can guess; pause, ask, then reveal. Live, the whole room commits to an answer at once | No plausible wrong answer exists | [Hohman et al.](https://distill.pub/2020/communicating-with-interactive-articles/) on belief elicitation |
 | Terminal or UI replay | Showing real command or app behavior without live risk; play captured output step by step | A real live run is the point and has been rehearsed with a fallback | Replay of captured output with skipped-time markers |
 | Live run with fallback | The audience must see it happen for real; one key cuts to the recorded fallback | It depends on venue network or slow builds | Keynote demo practice |
 

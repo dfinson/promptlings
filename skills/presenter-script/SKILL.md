@@ -17,7 +17,7 @@ A live script is a support for a person, not a text to read aloud. Reading verba
 4. **Close, fully scripted (about 30 seconds).** Restate the one idea the audience should keep, then the specific next action.
 5. **Fallback lines.** For every live demo step, one scripted sentence that moves to the replay or recording without apology or debugging.
 
-Bind each body entry to its deck step identifier, so the presenter-mode notes and the script stay identical. The deck's `data-notes` (or step list) holds the cue lines; the full script document holds everything.
+Bind each body entry to its deck step identifier, so the presenter-mode notes and the script stay identical. The deck's step list holds the cue lines as each step's notes; the full script document holds everything.
 
 ## Notation
 
@@ -33,7 +33,7 @@ Bind each body entry to its deck step identifier, so the presenter-mode notes an
 
 - **Never read the screen.** Speech explains the evidence; it does not repeat the headline or labels.
 - **Name what you point at.** Describe the focal element aloud ("the queue on the left just filled") so remote viewers, low-vision viewers and anyone looking away can follow.
-- **Budget words.** At 130 to 150 words a minute, fully scripted parts plus an estimate for cue lines must fit about 80 percent of the slot. Live talks run long; leave the rest for questions, pauses and recovery. Mark CUTTABLE sections that recover at least two minutes.
+- **Budget words.** At 130 to 150 words a minute, fully scripted parts plus cue lines counted at about 15 to 20 spoken words each must fit about 80 percent of the slot. Live talks run long; leave the rest for questions, pauses and recovery. Mark CUTTABLE sections that recover at least two minutes.
 - **Plan an audience beat every five to eight minutes.** A predict-then-reveal, a show of hands or a question, or a demo. Give each one an in-room form and a remote form (chat reply, poll or reaction).
 - **Script pauses.** After a reveal or a question, write the pause. Presenters fill silence too early.
 - **Keep the claims honest.** Every number and outcome in the script matches the deck evidence and its source.

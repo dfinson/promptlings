@@ -42,8 +42,8 @@ Most clickers send `PageUp`, `PageDown` and `B`, so these bindings work without 
 - **Fonts:** subset to the glyphs used, convert to WOFF2 and inline as base64 `@font-face` sources. Keep to two families and a few weights.
 - **Code:** pre-highlight with Shiki at build time into static HTML. For animated code changes use `@shikijs/magic-move` (MIT), vendored at an exact version.
 - **Diagrams:** author as inline SVG, or pre-render Mermaid to SVG at build time and inline the result. Do not ship the Mermaid runtime.
-- **Motion:** CSS transitions and the Web Animations API cover most needs. When timelines justify a library, vendor one at an exact version: Motion (MIT) or Anime.js (MIT). Only OSI-approved open source licenses qualify; GSAP's proprietary Standard License does not. Use the View Transitions API only with a fallback.
+- **Motion:** CSS transitions and the Web Animations API cover most needs. When timelines justify a library, vendor one at an exact version: Motion (MIT) or Anime.js (MIT). Libraries follow the license policy in [craft](craft.md): OSI-approved licenses or the SIL OFL, so GSAP's proprietary Standard License does not qualify. Use the View Transitions API only with a fallback.
 - **Data visuals:** D3 (ISC), Rough.js (MIT) for a sketched style, Three.js (MIT) only for genuinely three-dimensional subjects.
 - **Raster evidence:** screenshots as compressed WebP or PNG inlined; long video fallbacks as sibling files in the same folder.
 
-Record each vendored library's name, version and license in the production notes.
+Record each vendored library's name, version and license in the production notes. Embed a license-notices block in the deck file (an HTML comment or a hidden `<section id="licenses">`) carrying the copyright line and full license text of every inlined library, font and icon set, since MIT, ISC and OFL require the notice to travel with copies.
