@@ -297,7 +297,8 @@ try {
                 $memoryExe = Join-Path (Invoke-Native uv tool dir --bin) "basic-memory.exe"
                 $memoryEnv = Join-Path (Invoke-Native uv tool dir) "basic-memory\*"
                 Get-Process | Where-Object { $_.Path -eq $memoryExe -or $_.Path -like $memoryEnv } |
-                    ForEach-Object { & taskkill.exe /PID $_.Id /T /F 2>&1 | Out-Null }
+                    # A tree kill can already have ended later matches; cmd keeps their errors from becoming terminating PowerShell errors.
+                    ForEach-Object { & cmd.exe /d /c "taskkill /PID $($_.Id) /T /F >nul 2>&1" }
             }
             Invoke-Native uv tool install --force --python 3.12 $pins.MEMORY_PACKAGE
         }
