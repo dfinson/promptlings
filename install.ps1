@@ -492,7 +492,9 @@ for (const agent of await detectGlobalAgents()) {
             if (-not $clients.Count) { Write-Warning "No supported MCP client was detected. basic-memory was not registered." }
         }
         if ($memoryCommand -and -not $NoStartup) {
-            $action = New-ScheduledTaskAction -Execute $memoryCommand -Argument "mcp --transport streamable-http --host 127.0.0.1 --port $MemoryPort"
+            # An interactive task gives a console program a visible window; headless conhost hosts it without one.
+            $action = New-ScheduledTaskAction -Execute (Join-Path $env:SystemRoot "System32\conhost.exe") `
+                -Argument "--headless `"$memoryCommand`" mcp --transport streamable-http --host 127.0.0.1 --port $MemoryPort"
             $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
             $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
             $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
