@@ -181,7 +181,10 @@ host hook.
 
 ## Initialize a delivery repository
 
-Machine installation does not initialize arbitrary repositories:
+Machine installation does not initialize arbitrary repositories. Each clone or
+linked worktree needs initialization before BMAD or Spec-Kit runs there. The
+bound coach does this automatically through the installed `promptlings-repo-init`
+skill. The installer can also do it:
 
 ```powershell
 .\install.ps1 -Project C:\repos\my-project -ProjectOnly -Yes
@@ -191,7 +194,6 @@ Machine installation does not initialize arbitrary repositories:
 bash install.sh --project "$HOME/repos/my-project" --project-only --yes
 ```
 
-Initialize each clone or linked worktree before using BMAD or Spec-Kit.
 Framework setup and generated planning documents are locally ignored by default
 through Git's `info/exclude`. Add `--shared-frameworks` or `-SharedFrameworks`
 for a team that wants to commit them. Initialization never stages or commits files.

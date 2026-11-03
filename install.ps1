@@ -59,6 +59,10 @@ $skillFiles = @(
     "skills/evidence-verification/SKILL.md"
     "skills/narrative-transitions/SKILL.md"
     "skills/pr-video/SKILL.md"
+    "skills/promptlings-repo-init/SKILL.md"
+    "skills/promptlings-repo-init/scripts/init.ps1"
+    "skills/promptlings-repo-init/scripts/init.sh"
+    "skills/promptlings-repo-init/workflows/promptlings-delivery.yml"
     "skills/reasoning-first-narration/SKILL.md"
     "skills/reasoning-first-writing/SKILL.md"
     "skills/reasoning-first-writing/references/sources.md"
@@ -88,6 +92,7 @@ if (-not $Agents -or @($Agents.Split(",") | Where-Object { $_ -notin $allAgents.
 if ($ProjectOnly -and -not $Project) { throw "-ProjectOnly requires -Project." }
 if ($SharedFrameworks -and -not $Project) { throw "-SharedFrameworks requires -Project." }
 if ($Project -and $NoDependencies) { throw "-Project cannot be combined with -NoDependencies." }
+if ($Project -and $NoBmad -and $NoSpeckit) { throw "-Project needs BMAD or Spec-Kit." }
 Write-Host "Agents: $Agents"
 Write-Host "Promptlings skills: all bundled skills, published with the agents."
 Write-Host "Default: WinGet prerequisites, uv applications, global npm applications and published global skills."
@@ -118,116 +123,21 @@ function Get-Asset {
     }
     else { Invoke-WebRequest "$BaseUrl/$Relative" -OutFile $Destination -UseBasicParsing }
 }
-# Validates the repository root and promptlings-managed blocks before anything is installed.
-function Get-ProjectExclude {
-    # Git resolves short names, links and case, so ask it rather than comparing path strings.
-    $state = @(Invoke-Native git -C $Project rev-parse --is-inside-work-tree --show-prefix)
-    if ($state[0] -ne "true" -or ($state.Count -gt 1 -and $state[1])) {
-        throw "-Project must name the Git repository or linked worktree root."
+# Repository initialization is the installed promptlings-repo-init skill, staged here with its bundled workflow.
+function Invoke-ProjectInit {
+    param([switch]$CheckOnly)
+    $init = Join-Path $temporary "repo-init\scripts\init.ps1"
+    if (-not (Test-Path -LiteralPath $init)) {
+        $null = New-Item -ItemType Directory -Force -Path (Split-Path $init), (Join-Path $temporary "repo-init\workflows")
+        Get-Asset skills/promptlings-repo-init/scripts/init.ps1 $init
+        Get-Asset skills/promptlings-repo-init/workflows/promptlings-delivery.yml (Join-Path $temporary "repo-init\workflows\promptlings-delivery.yml")
     }
-    $path = (Invoke-Native git -C $Project rev-parse --path-format=absolute --git-path info/exclude) -join ""
-    if (Test-Path -LiteralPath $path) {
-        $lines = @(Get-Content -LiteralPath $path)
-        foreach ($name in @("personal", "bmad", "speckit")) {
-            $starts = @(); $ends = @()
-            for ($i = 0; $i -lt $lines.Count; $i++) {
-                if ($lines[$i] -ceq "# promptlings $name start") { $starts += $i }
-                if ($lines[$i] -ceq "# promptlings $name end") { $ends += $i }
-            }
-            if (($starts.Count + $ends.Count) -and ($starts.Count -ne 1 -or $ends.Count -ne 1 -or $starts[0] -ge $ends[0])) {
-                throw "Malformed promptlings $name exclusion block in $path. Existing rules were not changed."
-            }
-        }
-    }
-    $path
+    $methods = @()
+    if (-not $NoBmad) { $methods += "bmad" }
+    if (-not $NoSpeckit) { $methods += "speckit" }
+    & $init -Project $Project -Method $methods -Integration $Integration -SharedFrameworks:$SharedFrameworks -CheckOnly:$CheckOnly
 }
-function Set-ExclusionBlock([string]$Name, [string[]]$Rules) {
-    $lines = if (Test-Path -LiteralPath $exclude) { @(Get-Content -LiteralPath $exclude) } else { @() }
-    $kept = @()
-    $skip = $false
-    foreach ($line in $lines) {
-        if ($line -ceq "# promptlings $Name start") { $skip = $true }
-        if (-not $skip) { $kept += $line }
-        if ($line -ceq "# promptlings $Name end") { $skip = $false }
-    }
-    $kept += @("# promptlings $Name start") + $Rules + @("# promptlings $Name end")
-    [IO.File]::WriteAllText($exclude, ($kept -join "`n") + "`n")
-}
-function Set-Exclusions {
-    $null = New-Item -ItemType Directory -Force -Path (Split-Path $exclude)
-    $original = if (Test-Path -LiteralPath $exclude) { @(Get-Content -LiteralPath $exclude) } else { @() }
-    Set-ExclusionBlock personal @("/.claude/settings.local.json", "/CLAUDE.local.md")
-    if (-not $NoBmad) {
-        $rules = @("/_bmad/config.user.toml", "/_bmad/custom/*.user.toml", "/_bmad/render/", "/_bmad/**/__pycache__/", ".memlog.md")
-        $machinery = @("/_bmad/", "/_bmad-output/", "/.agents/skills/bmad-*/", "/.claude/skills/bmad-*/",
-            "/.github/skills/bmad-*/", "/.github/agents/bmad-*.agent.md")
-        $script:framework += $machinery
-        if (-not $SharedFrameworks) { $rules += $machinery }
-        Set-ExclusionBlock bmad $rules
-    }
-    if (-not $NoSpeckit) {
-        $rules = @("/.specify/feature.json", "/.specify/extensions/.cache/", "/.specify/extensions/.backup/",
-            "/.specify/extensions/*/local-config.yml", "/.specify/extensions/*/*-config.local.yml")
-        $machinery = @("/.specify/", "/specs/", "/.github/skills/speckit-*/", "/.claude/skills/speckit-*/",
-            "/.agents/skills/speckit-*/", "/.github/agents/speckit.*.agent.md",
-            "/.github/prompts/speckit.*.prompt.md", "/.claude/commands/speckit.*.md")
-        $script:framework += $machinery
-        if (-not $SharedFrameworks) {
-            $rules += $machinery
-            $context = if ($Integration -eq "copilot") { ".github/copilot-instructions.md" } else { "CLAUDE.md" }
-            # Only reserve a generic instruction file when the framework creates it.
-            foreach ($candidate in @(".github/copilot-instructions.md", "CLAUDE.md")) {
-                if ($original -ccontains "/$candidate" -or ($candidate -eq $context -and -not (Test-Path -LiteralPath (Join-Path $Project $candidate)))) {
-                    $rules += "/$candidate"
-                    $script:framework += "/$candidate"
-                }
-            }
-        }
-        Set-ExclusionBlock speckit $rules
-    }
-}
-function Test-Project {
-    $required = @()
-    if (-not $NoBmad) {
-        $required += @("_bmad/scripts/render_skill.py", "_bmad/_config/manifest.yaml", "_bmad/config.toml",
-            ".agents/skills/bmad-build/SKILL.md", ".claude/skills/bmad-build/SKILL.md")
-    }
-    if (-not $NoSpeckit) {
-        $directory = if ($Integration -eq "copilot") { ".github/skills" } else { ".claude/skills" }
-        $required += @(".specify/integration.json", "$directory/speckit-specify/SKILL.md", "$directory/speckit-converge/SKILL.md",
-            ".specify/workflows/promptlings-delivery/workflow.yml")
-    }
-    foreach ($relative in $required) {
-        if (-not (Test-Path -LiteralPath (Join-Path $Project $relative) -PathType Leaf)) {
-            throw "Framework installation is incomplete in ${Project}: $relative."
-        }
-    }
-    if ($SharedFrameworks) {
-        $samples = @()
-        if (-not $NoBmad) { $samples += "_bmad/config.toml" }
-        if (-not $NoSpeckit) { $samples += @(".specify/memory/constitution.md", "specs/001-example/spec.md") }
-        foreach ($relative in $samples) {
-            & git -C $Project check-ignore --no-index -q $relative
-            if ($LASTEXITCODE -eq 0) { throw "Shared framework path is ignored: $relative. Review existing Git exclusions." }
-        }
-        $global:LASTEXITCODE = 0
-        Write-Host "Shared framework files and artifacts are eligible for tracking. Nothing was staged or committed."
-        return
-    }
-    # Existing files expose rules, such as negations, that sample paths cannot.
-    $pathspecs = @($script:framework | ForEach-Object {
-        $rule = $_.TrimStart("/")
-        if ($rule.EndsWith("/")) { $rule += "**" }
-        ":(glob)$rule"
-    })
-    if ($pathspecs.Count) {
-        $leaks = @(Invoke-Native git -C $Project ls-files --others --exclude-standard -- @pathspecs)
-        if ($leaks.Count) {
-            throw "Local framework files are not ignored: $(($leaks | Select-Object -First 5) -join ', '). Review existing Git exclusions, including negations."
-        }
-    }
-    Write-Host "Framework machinery and generated artifacts are locally ignored. Nothing was staged or committed."
-}
+
 function Refresh-Path {
     $paths = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
         [Environment]::GetEnvironmentVariable("Path", "User") + ";" + $env:PATH
@@ -249,7 +159,6 @@ function Test-LibreOffice {
 $temporary = Join-Path ([IO.Path]::GetTempPath()) ("promptlings-" + [guid]::NewGuid())
 $taskName = "Promptlings Basic Memory"
 $null = New-Item -ItemType Directory -Path $temporary
-$framework = @()
 try {
     $windows = $env:OS -eq "Windows_NT"
     if (-not $NoDependencies -and -not $ProjectOnly -and -not $NoSystemPackages) {
@@ -273,7 +182,7 @@ try {
     }
     $python = Get-Command python.exe -ErrorAction SilentlyContinue
     if (-not $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
-    if ($Project) { $exclude = Get-ProjectExclude }
+    if ($Project) { Invoke-ProjectInit -CheckOnly }
     if (-not $NoDependencies -and -not $ProjectOnly) {
         foreach ($command in @("uv", "node", "npm.cmd", "git", "gh")) {
             if (-not (Get-Command $command -ErrorAction SilentlyContinue)) { throw "Missing prerequisite: $command" }
@@ -365,43 +274,7 @@ try {
             Invoke-Native diff2html.cmd --version
         }
     }
-    if ($Project) {
-        $Project = (Resolve-Path -LiteralPath $Project).Path
-        if (-not $NoBmad) {
-            $version = Invoke-Native bmad-method.cmd --version
-            if (($version -join "`n") -notmatch [regex]::Escape(($pins.BMAD_PACKAGE -split "@")[-1])) {
-                throw "BMAD version does not match the installer pin. Run the machine installer first."
-            }
-        }
-        if (-not $NoSpeckit) {
-            $version = Invoke-Native specify version
-            if (($version -join "`n") -notmatch [regex]::Escape(($pins.SPECKIT_PACKAGE -split "@v")[-1])) {
-                throw "Specify version does not match the installer pin. Run the machine installer first."
-            }
-        }
-        Set-Exclusions
-        if (-not $NoBmad -and -not (Test-Path (Join-Path $Project "_bmad"))) {
-            Invoke-Native bmad-method.cmd install --directory $Project --modules bmm --tools "github-copilot,claude-code" --yes
-        }
-        if (-not $NoSpeckit) {
-            $workflow = Join-Path $temporary "promptlings-delivery.yml"
-            Get-Asset workflows/speckit/promptlings-delivery/workflow.yml $workflow
-            Push-Location $Project
-            try {
-                if (-not (Test-Path .specify)) {
-                    $options = @()
-                    if ($Integration -eq "copilot") { $options += "--integration-options=--skills" }
-                    "" | & specify init --here --force --non-interactive --integration $Integration --ignore-agent-tools @options
-                    if ($LASTEXITCODE -ne 0) { throw "Spec Kit initialization failed ($LASTEXITCODE)." }
-                }
-                Invoke-Native specify integration list
-                Invoke-Native specify workflow add $workflow
-                $null = Invoke-Native specify workflow info promptlings-delivery
-            }
-            finally { Pop-Location }
-        }
-        Test-Project
-    }
+    if ($Project) { Invoke-ProjectInit }
     if (-not $ProjectOnly) {
         if (-not (Get-Command npx.cmd -ErrorAction SilentlyContinue)) {
             throw "Node.js npx is required to publish agents and register MCP servers."

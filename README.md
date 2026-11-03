@@ -63,7 +63,8 @@ Restart your assistant after installation. See the [installation guide](docs/ins
 for supported systems, component selection, manual installation, and the Claude
 Code plugin.
 
-BMAD and Spec-Kit also need [initialization in each repository or worktree](docs/bmad-setup.md).
+BMAD and Spec-Kit also need [initialization in each repository or worktree](docs/bmad-setup.md),
+which their coaches run automatically once the repository is bound.
 Memory Manager can help set up Basic Memory project routing.
 
 ## Try it

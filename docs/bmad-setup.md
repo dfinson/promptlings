@@ -1,7 +1,8 @@
-# Installer-owned framework setup
+# Framework setup
 
-Machine setup and repository initialization are separate, programmatic operations.
-Agents conduct delivery through installed frameworks. They do not install tools,
+Machine setup runs once per machine. Repository initialization runs once per
+working copy, through the installed `promptlings-repo-init` skill. Agents
+conduct delivery through installed frameworks. They do not install tools,
 reconstruct runtimes or repair integrations.
 
 ## Install the machine toolchain
@@ -29,7 +30,24 @@ Python 3.11+ is still required for profile configuration in prompts-only mode.
 
 ## Initialize a repository
 
-Point the installer at the root of an existing Git repository or linked worktree:
+The bound coach initializes its working copy automatically (see
+[Initialize every working copy](#initialize-every-working-copy)). To initialize
+one directly, run the installed skill script from the working copy root after
+binding it with `git config promptlings.method bmad` or `speckit`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$HOME\.copilot\skills\promptlings-repo-init\scripts\init.ps1"
+```
+
+```bash
+bash ~/.copilot/skills/promptlings-repo-init/scripts/init.sh
+```
+
+The skill is published to every supported harness, so `~/.claude/skills` and
+similar locations hold the same script. Pass `-Method` or `--method` to choose
+frameworks without binding the repository.
+
+The installer can also initialize a repository, using the same script:
 
 ```powershell
 .\install.ps1 -Project C:\repos\my-project -ProjectOnly -Yes
@@ -40,12 +58,15 @@ bash install.sh --project "$HOME/repos/my-project" --project-only --yes
 ```
 
 Omit `-ProjectOnly` or `--project-only` to install the machine toolchain and
-initialize the repository in one invocation.
+initialize the repository in one invocation. The installer initializes both
+frameworks unless one is opted out.
 
-The scripts invoke the official BMAD installer in that repository, then Spec Kit
-and adds the promptlings delivery workflow. Copilot uses the upstream skills integration.
-Choose Claude's integration with `-Integration claude` or `--integration claude`.
-BMAD installs integrations for both hosts.
+The script checks the installed CLI against the promptlings pin, invokes the
+official BMAD installer in that repository, then Spec Kit, and adds the
+promptlings delivery workflow. It installs no software. Copilot uses the
+upstream skills integration. Choose Claude's integration with
+`-Integration claude` or `--integration claude`. BMAD installs integrations for
+both hosts.
 
 Existing framework directories are not implicitly upgraded or regenerated.
 An incomplete runtime or a generated prerequisite pointing at a nonexistent
@@ -106,10 +127,13 @@ protection, and private data must not be put into shared configuration.
 ## Initialize every working copy
 
 Local framework files are not copied into new clones or linked worktrees.
-Run the repository initialization command in each new working copy before
-framework delivery. This is installer-owned setup, not an agent bootstrap or
-repair procedure. Each working copy then has its own runtime, plans and tasks.
-Transient artifacts remain available locally until deliberately removed.
+Each working copy needs initialization before framework delivery. When a coach
+finds its bound framework missing from the working copy, it runs
+`promptlings-repo-init` before the first workflow, without asking, and children
+it starts in new worktrees do the same. The script installs no software, so a
+missing or mismatched CLI still points to the machine installer. Each working
+copy then has its own runtime, plans and tasks. Transient artifacts remain
+available locally until deliberately removed.
 
 ## Opt into shared framework content
 
