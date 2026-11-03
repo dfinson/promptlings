@@ -36,6 +36,8 @@ A code walkthrough inside a demo or video is a change of medium, so its boundari
 - **Within code:** keep one focal line or block at a time and narrate it while it is highlighted. Name each new file or function as the view changes to it, and pause briefly after the change.
 - **Out of code:** carry the mechanism back to its consequence, either the behavior it produces next or the next question it raises, rather than leaving the viewer in the editor. A recap of the code just shown is not a link.
 
+The first section has no earlier section to link from. Open it with a hook that passes the opening hook check in `reasoning-first-narration`.
+
 ## Avoid these openings
 
 - A read-out title or heading.
