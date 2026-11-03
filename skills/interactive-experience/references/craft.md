@@ -8,7 +8,7 @@ Concrete values from established design systems and design-engineering practice.
 
 | Use | Value | Source |
 | --- | --- | --- |
-| Standard step change (reversible) | `cubic-bezier(0.2, 0, 0, 1)` | Material 3 standard |
+| Standard beat change (reversible) | `cubic-bezier(0.2, 0, 0, 1)` | Material 3 standard |
 | Entrance, settles into place | `cubic-bezier(0.05, 0.7, 0.1, 1)` | Material 3 emphasized decelerate |
 | Permanent exit | `cubic-bezier(0.3, 0, 0.8, 0.15)` | Material 3 emphasized accelerate |
 | Productive (most reveals) | `cubic-bezier(0.2, 0, 0.38, 0.9)` | IBM Carbon productive standard |
@@ -36,21 +36,21 @@ Concrete values from established design systems and design-engineering practice.
 
 | Job | Tool | Why |
 | --- | --- | --- |
-| Multi-element step choreography that must seek and reverse | Motion (MIT) sequence per step from `animate([...])`; set `controls.time` for jumps, `controls.speed = -1` to reverse | Deterministic seek and reversal |
-| Simple per-step transitions | CSS transitions driven by state classes set in `renderStep`, or WAAPI with `fill: "both"` and a settable `currentTime` | Zero dependency, seekable |
-| Shared-element morph on a single forward or back step | View Transitions API with `view-transition-name`; direct render on jump or when unsupported | Automatic morph, no FLIP math |
+| Multi-element beat choreography that must seek and reverse | Motion (MIT) sequence per beat from `animate([...])`; set `controls.time` for jumps, `controls.speed = -1` to reverse | Deterministic seek and reversal |
+| Simple per-beat transitions | CSS transitions driven by state classes set in `show`, or WAAPI with `fill: "both"` and a settable `currentTime` | Zero dependency, seekable |
+| Shared-element morph on a single forward or back beat | View Transitions API with `view-transition-name`; direct render on jump or when unsupported | Automatic morph, no FLIP math |
 | Shared-element morph that must scrub | FLIP into a WAAPI or Motion transform animation | Seekable like any tween |
 | Path draw-on | `stroke-dasharray` and `stroke-dashoffset`, or Motion `pathLength` | Standard technique |
-| Shape morph | Flubber (MIT) interpolator driven by the step's animation progress | Handles differing point counts |
+| Shape morph | Flubber (MIT) interpolator driven by the beat's animation progress | Handles differing point counts |
 | Code change | `@shikijs/magic-move` precompiled tokens | Token-level morph without the Shiki runtime |
 
 Transferable motion patterns: `hyperframes-animation` `rules-index.md`, `transitions/catalog.md`, `adapters/waapi.md` and `adapters/css-animations.md`. Take the patterns, not the HyperFrames runtime.
 
-Every inlined library, font and icon set comes from the installed deck toolkit listed in [runtime](runtime.md), each under an OSI-approved open source license or the SIL OFL with no paid tier or field-of-use restriction.
+Every bundled library, font and icon set comes from the installed experience toolkit listed in [runtime](runtime.md), each under an OSI-approved open source license or the SIL OFL with no paid tier or field-of-use restriction.
 
 ## Typography
 
-- Fixed stage, fixed sizes: choose a modular ratio (1.25 for dense technical steps, 1.333 to 1.5 for sparse display-led talks) on a 32px body base and derive every size from it.
+- Fixed stage, fixed sizes: choose a modular ratio (1.25 for dense technical stops, 1.333 to 1.5 for sparse display-led talks) on a 32px body base and derive every size from it.
 - Display type at 80px and above takes negative tracking, about -0.02em; all-caps labels take +0.04 to +0.08em.
 - Use `font-optical-sizing: auto` with variable fonts that have an `opsz` axis.
 - Numbers that change or compare use `font-variant-numeric: tabular-nums`.
@@ -62,7 +62,7 @@ Every inlined library, font and icon set comes from the installed deck toolkit l
 
 - Build each hue as a role-labeled scale in the [Radix Colors](https://www.radix-ui.com/colors/docs/overview/usage) convention: steps 1 to 2 backgrounds, 3 to 5 surfaces, 6 to 8 borders, 9 to 10 solid accent, 11 to 12 text. Every color then has a known contrasting text step.
 - Define colors in OKLCH and derive states with relative color syntax, for example `oklch(from var(--accent) calc(l + 0.08) c h)`. Keep values inside sRGB; check with [oklch.com](https://oklch.com/).
-- Assign one hue per recurring entity (service, actor, data type) and keep it identical in diagrams, code highlights and captions for the whole deck.
+- Assign one hue per recurring entity (service, actor, data type) and keep it identical in diagrams, code highlights and captions for the whole experience.
 - Semantic colors (added, removed, error, active) come from the same scales, never from library defaults.
 - WCAG 2.2 contrast is the binding floor; APCA is a useful cross-check for large display type.
 - Palette and composition guidance: `hyperframes-creative` `references/house-style.md` and `references/design-adherence.md`.
@@ -73,25 +73,25 @@ Every inlined library, font and icon set comes from the installed deck toolkit l
 - One stroke token for boxes, one for connectors, one radius per element type.
 - Orthogonal connectors with rounded turns; labels at the midpoint with a background knockout.
 - Size nodes to their labels; never clip or shrink a label to fit a box.
-- Lay out with dagre at build time, or hand-author SVG for small diagrams, then draw with the deck tokens.
+- Lay out with dagre at build time, or hand-author SVG for small diagrams, then draw with the experience tokens.
 - Focus by dimming the rest (`opacity: 0.25; filter: saturate(0.3)`) and thickening the focal element's stroke.
-- Icons: [Lucide](https://lucide.dev/) (ISC) or [Tabler](https://tabler.io/icons) (MIT), one set per deck. Represent cloud services with these sets and a text label.
+- Icons: [Lucide](https://lucide.dev/) (ISC) or [Tabler](https://tabler.io/icons) (MIT), one set per experience. Represent cloud services with these sets and a text label.
 
 ## Code
 
 - At most about 15 lines on screen at 28px or larger; cut the snippet rather than shrink it.
 - Pre-highlight with Shiki using a high-contrast dark or light theme matched to the direction, and recolor comments that fail 4.5:1.
-- Step through code with line focus: dim inactive lines and advance the active range per step.
-- Show diffs with Shiki diff notation, recolored from the deck's added and removed scales.
-- Morph code between steps with `@shikijs/magic-move` using precompiled tokens.
+- Step through code with line focus: dim inactive lines and advance the active range per beat.
+- Show diffs with Shiki diff notation, recolored from the experience's added and removed scales.
+- Morph code between beats with `@shikijs/magic-move` using precompiled tokens.
 
 ## Toolkit components and effects
 
 | Package | Use |
 | --- | --- |
-| [Open Props](https://open-props.style/) | Easing, spring `linear()` curves, shadow and radius tokens to inline as CSS |
+| [Open Props](https://open-props.style/) | Easing, spring `linear()` curves, shadow and radius tokens to bundle as CSS |
 | [Motion](https://motion.dev/) | Seekable sequences, stagger, path draw |
 | [Flubber](https://github.com/veltman/flubber) | SVG shape interpolation |
 | [Rough.js](https://roughjs.com/) | Sketch-direction shapes |
 
-Build signature effects (beams, text reveals, animated borders) from these packages, CSS and SVG. Every effect needs a job on its step: marking a section, revealing a change or directing attention. Effects without a job are cut.
+Build signature effects (beams, text reveals, animated borders) from these packages, CSS and SVG. Every effect needs a job on its beat: marking a section, revealing a change or directing attention. Effects without a job are cut.

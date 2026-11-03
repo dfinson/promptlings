@@ -22,7 +22,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [Sparring Partner](agents/reasoning/sparring-partner.agent.md) | Reviews PRs and changes for correctness, design consequences, and regression protection. Also works through designs, debugging hypotheses, plans, and testing questions with you. |
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces a technical explainer or hands-on demo, from story and script approval through recording, narration, and review. |
-| [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a standalone, visually interactive HTML deck and a presenter script for a human to deliver live, verified for the stage. |
+| [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
 | [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Guides software delivery through the installed BMAD workflows. |
 | [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | Guides software delivery through Spec-Kit specifications, plans, tasks, implementation, and acceptance. |
 

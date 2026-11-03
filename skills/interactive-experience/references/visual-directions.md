@@ -1,18 +1,18 @@
 # Visual directions
 
-Every deck commits to one fully specified visual direction before any step is built. A direction is a decision, not a skin: it sets palette, type, geometry, motion personality and the one signature device the deck is remembered by. Variation between decks comes from this choice, made from the subject and the room, never from the model's default taste.
+Every experience commits to one fully specified visual direction before any stop is built. A direction is a decision, not a skin: it sets palette, type, geometry, motion personality and the one signature device the experience is remembered by. Variation between experiences comes from this choice, made from the subject and the room, never from the model's default taste.
 
 ## Choose a direction
 
 1. **Ground it in the subject.** List three things the subject is made of (packets, ledgers, gears, layers, a timeline) and one feeling the audience should leave with (confidence, urgency, delight). Load `frontend-design` and follow its brainstorm, explore, critique loop.
 2. **Read the room.** Bright daytime room or projector: favor light directions. Dark keynote hall: dark directions work. Teams or Zoom share: avoid fine hairlines, large gradients and blur, which compression destroys.
-3. **Shortlist two directions** from the catalog below or from the eight named styles in `hyperframes-creative` `references/visual-styles.md` (Swiss Pulse, Velvet Standard, Deconstructed, Maximalist Type, Data Drift, Soft Signal, Folk Frequency, Shadow Cut). Render the same two representative steps (one diagram, one code or output) in each and choose from screenshots.
+3. **Shortlist two directions** from the catalog below or from the eight named styles in `hyperframes-creative` `references/visual-styles.md` (Swiss Pulse, Velvet Standard, Deconstructed, Maximalist Type, Data Drift, Soft Signal, Folk Frequency, Shadow Cut). Render the same two representative stops (one mini-app, one code or output) in each and choose from screenshots.
 4. **Name the signature device.** One structural idea that recurs: a persistent entity color code, a blueprint grid the diagrams snap to, a typewriter terminal frame, a margin timeline. Spend spectacle there and nowhere else.
 5. **Write the tokens** (palette, type scale, radius, stroke, easing, durations) into one `:root` block and record the direction, signature device and rejected alternative in the production notes for outline approval.
 
 ## Catalog
 
-All fonts below are SIL OFL 1.1 and ship with the deck toolkit in [runtime](runtime.md).
+All fonts below are SIL OFL 1.1 and ship with the experience toolkit in [runtime](runtime.md).
 
 | Direction | Palette anchors (OKLCH) | Type | Geometry | Motion | Fits | Fails |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -22,7 +22,7 @@ All fonts below are SIL OFL 1.1 and ship with the deck toolkit in [runtime](runt
 | Blueprint | Field `0.32 0.09 250`, lines `0.95 0.03 220`, callout `0.85 0.15 85` | Space Mono labels, IBM Plex Sans body, tabular numerals | Stroke weight is the hierarchy: 4px outline, 2px edge, dashed hidden lines | Line draw-on, dimension arrows extending, linear or slight ease-out | Systems, protocols, hardware, specs | Human-centered stories |
 | Sketch whiteboard | Paper `0.97 0.01 90`, marker red `0.60 0.20 30`, green `0.58 0.15 150`, ink `0.25 0 0` | Caveat headings, DM Sans body, JetBrains Mono code | Rough.js shapes with fixed seed, hachure fills | Strokes drawn on at 300 to 500ms | Workshops, design reviews, early proposals | Audits, finance, security sign-off |
 | Light print | Paper `0.96 0.01 80`, ink `0.20 0.02 60`, editorial red `0.52 0.18 28` | Source Serif 4 or Newsreader headings, Source Sans 3 body, IBM Plex Mono | Narrow measure, thin rules, no shadows | Gentle fades and page slides, 150 to 250ms | Academic talks, long explanations, daylight rooms | Product-launch energy |
-| Data journalism | Gray chrome `0.97 0 0` and `0.30 0 0`, two or three categorical hues at equal lightness `0.65 0.15 h` | Instrument Serif or Fraunces headlines, Inter UI, tabular numerals | Sticky chart, annotation on the chart, no legend | Persistent visual, labels and highlights change per step | Benchmarks, incidents, metrics stories | Code-heavy talks |
+| Data journalism | Gray chrome `0.97 0 0` and `0.30 0 0`, two or three categorical hues at equal lightness `0.65 0.15 h` | Instrument Serif or Fraunces headlines, Inter UI, tabular numerals | Sticky chart, annotation on the chart, no legend | Persistent visual, labels and highlights change per beat | Benchmarks, incidents, metrics stories | Code-heavy talks |
 | Bold brutalist | Black, white, one saturated block `0.65 0.25 30` | Archivo Black display, Space Mono body | Thick borders, zero radius, extreme size jumps | Hard snaps, no easing | Developer culture, opinionated manifestos | Executive or enterprise audiences |
 
 Glassmorphism, purple-to-blue gradient fields and neon glow are excluded as defaults. Use them only when the subject is itself translucent UI chrome.
@@ -43,7 +43,7 @@ Glassmorphism, purple-to-blue gradient fields and neon glow are excluded as defa
 | Purple-to-blue gradient hero | One hue family derived from the subject, flat fields |
 | Frosted glass cards everywhere | Solid surfaces separated by spacing or one rule |
 | One neutral sans for everything at one weight | A deliberate display plus mono pairing with real weight contrast |
-| Everything centered in identical cards | Layout chosen per step: left-aligned reading, full-bleed diagrams, asymmetric grid placement |
+| Everything centered in identical cards | Layout chosen per stop: left-aligned reading, full-bleed diagrams, asymmetric grid placement |
 | Emoji bullets and stock icon rows | Typographic hierarchy, entity color codes, or one consistent line icon set |
 | Ambient particles, floating orbs, looping glows | Stillness, with motion only on the element being explained |
 | Vague headline copy ("Unlocking the power of...") | A full-sentence assertion with the specific claim |
