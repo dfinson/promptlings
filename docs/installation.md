@@ -41,7 +41,7 @@ such as `npx.cmd`, `playwright-cli.cmd`, and `hyperframes.cmd`.
 | Spec-Kit | uv tool, repository initialization, and the Promptlings delivery workflow |
 | Playwright | Global npm application, published skill, Chrome browser, and a CLI browser check |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
-| Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
+| Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, frontend-design skill, document-rendering tools, and diff2html CLI |
 
 Document rendering uses Microsoft Word or LibreOffice. LibreOffice is installed
 only when neither is found. On Windows, its program directory is added to the
@@ -67,7 +67,7 @@ revisions are pinned at the top of both installers.
 | `--memory-port 8123` / `-MemoryPort 8123` | Use a different Basic Memory port |
 | `--no-playwright` / `-NoPlaywright` | Skip Playwright CLI, its browser check, and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` / `-NoHyperframes` | Skip HyperFrames, media binaries, and skills |
-| `--no-demo` / `-NoDemo` | Skip VS Code, Demo Time, vscode-playwright, LibreOffice, Poppler, and diff2html |
+| `--no-demo` / `-NoDemo` | Skip VS Code, Demo Time, vscode-playwright, frontend-design, LibreOffice, Poppler, and diff2html |
 | `--no-skills` / `-NoSkills` | Skip external published skills, not bundled Promptlings skills or repository-local framework integrations |
 | `--no-readside` / `-NoReadSide` | Skip the global memory read-side rule |
 | `--project PATH` / `-Project PATH` | Initialize an existing Git repository through official framework installers |

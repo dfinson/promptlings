@@ -27,7 +27,19 @@ Pick each interaction from the [pattern catalog](references/interaction-patterns
 
 ## Visual system
 
-Define tokens once, then reuse them: a type scale, a spacing scale, corner radii, an OKLCH palette with one accent hue plus semantic colors for states (added, removed, error, active), one easing curve and two durations (about 250ms for small changes, about 500ms for structural ones). Default to a dark stage for projectors and screen share unless the brand or room calls for light. Pair one sans display face with one monospace face, both inlined. Use a grid with generous margins and let one element dominate each step. Spend spectacle on the one or two moments the story turns on; keep everything else quiet. Draw diagrams as inline SVG so they stay sharp, styleable and animatable. Present terminals and windows in the style `cue-synced-demo` describes unless the brand says otherwise. Every visual must look intentional at full projection size: inspect screenshots, not just code.
+Commit to one visual direction before building any step. Follow [visual directions](references/visual-directions.md): ground the look in the subject and the room, shortlist two directions, render the same two representative steps in each, choose from screenshots and name one signature device. Write the result as one `:root` token block (OKLCH palette in Radix-style role scales, a modular type scale, spacing, radius, stroke, easing and durations) and use nothing outside it. Take motion, type, color, diagram and code values from [craft](references/craft.md) rather than inventing them.
+
+Load these design skills for the direction and critique work:
+
+- `frontend-design`: the subject-grounded brainstorm, explore, critique loop and its restraint rules. Required.
+- `hyperframes-creative`: `references/visual-styles.md` (eight named styles with palettes and type), `references/house-style.md`, `references/typography.md`, `references/design-adherence.md` and `references/motion-principles.md`. Required.
+- `demotime-slide-theme`: `assets/designed-theme.css` and the skill's slide-role guidance, as a worked token and layout model. Self-host every font it names.
+- `hyperframes-animation`: `rules-index.md`, `transitions/catalog.md` and the `adapters/` files for WAAPI, CSS and GSAP timelines, when choreographing steps.
+- `mermaid-architecture-diagrams` for diagram semantics and `no-ai-slop` for headlines and labels, when installed.
+
+Use these skills for design knowledge only; the deck runs on its own runtime, never on HyperFrames or Demo Time. Let one element dominate each step and spend spectacle on the signature device and the one or two moments the story turns on. Draw diagrams as inline SVG so they stay sharp, styleable and animatable. Present terminals and windows in the style `cue-synced-demo` describes unless the chosen direction specifies its own frame.
+
+Critique before handoff: put the step screenshots side by side, check each against the direction's tokens and the generic-tells table, and fix any step that could belong to any other deck.
 
 ## Build to the runtime contract
 

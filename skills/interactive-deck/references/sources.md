@@ -21,3 +21,18 @@ Reviewed on 2026-11-03. Evidence strength reflects the research base, not how of
 | [GSAP Standard License](https://gsap.com/community/standard-license/) | Free use including former bonus plugins | License |
 | [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing) | Automated axe scans per step | Documentation |
 | Duarte, *slide:ology* (2008); Reynolds, *Presentation Zen* (2011) | Projector legibility, restraint, one idea per slide | Practitioner consensus |
+| [Material Design 3 motion](https://m3.material.io/styles/motion/easing-and-duration/tokens-specs) | Easing curves and duration tokens | Design system |
+| [IBM Carbon motion](https://carbondesignsystem.com/elements/motion/overview/) | Productive and expressive curves, enter and exit asymmetry, duration by distance | Design system |
+| [Apple Human Interface Guidelines, Motion](https://developer.apple.com/design/human-interface-guidelines/motion) | Purposeful, brief, interruptible motion; reduced motion | Design system |
+| [Rauno Freiberg, Invisible Details of Interaction Design](https://rauno.me/craft/interaction-design) | Interruptibility, spatial continuity, motion primitives | Practitioner canon |
+| [Josh Comeau, Springs and Bounces in Native CSS](https://www.joshwcomeau.com/animation/linear-timing-function/) | Enter and exit easing, `linear()` springs | Practitioner canon |
+| [Bartosz Ciechanowski](https://ciechanow.ski/) | Entity color coding, simplify then compose, global pause | Practitioner canon |
+| [Radix Colors](https://www.radix-ui.com/colors/docs/palette-composition/understanding-the-scale) | Twelve-step role scales | Design system |
+| [Evil Martians, OKLCH in CSS](https://evilmartians.com/chronicles/oklch-in-css-why-quit-rgb-hsl) | Perceptual palettes, relative color, gamut | Practitioner canon |
+| [WCAG 2.2](https://www.w3.org/TR/WCAG22/) | Contrast floors for text and graphics | Standard |
+| [C4 model notation](https://c4model.com/diagrams/notation) | One abstraction level per diagram, typed elements | Practitioner canon |
+| [Shiki](https://shiki.style/), [Magic Move](https://github.com/shikijs/shiki-magic-move) | Pre-rendered highlighting, diff notation, token morphs | Documentation |
+| [google/fonts OFL directory](https://github.com/google/fonts/tree/main/ofl), [Lucide](https://lucide.dev/license), [Tabler Icons](https://github.com/tabler/tabler-icons/blob/main/LICENSE) | Licenses for inlined fonts and icons | License |
+| [Open Props](https://open-props.style/), [Magic UI](https://magicui.design/), [shadcn/ui](https://ui.shadcn.com/) | Token and effect techniques under MIT | License |
+| [Anthropic frontend-design skill](https://github.com/anthropics/skills/tree/main/skills/frontend-design) | Subject-grounded direction and critique loop | Practitioner canon |
+| Murrell, "The Age of Average"; Chayka, *Filterworld* (2024) | Default convergence as the cause of generic looks | Practitioner commentary |

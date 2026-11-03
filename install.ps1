@@ -30,6 +30,7 @@ $pins = @{
     DEMOTIME_SKILLS = "https://github.com/estruyf/vscode-demo-time/tree/96175a9b64a4f6e066720315e8119f8a7ea6cf5e/skills"
     VSCODE_PLAYWRIGHT_SKILL = "https://github.com/microsoft/hve-core/tree/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/experimental/vscode-playwright"
     HYPERFRAMES_SKILLS = "https://github.com/heygen-com/hyperframes/tree/618c486734b3cbb697bd432bace7e9642e48b6be/skills"
+    FRONTEND_DESIGN_SKILL = "https://github.com/anthropics/skills/tree/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design"
 }
 
 $BaseUrl = if ($env:PROMPTLINGS_SOURCE) { $env:PROMPTLINGS_SOURCE.TrimEnd("/") } else {
@@ -59,9 +60,11 @@ $skillFiles = @(
     "skills/design-writing/references/tickets.md"
     "skills/evidence-verification/SKILL.md"
     "skills/interactive-deck/SKILL.md"
+    "skills/interactive-deck/references/craft.md"
     "skills/interactive-deck/references/interaction-patterns.md"
     "skills/interactive-deck/references/runtime.md"
     "skills/interactive-deck/references/sources.md"
+    "skills/interactive-deck/references/visual-directions.md"
     "skills/narrative-transitions/SKILL.md"
     "skills/pr-video/SKILL.md"
     "skills/presenter-script/SKILL.md"
@@ -322,7 +325,7 @@ try {
             if (-not $NoMemory) { $sources += $pins.MEMORY_SKILLS }
             if (-not $NoPlaywright) { $sources += $pins.PLAYWRIGHT_SKILLS }
             if (-not $NoHyperframes) { $sources += $pins.HYPERFRAMES_SKILLS }
-            if (-not $NoDemo) { $sources += $pins.DEMOTIME_SKILLS, $pins.VSCODE_PLAYWRIGHT_SKILL }
+            if (-not $NoDemo) { $sources += $pins.DEMOTIME_SKILLS, $pins.VSCODE_PLAYWRIGHT_SKILL, $pins.FRONTEND_DESIGN_SKILL }
             foreach ($source in $sources) {
                 Invoke-Native skills.cmd add $source --global --skill "*" --yes --copy
             }

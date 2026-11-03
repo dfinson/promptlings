@@ -19,6 +19,7 @@ DEMOTIME_EXTENSION=eliostruyf.vscode-demo-time@2.4.0
 DEMOTIME_SKILLS=https://github.com/estruyf/vscode-demo-time/tree/96175a9b64a4f6e066720315e8119f8a7ea6cf5e/skills
 VSCODE_PLAYWRIGHT_SKILL=https://github.com/microsoft/hve-core/tree/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/experimental/vscode-playwright
 HYPERFRAMES_SKILLS=https://github.com/heygen-com/hyperframes/tree/618c486734b3cbb697bd432bace7e9642e48b6be/skills
+FRONTEND_DESIGN_SKILL=https://github.com/anthropics/skills/tree/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_url="${PROMPTLINGS_SOURCE:-https://raw.githubusercontent.com/dfinson/promptlings/main}"
@@ -46,9 +47,11 @@ skill_files=(
   skills/design-writing/references/tickets.md
   skills/evidence-verification/SKILL.md
   skills/interactive-deck/SKILL.md
+  skills/interactive-deck/references/craft.md
   skills/interactive-deck/references/interaction-patterns.md
   skills/interactive-deck/references/runtime.md
   skills/interactive-deck/references/sources.md
+  skills/interactive-deck/references/visual-directions.md
   skills/narrative-transitions/SKILL.md
   skills/pr-video/SKILL.md
   skills/presenter-script/SKILL.md
@@ -343,7 +346,7 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
     [ "$memory" -eq 0 ] || sources+=("$MEMORY_SKILLS")
     [ "$playwright" -eq 0 ] || sources+=("$PLAYWRIGHT_SKILLS")
     [ "$hyperframes" -eq 0 ] || sources+=("$HYPERFRAMES_SKILLS")
-    [ "$demo" -eq 0 ] || sources+=("$DEMOTIME_SKILLS" "$VSCODE_PLAYWRIGHT_SKILL")
+    [ "$demo" -eq 0 ] || sources+=("$DEMOTIME_SKILLS" "$VSCODE_PLAYWRIGHT_SKILL" "$FRONTEND_DESIGN_SKILL")
     for source in "${sources[@]}"; do
       skills add "$source" --global --skill '*' --yes --copy
     done
