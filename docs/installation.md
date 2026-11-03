@@ -56,7 +56,7 @@ revisions are pinned at the top of both installers.
 | Bash / PowerShell | Effect |
 | --- | --- |
 | `--all` / `-All` | Select all eight agents, the default |
-| `--review` / `-Review` | Select the two review agents |
+| `--review` / `-Review` | Select the three ensemble agents: the-nitcracker, PR Walkthrough, and Sparring Partner |
 | `--agents a,b` / `-Agents "a,b"` | Select agents by name |
 | `--no-dependencies` / `-NoDependencies` | Publish agents and bundled skills without installing tools, external skills, MCP, or startup. Requires Node.js |
 | `--no-system-packages` / `-NoSystemPackages` | Use existing Python, Node, Git, gh, FFmpeg, and uv, but still install selected applications and skills |
@@ -79,20 +79,22 @@ revisions are pinned at the top of both installers.
 | `--yes` / `-Yes` | Approve the printed installation plan without a prompt |
 | `--help` / `-Help` | Show usage |
 
-For example, to install the reviewers plus Sparring Partner:
+For example, to install the default review ensemble:
 
 ```powershell
-.\install.ps1 -Agents "the-nitcracker,pr-walkthrough,sparring-partner" -NoDependencies -NoReadSide
+.\install.ps1 -Review -NoDependencies -NoReadSide
 ```
 
 ```bash
-bash install.sh --agents the-nitcracker,pr-walkthrough,sparring-partner --no-dependencies --no-readside
+bash install.sh --review --no-dependencies --no-readside
 ```
 
 Bundled skills are published with any agent selection, including their scripts
 and references. The memory capture companion is included when Memory Manager
-is selected and memory is enabled. No installer supplies the host's built-in
-rubber-duck.
+is selected and memory is enabled. Sparring Partner's four review methods
+(`technical-investigation`, `design-analysis`, `test-analysis`, and
+`evidence-verification`) are included. The default ensemble does not require
+the host's built-in rubber-duck.
 
 Opt-outs skip installation. They do not uninstall tools, stop existing services,
 or remove earlier registrations. Failed commands stop installation, and earlier

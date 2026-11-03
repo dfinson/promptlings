@@ -47,5 +47,7 @@ framework-specific contracts are not imported.
 
 The instruction-maintenance criteria adapt the
 [HVE Builder requirements](https://github.com/microsoft/hve-core/blob/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/hve-core/hve-builder/references/requirements-catalog.md)
-without adding an HVE dependency. The review ensemble uses the Promptlings
-reviewers and the host's built-in rubber-duck, without copying that built-in agent.
+without adding an HVE dependency. The review ensemble uses the three Promptlings
+agents: the-nitcracker, PR Walkthrough, and Sparring Partner. Sparring Partner
+consolidates the built-in rubber-duck role with plan critique and conversational
+challenge, without copying the built-in agent's unavailable source prompt.

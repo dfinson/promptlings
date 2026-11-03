@@ -13,6 +13,38 @@ Before drafting or revising, invoke `reasoning-first-writing` through the host's
 
 The shared foundation owns those rules. This skill adds spoken delivery and visual truth. Apply priorities in this order: source accuracy, intended meaning and attribution, visual or argument sequence, delivery requirements, style. A lower priority never overrides a higher one.
 
+## Opening hook
+
+When narration opens a demo, walkthrough, video or talk, its first spoken lines must be a hook: a few sentences that make this audience care by opening a gap the piece later closes. Without an explicit hook, technical narration drifts into a definition, an agenda or a feature list.
+
+Choose one hook type. Each one fails under the stated condition.
+
+| Type | What it does | Fails when |
+| --- | --- | --- |
+| Concrete case | Opens on a real user, input or failure that the piece carries to its outcome | The case is generic or unrelated to the main argument |
+| End result first | Shows or states the finished output before any mechanism | It opens on setup, installation or a file listing instead |
+| Stakes | States what the problem costs this audience | The cost is abstract |
+| Surprising result | Presents a supported outcome the viewer would not predict | The piece never explains it |
+| Answerable question | Asks a specific question the piece answers | The question is vague or rhetorical |
+| Before and after | Contrasts the situation without and with the subject | It needs background the viewer lacks |
+
+The hook passes only when every item holds:
+
+1. It names a specific user, case, result or problem rather than a product category.
+2. It fits within the first two spoken sentences, about 35 words.
+3. It opens a gap (a question, stakes or an unexplained result) rather than summarizing the piece.
+4. The sources support every claim in it. Overpromising fails.
+5. A named later scene pays it off, and the close calls back to it.
+6. It uses none of the failing openings below.
+
+Failing openings: a definition of the subject ("X is a..."), a greeting or self-introduction, an agenda or "in this video", a runtime promise, a repository or folder tour, a list of features or components, and background scene-setting before the stakes.
+
+These examples show variety. They are illustrative only; never reuse their wording.
+
+- Case: "One pull request changed how four layers talk to each other. The reviewer had ten minutes to understand all four."
+- Result: "Everything in this video, from script to voice, came from a pull request the agent had never seen."
+- Question: "Why does a one-line configuration change need three reviewers?"
+
 ## Gates
 
 ### G1. Inputs, scope, and mode
@@ -45,7 +77,7 @@ The shared foundation owns those rules. This skill adds spoken delivery and visu
 
 ### G5. Release
 
-Recheck the shared foundation against the evidence, then visual and argument sequence, spoken text, and delivery. Revise any failure and check again. Remove or qualify unsupported claims. If that leaves no usable explanation, return the specific missing evidence instead of a fabricated script.
+Recheck the shared foundation against the evidence, then the opening hook check when the narration includes the opening, then visual and argument sequence, spoken text, and delivery. Revise any failure and check again. Remove or qualify unsupported claims. If that leaves no usable explanation, return the specific missing evidence instead of a fabricated script.
 
 Return the complete ready-to-use narration without a preface or change report unless requested. A missing dependency or blocking evidence gap is a task-status response, not spoken script.
 

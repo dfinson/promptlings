@@ -5,7 +5,7 @@ description: 'Turn a pull request or diff into a short narrated video that expla
 
 # PR Video
 
-A PR video explains a change to someone who has not read it. It opens with why the change exists, shows the behavior it changes, then walks the code that carries it in order of consequence. Review findings and verdicts belong to review tools such as The Nitcracker; this video builds understanding.
+A PR video explains a change to someone who has not read it. It opens with a hook built from why the change exists (the opening hook check in `reasoning-first-narration`), shows the behavior it changes, then walks the code that carries it in order of consequence. Review findings and verdicts belong to review tools such as The Nitcracker; this video builds understanding.
 
 This skill supplies the change-specific discovery and story practice. The `technical-demo` agent owns the video when it is installed: audience, story, script approval and acceptance. Narration, transitions, speech, capture and composition come from the companion skills named below.
 
