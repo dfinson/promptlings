@@ -26,8 +26,8 @@ jobs:
           python-version: "3.12"
       - run: python skills/artifact-inspection/scripts/check_artifacts.py --root .
 
-  memory-startup:
-    name: Memory startup (${{ matrix.os }})
+  installer:
+    name: Installer (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -35,7 +35,8 @@ jobs:
         os: [windows-latest, macos-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-node@v4
         with:
-          python-version: "3.12"
-      - run: python -m unittest discover -s tests -p test_memory_startup.py -v
+          node-version: "22.20"
+      - run: npm install --no-fund --no-audit
+      - run: npm test

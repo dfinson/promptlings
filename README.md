@@ -30,38 +30,26 @@ maintainer and CI helper for inspecting agent and skill definitions.
 
 ## Install
 
+Promptlings installs with one command on Windows, macOS, and Linux. The only
+prerequisite is [Node.js](https://nodejs.org) 22.20 or later.
+
+```bash
+npx promptlings
+```
+
 The installer selects all agents and the supporting toolchain by default,
 including Basic Memory, BMAD, Spec-Kit, browser automation, and video tools.
 It prints a plan and asks for approval before installing.
 
-**PowerShell**
-
-```powershell
-irm https://raw.githubusercontent.com/dfinson/promptlings/main/install.ps1 -OutFile install.ps1
-powershell -ExecutionPolicy Bypass -File .\install.ps1
-```
-
-**Bash**
+For just the three ensemble agents and bundled Promptlings skills:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/dfinson/promptlings/main/install.sh -o install.sh
-bash install.sh
-```
-
-For just the three ensemble agents and bundled Promptlings skills, using an existing
-Node.js installation:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1 -Review -NoDependencies -NoReadSide
-```
-
-```bash
-bash install.sh --review --no-dependencies --no-readside
+npx promptlings publish --review --no-readside
 ```
 
 Restart your assistant after installation. See the [installation guide](docs/installation.md)
-for supported systems, component selection, manual installation, and the Claude
-Code plugin.
+for supported systems, component selection, installation from source, manual
+installation, and the Claude Code plugin.
 
 BMAD and Spec-Kit also need [initialization in each repository or worktree](docs/bmad-setup.md),
 which their coaches run automatically once the repository is bound.

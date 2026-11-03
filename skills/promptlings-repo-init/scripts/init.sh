@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Keep these versions identical to the pins in install.sh and install.ps1.
+# Keep these versions identical to the pins in lib/pins.js. The installer tests enforce it.
 BMAD_VERSION=6.12.4
 SPECKIT_VERSION=1.2.5
 

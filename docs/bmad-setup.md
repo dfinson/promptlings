@@ -7,26 +7,21 @@ reconstruct runtimes or repair integrations.
 
 ## Install the machine toolchain
 
-```powershell
-.\install.ps1 -Yes
-```
-
 ```bash
-bash install.sh --yes
+npx promptlings --yes
 ```
 
 The native recipes install normal system prerequisites, Python applications
 through uv, Node applications through global npm, and published global skills
-through the upstream skills CLI. Basic Memory is registered with Copilot and
-Claude and starts through the operating system's native user-login facility.
+through the upstream skills CLI. Basic Memory is registered with detected MCP
+clients and starts through the operating system's native user-login facility.
 
 There are no private Python or Node distributions, copied media executables,
 temporary framework template repositories, global BMAD skill promotion or
 installer-owned command wrappers.
 
 Use the [component opt-outs](installation.md#installer-options) to omit components.
-`--no-system-packages` or `-NoSystemPackages` uses existing prerequisites.
-Python 3.11+ is still required for profile configuration in prompts-only mode.
+`--no-system-packages` uses existing prerequisites.
 
 ## Initialize a repository
 
@@ -45,21 +40,8 @@ bash ~/.copilot/skills/promptlings-repo-init/scripts/init.sh
 
 The skill is published to every supported harness, so `~/.claude/skills` and
 similar locations hold the same script. Pass `-Method` or `--method` to choose
-frameworks without binding the repository.
-
-The installer can also initialize a repository, using the same script:
-
-```powershell
-.\install.ps1 -Project C:\repos\my-project -ProjectOnly -Yes
-```
-
-```bash
-bash install.sh --project "$HOME/repos/my-project" --project-only --yes
-```
-
-Omit `-ProjectOnly` or `--project-only` to install the machine toolchain and
-initialize the repository in one invocation. The installer initializes both
-frameworks unless one is opted out.
+frameworks without binding the repository, and `-Project` or `--project` to
+initialize another working copy.
 
 The script checks the installed CLI against the promptlings pin, invokes the
 official BMAD installer in that repository, then Spec Kit, and adds the
@@ -140,11 +122,11 @@ available locally until deliberately removed.
 A team can explicitly choose version-controlled framework setup and documents:
 
 ```powershell
-.\install.ps1 -Project C:\repos\my-project -ProjectOnly -SharedFrameworks -Yes
+powershell -ExecutionPolicy Bypass -File "$HOME\.copilot\skills\promptlings-repo-init\scripts\init.ps1" -SharedFrameworks
 ```
 
 ```bash
-bash install.sh --project "$HOME/repos/my-project" --project-only --shared-frameworks --yes
+bash ~/.copilot/skills/promptlings-repo-init/scripts/init.sh --shared-frameworks
 ```
 
 Shared mode makes the selected frameworks' setup, integrations and documents

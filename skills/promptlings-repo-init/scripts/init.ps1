@@ -7,7 +7,7 @@ param(
     [switch]$CheckOnly
 )
 $ErrorActionPreference = "Stop"
-# Keep these versions identical to the pins in install.ps1 and install.sh.
+# Keep these versions identical to the pins in lib/pins.js. The installer tests enforce it.
 $bmadVersion = "6.12.4"
 $speckitVersion = "1.2.5"
 $windows = $env:OS -eq "Windows_NT"
