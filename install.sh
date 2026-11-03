@@ -528,6 +528,8 @@ EOF
     <string>$memory_command</string><string>mcp</string><string>--transport</string><string>streamable-http</string>
     <string>--host</string><string>127.0.0.1</string><string>--port</string><string>$memory_port</string>
   </array>
+  <!-- HTTP requests cannot trigger the XPC activity boost used by Adaptive jobs. -->
+  <key>ProcessType</key><string>Interactive</string>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
   <key>StandardOutPath</key><string>$HOME/.basic-memory/mcp.log</string>
@@ -540,7 +542,7 @@ EOF
       Linux)
         unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/promptlings-memory.service"
         mkdir -p "$(dirname "$unit")"
-        printf '[Unit]\nDescription=Promptlings Basic Memory MCP\n[Service]\nExecStart="%s" mcp --transport streamable-http --host 127.0.0.1 --port %s\nRestart=on-failure\n[Install]\nWantedBy=default.target\n' \
+        printf '[Unit]\nDescription=Promptlings Basic Memory MCP\n[Service]\nExecStart="%s" mcp --transport streamable-http --host 127.0.0.1 --port %s\nNice=0\nCPUSchedulingPolicy=other\nIOSchedulingClass=best-effort\nIOSchedulingPriority=4\nRestart=on-failure\n[Install]\nWantedBy=default.target\n' \
           "$memory_command" "$memory_port" > "$unit"
         systemctl --user daemon-reload
         systemctl --user enable promptlings-memory.service

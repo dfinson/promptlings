@@ -125,6 +125,35 @@ user service. Each starts the installed command directly. Linux startup
 requires an active systemd user session. The installer checks the MCP
 initialization response before reporting success.
 
+The startup definitions use scheduling appropriate for a service answering
+interactive requests:
+
+| System | Scheduling policy |
+| --- | --- |
+| Windows | Task Scheduler priority `4`, which starts the process with Normal CPU, memory, and I/O priorities rather than the background default of `7` |
+| macOS | launchd `ProcessType=Interactive`, avoiding the CPU and I/O throttling applied when the type is omitted |
+| Linux | systemd `Nice=0`, `CPUSchedulingPolicy=other`, `IOSchedulingClass=best-effort`, and `IOSchedulingPriority=4`, explicitly selecting normal CPU and I/O scheduling |
+
+On Windows, background CPU, memory, and I/O priorities caused reproducible MCP
+discovery stalls under paging pressure. Priority `5` restores Normal CPU priority
+but still lowers memory priority, so the task uses `4`. macOS has a separate
+default-throttling mechanism. `Adaptive` is unsuitable for this HTTP service because its activity
+boost depends on XPC transactions. Linux already defaults to normal scheduling.
+Its explicit settings preserve that policy.
+
+See the platform references for [Windows task priority][task-priority],
+[launchd process types][launchd-process-type], and
+[systemd execution scheduling][systemd-scheduling].
+
+For an existing installation, rerun the installer with your usual selections to
+regenerate and restart its managed startup service. The new scheduling takes
+effect when the service starts, not when this repository is updated. This does
+not change the client-launched stdio mode selected by `--no-startup`.
+
+[task-priority]: https://learn.microsoft.com/en-us/windows/win32/taskschd/tasksettings-priority
+[launchd-process-type]: https://keith.github.io/xcode-man-pages/launchd.plist.5.html#ProcessType
+[systemd-scheduling]: https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Scheduling
+
 `add-mcp` replaces only the `basic-memory` entry in detected harness
 configurations. An unrelated listener on the selected port stops installation.
 Use `--memory-port` or `-MemoryPort` to choose another port.
