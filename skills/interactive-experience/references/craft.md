@@ -79,7 +79,7 @@ Concrete values for building mini-apps a presenter drives live in front of a roo
 - Use `font-optical-sizing: auto` with variable fonts that have an `opsz` axis.
 - Every changing or compared number uses `font-variant-numeric: tabular-nums`, so readouts do not jitter while they update.
 - Reading text stays under about 60 characters per line on the stage.
-- Pairings come from the chosen direction; further guidance is in `hyperframes-creative` `references/typography.md`.
+- Pairings come from the chosen direction; further guidance is in `hyperframes` `references/look.md`.
 
 ## Color
 

@@ -1,6 +1,6 @@
 ---
 name: interactive-experience
-description: 'Build a served, offline, visually interactive experience that a human presents live: a guided storyline of working mini-app stops, with optional workshop data capture and video stops, presenter controls, deterministic presets, a single-file handout export and automated stage-readiness checks. Use for live talks, workshops, demos and reviews delivered from a browser.'
+description: 'Build a served, offline, visually interactive experience that a human presents live: a guided storyline of working mini-app stops, with optional workshop data capture and video stops, presenter controls, deterministic presets, an offline handout export (one HTML file, plus clips when the experience has video stops) and automated stage-readiness checks. Use for live talks, workshops, demos and reviews delivered from a browser.'
 ---
 
 # Interactive Experience
@@ -43,7 +43,7 @@ Commit to one visual direction before building any stop. Follow [visual directio
 Load these design skills for the direction and critique work. The promptlings installer installs both with this agent, regardless of opt-out flags. When one is absent, stop and tell the user to rerun the promptlings installer.
 
 - `frontend-design`: the subject-grounded brainstorm, explore, critique loop and its restraint rules.
-- `hyperframes-creative`: `references/visual-styles.md` (named styles with palettes and type) as a source for deriving a direction outside the catalog, `references/typography.md` and `references/design-adherence.md`.
+- `hyperframes`: the design presets in `assets/frame-presets/*/FRAME.md` (named palettes, type scales and structural devices) as a source for deriving a direction outside the catalog, and `references/look.md` for choosing and holding one look. Fonts still come from the toolkit.
 
 Use these skills for design knowledge only; the experience runs on its own runtime, never on HyperFrames. Let the model dominate each stop and spend spectacle on the signature device and the one or two stops the story turns on. Present terminals and windows in the style `cue-synced-demo` describes unless the chosen direction specifies its own frame.
 
@@ -63,7 +63,7 @@ Every number, output, log line and screenshot on screen comes from a real run or
 
 Start the folder's own `serve.mjs` on a free port and drive it with the `playwright-cli` skill. Use `playwright-cli eval` for DOM measurements and `playwright-cli run-code` for checks that need the Playwright `page`, such as request interception, script injection and a second window. Run every check and fix failures before handoff:
 
-- **Server:** `GET /` returns 200; a `Range: bytes=0-1023` request on each video returns 206 with a correct `Content-Range`; an unsatisfiable range returns 416; a path traversal attempt is refused; a data `POST` appends one line to `data/` and the matching `GET` returns it; restarting the server keeps the data.
+- **Server:** `GET /` returns 200; a `Range: bytes=0-1023` request on each video returns 206 with a correct `Content-Range`; `bytes=-500` and an end past the file size return 206 with the clamped `Content-Range`; an unsatisfiable range and `bytes=-0` return 416; `HEAD` returns the headers with no body; a path traversal attempt is refused; a data `POST` appends one line to `data/` and the matching `GET` returns it; restarting the server keeps the data.
 - **Storyline:** walk every stop and beat forward with the presenter keys, then backward, then by random deep links. Screenshots of the same beat must match regardless of route.
 - **Determinism:** for each mini-app, change its controls away from every preset, then apply each preset and the reset key and compare screenshots with the preset's direct deep link. Run each simulation preset twice for the same number of ticks and require identical frames.
 - **Video:** every chapter key lands within 0.5 seconds of its cue start, play starts from a presenter key, captions render, and the video ends on its last frame without leaving the stop.

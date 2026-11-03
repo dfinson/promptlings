@@ -76,7 +76,7 @@ Reviewed on 2026-11-04. Strength reflects the research base behind each claim, n
 | [MDN Range requests](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Range_requests); [CPython issue 86809](https://github.com/python/cpython/issues/86809) | 206 and 416 semantics for video seeking; Python's `http.server` lacks Range | Documentation |
 | [MDN WebVTT API](https://developer.mozilla.org/en-US/docs/Web/API/WebVTT_API), [MDN Autoplay guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay) | Chapter and caption tracks; sound needs a user gesture | Documentation |
 | [MDN BroadcastChannel](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel) | Same-origin sync between audience and presenter windows | Documentation |
-| [esbuild API](https://esbuild.github.io/api/) | IIFE bundling, `NODE_PATH` resolution, legal comments | Documentation |
+| [esbuild API](https://esbuild.github.io/api/) | IIFE bundling, `nodePaths` resolution, legal comments | Documentation |
 | [Shiki](https://shiki.style/), [Magic Move](https://github.com/shikijs/shiki-magic-move) | Build-time highlighting, token morphs rendered from precompiled snapshots | Documentation |
 | [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing), [axe-core](https://github.com/dequelabs/axe-core) (MPL-2.0, verification only) | Automated axe scans per stop | Documentation |
 

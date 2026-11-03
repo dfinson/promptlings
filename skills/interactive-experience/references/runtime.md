@@ -1,6 +1,6 @@
 # Runtime contract
 
-The experience is a folder the presenter runs from their own machine with no internet. Write it as source files in the production workspace and assemble the folder with a project-local Node build script. The build script loads the experience toolkit from the global install (`createRequire(path.join(npmRoot, "noop.js"))` with `npmRoot` from `npm root --global`), so the workspace installs nothing. The promptlings repository holds no runtime code.
+The experience is a folder the presenter runs from their own machine with no internet. Write it as source files in the production workspace and assemble the folder with a project-local Node build script. The build script loads esbuild from the global install and resolves every bundled import there (see Bundling below), so the workspace installs nothing. The promptlings repository holds no runtime code.
 
 ## Folder
 
@@ -28,7 +28,7 @@ Generate `serve.mjs` per experience using only `node:http`, `node:fs`, `node:pat
 
 - **Bind and port:** listen on `127.0.0.1` only. Default to port 8765, take the next free port when it is busy, and print the audience and presenter URLs. `--port <n>` overrides. `--open` opens both URLs with the platform opener (`start`, `open` or `xdg-open`).
 - **Static files:** serve the folder with explicit content types (`text/html`, `text/css`, `text/javascript`, `font/woff2`, `image/svg+xml`, `image/webp`, `image/png`, `video/mp4`, `text/vtt`, `application/json`, `text/plain`). Resolve every path against the folder root and refuse anything that escapes it, including encoded `..` segments. Serve `data/` only through the data API.
-- **Range requests:** send `Accept-Ranges: bytes` on files. For `Range: bytes=start-end`, `bytes=start-` and `bytes=-suffix`, answer `206 Partial Content` with `Content-Range: bytes start-end/size` and stream that slice. Answer an unsatisfiable range with `416` and `Content-Range: bytes */size`. Treat a multi-range request as a full `200` response. Video seeking depends on this; Python's `http.server` lacks it, which is why the server is generated rather than borrowed.
+- **Range requests:** send `Accept-Ranges: bytes` on files. For `Range: bytes=start-end`, `bytes=start-` and `bytes=-suffix`, answer `206 Partial Content` with `Content-Range: bytes start-end/size` and stream that slice. Answer an unsatisfiable range with `416` and `Content-Range: bytes */size`. Clamp an `end` beyond the file to `size - 1`, answer `bytes=-0` with `416`, and answer `HEAD` with the same headers and no body. Treat a multi-range request as a full `200` response. Video seeking depends on this; Python's `http.server` lacks it, which is why the server is generated rather than borrowed.
 - **Data API:** `POST /api/data/<stream>` with a JSON body of at most 64 KB appends one line to `data/<stream>.ndjson` with a server timestamp. `GET /api/data/<stream>` returns the stream's records as a JSON array. Stream names match `^[a-z0-9-]{1,40}$`; reject anything else with `400` and malformed JSON with `400`. Append with `fs.appendFile` so a crash loses at most the request in flight.
 - **Caching:** send `Cache-Control: no-store` so a rebuilt folder is never served stale during rehearsal.
 - **Handout:** `node serve.mjs --handout` writes `handout.html` (see below) and exits.
@@ -95,7 +95,7 @@ Stepping backward through a simulation replays from the preset to tick N-1, whic
 
 - A capture stop records what the room decides: a predicted outcome, a vote count, the parameters the room chose, an exercise answer, a ranked list. The presenter or a facilitator enters it with large controls on the stage or in the presenter view, and the stop shows the aggregate as it builds.
 - Records go to the data API, one stream per question. Store no names or personal data unless the user explicitly asks for it; record counts, choices and free text the room agreed to share.
-- Stops that use captured data (for example running the model with the room's chosen parameters, or comparing the room's prediction with the result) read it with `ctx.load` on mount, so a reload or a server restart loses nothing.
+- Stops that use captured data (for example running the model with the room's chosen parameters, or comparing the room's prediction with the result) read it with `ctx.load` on mount, so a reload or a server restart loses nothing. In handout mode `ctx.load` reads the embedded `captured` block instead of the API.
 - `data/` is the raw record of the session. The handout embeds it.
 
 ## Handout
@@ -105,7 +105,7 @@ Stepping backward through a simulation replays from the preset to tick N-1, whic
 - Inline `app.css` with every `url(assets/...)` as a data URI, `app.js`, and every `assets/` reference in `index.html`.
 - Embed every `data/*.ndjson` stream as JSON in `<script type="application/json" id="captured">`; capture stops render read-only from it.
 - Set `handout` mode: controls are always visible, the reader drives at their own pace, presenter notes, the presenter view and data writes are off.
-- Replace each video with its poster, its chapter list and the clip's file name, and copy the clips next to the handout when sharing them.
+- Replace each video element with its own poster, chapter list and clip file name, and copy the clips next to the handout when sharing them.
 - Keep the license notices.
 
 ## Assets and toolkit
@@ -119,18 +119,18 @@ The promptlings installer installs this toolkit globally with the agent, at thes
 | Code morphs at runtime (bundles `diff-match-patch-es`, Apache-2.0, and `ohash`, MIT) | `@shikijs/magic-move@4.5.0` | MIT |
 | Shape morphs | `flubber@0.4.2` | MIT |
 | Sketch rendering for the notebook direction | `roughjs@4.6.6` | MIT |
-| Scales, shapes, forces, drag and zoom (import the `d3-*` submodules) | `d3@7.9.0` | ISC |
+| Scales, shapes, forces, drag and zoom (import named exports from `"d3"`; esbuild drops the unused modules, and the `d3-*` packages are not resolvable on their own from the global root) | `d3@7.9.0` | ISC |
 | Diagram layout, build time | `@dagrejs/dagre@3.1.3` | MIT |
 | Icons, one set per experience, copied as single SVGs | `lucide-static@1.62.0`, `@tabler/icons@3.50.0` | ISC, MIT |
 | Fonts named by the [visual directions](visual-directions.md) | Fontsource: Inter, IBM Plex Sans, IBM Plex Mono, Space Grotesk, JetBrains Mono, Fraunces, Newsreader, Instrument Serif, Caveat | OFL-1.1 |
 | Accessibility scan (verification only, never bundled) | `axe-core@4.14.0` | MPL-2.0 |
 
 - **Fonts:** copy the toolkit's latin `.woff2` files for the chosen pairing into `assets/fonts/`. Keep to two families and a few weights.
-- **Code:** highlight with Shiki in `build.mjs` and write the HTML, or the token snapshots for a code morph, into `src/generated/`. The browser loads only the magic-move core and renderer, never Shiki.
+- **Code:** highlight with Shiki in `build.mjs` and write the HTML, or the token snapshots for a code morph, into `src/generated/`. The browser loads only the magic-move core and renderer, never Shiki. Import `@shikijs/magic-move/style.css` into `app.css`; the morph renders unstyled without it.
 - **Diagrams:** author as inline SVG, laying out larger graphs with dagre in `build.mjs`.
 - **Models and simulations:** plain JavaScript state and update functions on the fixed clock, seeded by a hand-written mulberry32 `rng(seed)`. Use D3 for scales, shapes and force layouts, stepping the force simulation manually from the clock. Write controls by hand in the direction's visual language; no GUI panel library and no physics engine.
 - **Motion:** CSS transitions for state changes and the Web Animations API for sequenced or seekable steps (`animation.currentTime` follows the beat); `flubber` interpolates morphs between unlike SVG paths.
 - **Raster evidence:** screenshots as compressed WebP or PNG in `assets/`.
-- **Bundling:** `build.mjs` runs esbuild with `NODE_PATH` set to `npm root --global`, so bare imports resolve to the installed toolkit: `esbuild src/main.js --bundle --format=iife --target=es2020 --minify --legal-comments=eof --outfile=app.js`. One IIFE serves both the live server and the `file://` handout. Rebuild after every source change; never edit `app.js` by hand.
+- **Bundling:** `build.mjs` takes `npmRoot` from `npm root --global`, loads esbuild with `createRequire(path.join(npmRoot, "noop.js"))("esbuild")`, and calls `esbuild.build({ entryPoints: ["src/main.js"], bundle: true, format: "iife", target: "es2020", minify: true, legalComments: "eof", outfile: "app.js", nodePaths: [npmRoot] })`. Pass `nodePaths` explicitly: the JS API ignores the `NODE_PATH` environment variable, and a static `import "esbuild"` from the workspace fails because ESM resolution ignores it too. One IIFE serves both the live server and the `file://` handout. Rebuild after every source change; never edit `app.js` by hand.
 
 Record each bundled package's name, version and license in the production notes. Write `assets/LICENSES.txt` with the copyright line and full license text of every bundled library (including the magic-move and flubber dependencies esbuild pulls in), font and icon set, taken from each package's `LICENSE` file, and reference it from the storyline map, since MIT, ISC, Apache-2.0 and OFL require the notice to travel with copies.

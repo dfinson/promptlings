@@ -99,7 +99,11 @@ if ($ProjectOnly -and -not $Project) { throw "-ProjectOnly requires -Project." }
 if ($SharedFrameworks -and -not $Project) { throw "-SharedFrameworks requires -Project." }
 if ($Project -and $NoDependencies) { throw "-Project cannot be combined with -NoDependencies." }
 # The interactive-presentation agent's flow depends on these tools, so selecting it overrides their opt-outs.
-$experience = $Agents.Split(",") -contains "interactive-presentation"
+if ($NoDependencies -and -not $PSBoundParameters.ContainsKey("Agents") -and $Agents.Split(",") -contains "interactive-presentation") {
+    $Agents = ($Agents.Split(",") | Where-Object { $_ -ne "interactive-presentation" }) -join ","
+    Write-Host "interactive-presentation skipped: it requires dependencies and -NoDependencies is set."
+}
+$experience = -not $ProjectOnly -and $Agents.Split(",") -contains "interactive-presentation"
 if ($experience -and $NoDependencies) { throw "interactive-presentation requires its dependencies. Remove -NoDependencies or deselect the agent." }
 if ($experience) { $NoPlaywright = $false }
 Write-Host "Agents: $Agents"
@@ -341,7 +345,6 @@ try {
             $env:DISABLE_TELEMETRY = "1"
             $sources = @()
             if (-not $NoSkills) {
-                $sources += $pins.FRONTEND_DESIGN_SKILL
                 if (-not $NoMemory) { $sources += $pins.MEMORY_SKILLS }
                 if (-not $NoPlaywright) { $sources += $pins.PLAYWRIGHT_SKILLS }
                 if (-not $NoHyperframes) { $sources += $pins.HYPERFRAMES_SKILLS }

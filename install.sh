@@ -67,7 +67,7 @@ skill_files=(
 agents="$all_agents"
 yes=0 dry_run=0 dependencies=1 system_packages=1 skills=1 readside=1
 memory=1 startup=1 bmad=1 speckit=1 playwright=1 hyperframes=1 demo=1
-project="" project_only=0 shared_frameworks=0 integration=copilot memory_port=8000
+explicit_agents=0 project="" project_only=0 shared_frameworks=0 integration=copilot memory_port=8000
 selection=0
 fail() { echo "Installation incomplete: $*" >&2; exit 1; }
 value() { [ "$#" -ge 2 ] && [ -n "$2" ] && [[ "$2" != --* ]] || fail "$1 requires a value."; }
@@ -75,7 +75,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --all) agents="$all_agents"; selection=$((selection + 1)) ;;
     --review) agents="the-nitcracker,pr-walkthrough,sparring-partner"; selection=$((selection + 1)) ;;
-    --agents) value "$@"; agents="$2"; selection=$((selection + 1)); shift ;;
+    --agents) value "$@"; agents="$2"; explicit_agents=1; selection=$((selection + 1)); shift ;;
     --yes|-y) yes=1 ;;
     --dry-run) dry_run=1 ;;
     --no-dependencies) dependencies=0 ;;
@@ -122,8 +122,12 @@ memory_port=$((10#$memory_port))
 [ "$shared_frameworks" -eq 0 ] || [ -n "$project" ] || fail "--shared-frameworks requires --project."
 [ -z "$project" ] || [ "$dependencies" -eq 1 ] || fail "--project cannot be combined with --no-dependencies."
 # The interactive-presentation agent's flow depends on these tools, so selecting it overrides their opt-outs.
+if [ "$dependencies" -eq 0 ] && [ "$explicit_agents" -eq 0 ] && [[ ",$agents," == *,interactive-presentation,* ]]; then
+  agents="$(printf '%s' ",$agents," | sed 's/,interactive-presentation,/,/; s/^,//; s/,$//')"
+  echo "interactive-presentation skipped: it requires dependencies and --no-dependencies is set."
+fi
 experience=0
-[[ ",$agents," != *,interactive-presentation,* ]] || experience=1
+[ "$project_only" -eq 1 ] || [[ ",$agents," != *,interactive-presentation,* ]] || experience=1
 [ "$experience" -eq 0 ] || [ "$dependencies" -eq 1 ] || fail "interactive-presentation requires its dependencies. Remove --no-dependencies or deselect the agent."
 [ "$experience" -eq 0 ] || playwright=1
 
@@ -362,7 +366,6 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
     export DISABLE_TELEMETRY=1
     sources=()
     if [ "$skills" -eq 1 ]; then
-      sources+=("$FRONTEND_DESIGN_SKILL")
       [ "$memory" -eq 0 ] || sources+=("$MEMORY_SKILLS")
       [ "$playwright" -eq 0 ] || sources+=("$PLAYWRIGHT_SKILLS")
       [ "$hyperframes" -eq 0 ] || sources+=("$HYPERFRAMES_SKILLS")
