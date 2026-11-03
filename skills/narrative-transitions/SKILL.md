@@ -52,10 +52,10 @@ A plain signpost is acceptable when the structure itself helps, for example "Let
 
 Draft and review as one continuous experience, not section by section.
 
-1. Write a one-sentence summary of each section in order. Gaps, repeats and drift show up as jumps in that list.
+1. Write a one-sentence summary of each section in order, stating its idea and how it serves the controlling idea. Gaps, repeats and drift show up as jumps in that list. In an explanatory piece, a run of summaries shaped as "X does Y" is a list joined by bridges, a structural problem rather than a transition to reword.
 2. At every boundary, compare the last two sentences before it with the first two after it. The new idea at the end should become the known starting point of the next opening.
 3. Experience the piece in its medium: read spoken scripts aloud with headings removed, review video narration against the planned picture at each cut, and read written pieces straight through.
-4. Fix every join that fails the medium's test.
+4. Fix every join that fails the medium's test, except joins inside sections with structural findings. Report those findings to the caller or the structure's owner and leave those sections unchanged.
 5. When one transition is corrected, re-check every boundary before presenting the revision. A defect at one join usually exists at others.
 
 Repeat the audit after material revisions, reordered sections or changed visuals.
