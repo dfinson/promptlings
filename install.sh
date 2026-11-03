@@ -20,6 +20,7 @@ DEMOTIME_SKILLS=https://github.com/estruyf/vscode-demo-time/tree/96175a9b64a4f6e
 VSCODE_PLAYWRIGHT_SKILL=https://github.com/microsoft/hve-core/tree/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/experimental/vscode-playwright
 HYPERFRAMES_SKILLS=https://github.com/heygen-com/hyperframes/tree/618c486734b3cbb697bd432bace7e9642e48b6be/skills
 FRONTEND_DESIGN_SKILL=https://github.com/anthropics/skills/tree/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design
+DECK_PACKAGES="shiki@4.5.0 @shikijs/magic-move@4.5.0 motion@14.7.1 flubber@0.4.2 roughjs@4.6.6 d3@7.9.0 @dagrejs/dagre@3.1.3 axe-core@4.14.0 open-props@1.7.23 lucide-static@1.62.0 @tabler/icons@3.50.0 @fontsource-variable/inter@5.3.0 @fontsource-variable/space-grotesk@5.3.0 @fontsource-variable/jetbrains-mono@5.3.0 @fontsource-variable/geist@5.3.0 @fontsource-variable/geist-mono@5.3.0 @fontsource/ibm-plex-sans@5.3.0 @fontsource/ibm-plex-mono@5.3.0 @fontsource-variable/source-serif-4@5.3.1 @fontsource-variable/source-sans-3@5.3.1 @fontsource-variable/fraunces@5.3.0 @fontsource/instrument-serif@5.3.0 @fontsource-variable/archivo@5.3.0 @fontsource/space-mono@5.3.0 @fontsource-variable/caveat@5.3.0 @fontsource-variable/dm-sans@5.3.0 @fontsource-variable/newsreader@5.3.0 @fontsource/archivo-black@5.3.0"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_url="${PROMPTLINGS_SOURCE:-https://raw.githubusercontent.com/dfinson/promptlings/main}"
@@ -120,8 +121,14 @@ memory_port=$((10#$memory_port))
 [ "$project_only" -eq 0 ] || [ -n "$project" ] || fail "--project-only requires --project."
 [ "$shared_frameworks" -eq 0 ] || [ -n "$project" ] || fail "--shared-frameworks requires --project."
 [ -z "$project" ] || [ "$dependencies" -eq 1 ] || fail "--project cannot be combined with --no-dependencies."
+# The interactive-presentation agent's flow depends on these tools, so selecting it overrides their opt-outs.
+deck=0
+[[ ",$agents," != *,interactive-presentation,* ]] || deck=1
+[ "$deck" -eq 0 ] || [ "$dependencies" -eq 1 ] || fail "interactive-presentation requires its dependencies. Remove --no-dependencies or deselect the agent."
+[ "$deck" -eq 0 ] || playwright=1
 
 echo "Agents: $agents"
+[ "$deck" -eq 0 ] || echo "interactive-presentation: installs Playwright CLI, the skills CLI, its design skills and the pinned deck toolkit regardless of opt-outs."
 echo "Promptlings skills: all bundled skills, published with the agents."
 echo "Tools: memory=$memory bmad=$bmad speckit=$speckit playwright=$playwright hyperframes=$hyperframes demo=$demo"
 echo "Default: native prerequisites, uv applications, global npm applications and published global skills."
@@ -321,17 +328,28 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
   git --version
   gh --version
   packages=()
-  [ "$skills" -eq 0 ] || packages+=("$SKILLS_PACKAGE")
+  [ "$skills" -eq 0 ] && [ "$deck" -eq 0 ] || packages+=("$SKILLS_PACKAGE")
   [ "$bmad" -eq 0 ] || packages+=("$BMAD_PACKAGE")
   [ "$playwright" -eq 0 ] || packages+=("$PLAYWRIGHT_PACKAGE")
   [ "$hyperframes" -eq 0 ] || packages+=("$HYPERFRAMES_PACKAGE")
   [ "$demo" -eq 0 ] || packages+=("$DIFF2HTML_PACKAGE")
+  if [ "$deck" -eq 1 ]; then read -r -a deck_packages <<< "$DECK_PACKAGES"; packages+=("${deck_packages[@]}"); fi
   if [ "${#packages[@]}" -gt 0 ]; then
     if [ "$os" = Linux ] && [ "$system_packages" -eq 1 ]; then
       sudo --preserve-env=npm_config_registry,NPM_CONFIG_REGISTRY npm install --global "${packages[@]}"
     else
       npm install --global "${packages[@]}"
     fi
+  fi
+  if [ "$deck" -eq 1 ]; then
+    npm_root="$(npm root --global)"
+    for package in "${deck_packages[@]}"; do
+      name="${package%@*}"
+      [ -f "$npm_root/$name/package.json" ] || fail "Deck toolkit package missing: $name"
+      installed="$(node -p 'require(process.argv[1]).version' "$npm_root/$name/package.json")"
+      [ "$name@$installed" = "$package" ] || fail "Deck toolkit version mismatch: $name@$installed, expected $package"
+    done
+    echo "Deck toolkit: $npm_root"
   fi
   if [ "$memory" -eq 1 ]; then uv tool install --force --python 3.12 "$MEMORY_PACKAGE"; fi
   if [ "$speckit" -eq 1 ]; then uv tool install --force --python 3.12 "$SPECKIT_PACKAGE"; fi
@@ -340,14 +358,20 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
   if [ "$memory" -eq 1 ]; then basic-memory --version; fi
   if [ "$speckit" -eq 1 ]; then specify version; fi
   if [ "$bmad" -eq 1 ]; then bmad-method --version; fi
-  if [ "$skills" -eq 1 ]; then
+  if [ "$skills" -eq 1 ] || [ "$deck" -eq 1 ]; then
     export DISABLE_TELEMETRY=1
-    sources=("$FRONTEND_DESIGN_SKILL")
-    [ "$memory" -eq 0 ] || sources+=("$MEMORY_SKILLS")
-    [ "$playwright" -eq 0 ] || sources+=("$PLAYWRIGHT_SKILLS")
-    [ "$hyperframes" -eq 0 ] || sources+=("$HYPERFRAMES_SKILLS")
-    [ "$demo" -eq 0 ] || sources+=("$DEMOTIME_SKILLS" "$VSCODE_PLAYWRIGHT_SKILL")
-    for source in "${sources[@]}"; do
+    sources=()
+    if [ "$skills" -eq 1 ]; then
+      sources+=("$FRONTEND_DESIGN_SKILL")
+      [ "$memory" -eq 0 ] || sources+=("$MEMORY_SKILLS")
+      [ "$playwright" -eq 0 ] || sources+=("$PLAYWRIGHT_SKILLS")
+      [ "$hyperframes" -eq 0 ] || sources+=("$HYPERFRAMES_SKILLS")
+      [ "$demo" -eq 0 ] || sources+=("$DEMOTIME_SKILLS" "$VSCODE_PLAYWRIGHT_SKILL")
+    fi
+    [ "$deck" -eq 0 ] || sources+=("$FRONTEND_DESIGN_SKILL" "$PLAYWRIGHT_SKILLS" "$HYPERFRAMES_SKILLS" "$DEMOTIME_SKILLS")
+    unique=()
+    for source in "${sources[@]}"; do [[ " ${unique[*]-} " == *" $source "* ]] || unique+=("$source"); done
+    for source in "${unique[@]}"; do
       skills add "$source" --global --skill '*' --yes --copy
     done
   fi

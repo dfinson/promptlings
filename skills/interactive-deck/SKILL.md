@@ -5,7 +5,7 @@ description: 'Build a standalone, offline, visually interactive HTML presentatio
 
 # Interactive Deck
 
-This skill supplies the design rules, runtime contract and verification for a live-presented HTML deck. The story, approval and acceptance belong to the directing agent (`interactive-presentation` when installed). The spoken side belongs to `presenter-script`.
+This skill supplies the design rules, runtime contract and verification for a live-presented HTML deck. The story, approval and acceptance belong to the directing agent (`interactive-presentation`). The spoken side belongs to `presenter-script`.
 
 The medium sets the rules. The presenter is the narrator and the only person with input. The audience watches a projector or a compressed screen share, cannot rewind and reads very little while someone talks. Every rule below follows from that. Research behind them is listed in [sources](references/sources.md) with its evidence strength.
 
@@ -29,13 +29,12 @@ Pick each interaction from the [pattern catalog](references/interaction-patterns
 
 Commit to one visual direction before building any step. Follow [visual directions](references/visual-directions.md): ground the look in the subject and the room, shortlist two directions, render the same two representative steps in each, choose from screenshots and name one signature device. Write the result as one `:root` token block (OKLCH palette in Radix-style role scales, a modular type scale, spacing, radius, stroke, easing and durations) and use nothing outside it. Take motion, type, color, diagram and code values from [craft](references/craft.md) rather than inventing them.
 
-Load these design skills for the direction and critique work:
+Load these design skills for the direction and critique work. The promptlings installer installs all four with this agent, regardless of opt-out flags. When one is absent, stop and tell the user to rerun the promptlings installer.
 
-- `frontend-design`: the subject-grounded brainstorm, explore, critique loop and its restraint rules. Required; the promptlings installer installs it unless `-NoSkills` or `--no-skills` is set. When it is absent, stop and name the installer rerun.
-- `hyperframes-creative`: `references/visual-styles.md` (eight named styles with palettes and type), `references/house-style.md`, `references/typography.md`, `references/design-adherence.md` and `references/motion-principles.md`, when installed. Without it, [visual directions](references/visual-directions.md) and [craft](references/craft.md) are the complete baseline.
+- `frontend-design`: the subject-grounded brainstorm, explore, critique loop and its restraint rules.
+- `hyperframes-creative`: `references/visual-styles.md` (eight named styles with palettes and type), `references/house-style.md`, `references/typography.md`, `references/design-adherence.md` and `references/motion-principles.md`.
 - `demotime-slide-theme`: its slide-role and layout guidance. Write the deck's own CSS; copy nothing from its assets.
 - `hyperframes-animation`: `rules-index.md`, `transitions/catalog.md`, `adapters/waapi.md` and `adapters/css-animations.md`, when choreographing steps.
-- `mermaid-architecture-diagrams` for diagram semantics and `no-ai-slop` for headlines and labels, when installed.
 
 Use these skills for design knowledge only; the deck runs on its own runtime, never on HyperFrames or Demo Time. Let one element dominate each step and spend spectacle on the signature device and the one or two moments the story turns on. Draw diagrams as inline SVG so they stay sharp, styleable and animatable. Present terminals and windows in the style `cue-synced-demo` describes unless the chosen direction specifies its own frame.
 
@@ -43,9 +42,9 @@ Critique before handoff: put the step screenshots side by side, check each again
 
 ## Build to the runtime contract
 
-Follow the [runtime contract](references/runtime.md): one self-contained HTML file on a fixed 16:9 stage, a pure `renderStep` state model with hash deep links, clicker-compatible keys, blackout, an in-document presenter mode with notes, timer and next-step preview, and an optional two-window mode served from localhost. Default to hand-authored HTML, CSS and JavaScript. Use reveal.js only when the presenter specifically wants its feature set and accepts serving from localhost for speaker view. Do not use Slidev, Spectacle or other build-pipeline frameworks for a single-file deliverable.
+Follow the [runtime contract](references/runtime.md): one self-contained HTML file on a fixed 16:9 stage, a pure `renderStep` state model with hash deep links, clicker-compatible keys, blackout, an in-document presenter mode with notes, timer and next-step preview, and an optional two-window mode served from localhost. Write the runtime as hand-authored HTML, CSS and JavaScript, regenerated per deck.
 
-Inline everything: fonts as base64 WOFF2 subsets, vendored libraries pinned to exact versions, pre-rendered syntax highlighting and pre-rendered diagrams. Embed the license notice of every inlined library, font and icon set in the deck file, as [runtime](references/runtime.md) describes. Never load from a CDN at show time. Keep large video fallbacks as sibling files in a self-contained folder rather than base64.
+Build only from the deck toolkit the promptlings installer installs globally with this agent: the exact packages listed in [runtime](references/runtime.md), found under `npm root --global`. Inline everything: fonts from the toolkit's Fontsource latin WOFF2 files as base64, toolkit library builds, pre-rendered syntax highlighting and diagrams laid out at build time. Embed the license notice of every inlined library, font and icon set in the deck file, as [runtime](references/runtime.md) describes. Never load from a CDN at show time. Keep large video fallbacks as sibling files in a self-contained folder rather than base64. When a toolkit package is absent, stop and tell the user to rerun the promptlings installer.
 
 ## Keep evidence honest
 
@@ -53,14 +52,14 @@ Every number, output, log line and screenshot on screen comes from a real run or
 
 ## Verify stage readiness
 
-Drive the deck with the `playwright-cli` skill, or a project-local Playwright script when a check needs assertions it cannot express. Run every check and fix failures before handoff:
+Drive the deck with the `playwright-cli` skill. Use `playwright-cli eval` for DOM measurements and `playwright-cli run-code` for checks that need the Playwright `page`, such as offline mode and script injection. Run every check and fix failures before handoff:
 
 - Walk every step forward with the presenter keys, then backward, then by random deep links. Screenshots of the same step must match regardless of route.
 - Capture each step at 1920x1080 and 1280x720, and inspect them yourself for focal point, hierarchy and legibility.
 - Fail on any console error, page error or network request other than the deck file and its sibling assets.
 - Fail on clipped or overflowing text (`scrollWidth > clientWidth` or `scrollHeight > clientHeight` on text containers) and on text below the size floor.
-- Run an accessibility scan for contrast and naming with `@axe-core/playwright`, installed at an exact version in the production workspace alongside the Playwright test runner, and confirm reduced-motion mode renders every final state.
+- Run an accessibility scan for contrast and naming: inject the toolkit's `axe-core/axe.min.js` with `page.addScriptTag({ path })` through `playwright-cli run-code`, run `axe.run()` and fail on any violation. Confirm reduced-motion mode renders every final state.
 - Open presenter mode and confirm notes, timer and next-step preview track the current step; in two-window mode confirm both windows stay in sync.
-- Confirm the file opens from `file://` with networking disabled.
+- Confirm the file opens from `file://` with networking disabled (`page.context().setOffline(true)` through `playwright-cli run-code`).
 
 Keep the screenshots and check results with the production notes. Mechanical passes do not replace looking at every step, and neither replaces the presenter's rehearsal.

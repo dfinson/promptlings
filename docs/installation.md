@@ -42,7 +42,8 @@ such as `npx.cmd`, `playwright-cli.cmd`, and `hyperframes.cmd`.
 | Playwright | Global npm application, published skill, Chrome browser, and a CLI browser check |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
 | Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
-| Design skill | Pinned frontend-design skill, used by the Interactive Presentation agent |
+| Design skill | Pinned frontend-design skill |
+| Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the skills CLI, the frontend-design, HyperFrames and Demo Time skills, and the pinned deck toolkit (Shiki, Magic Move, Motion, Flubber, Rough.js, D3, dagre, Open Props, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs; `--no-dependencies` / `-NoDependencies` fails while the agent is selected |
 
 Document rendering uses Microsoft Word or LibreOffice. LibreOffice is installed
 only when neither is found. On Windows, its program directory is added to the

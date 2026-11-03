@@ -1,6 +1,6 @@
 # Runtime contract
 
-The deck is one HTML file that opens from `file://` on the presenter's machine with networking off. Write it as a small set of source files in the production workspace and assemble it with a project-local build script that inlines styles, scripts, fonts and images into `deck.html`. The promptlings repository holds no runtime code.
+The deck is one HTML file that opens from `file://` on the presenter's machine with networking off. Write it as a small set of source files in the production workspace and assemble it with a project-local Node build script that inlines styles, scripts, fonts and images into `deck.html`. The script loads the deck toolkit from the global install (`createRequire(path.join(npmRoot, "noop.js"))` with `npmRoot` from `npm root --global`), so the workspace installs nothing. The promptlings repository holds no runtime code.
 
 ## Stage
 
@@ -39,11 +39,27 @@ Most clickers send `PageUp`, `PageDown` and `B`, so these bindings work without 
 
 ## Self-contained assets
 
-- **Fonts:** subset to the glyphs used, convert to WOFF2 and inline as base64 `@font-face` sources. Keep to two families and a few weights.
-- **Code:** pre-highlight with Shiki at build time into static HTML. For animated code changes use `@shikijs/magic-move` (MIT), vendored at an exact version.
-- **Diagrams:** author as inline SVG, or pre-render Mermaid to SVG at build time and inline the result. Do not ship the Mermaid runtime.
-- **Motion:** CSS transitions and the Web Animations API cover most needs. When timelines justify a library, vendor one at an exact version: Motion (MIT) or Anime.js (MIT). Libraries follow the license policy in [craft](craft.md): OSI-approved licenses or the SIL OFL, so GSAP's proprietary Standard License does not qualify. Use the View Transitions API only with a fallback.
-- **Data visuals:** D3 (ISC), Rough.js (MIT) for a sketched style, Three.js (MIT) only for genuinely three-dimensional subjects.
+The promptlings installer installs this toolkit globally with the agent, at these exact versions. Use nothing outside it.
+
+| Job | Package | License |
+| --- | --- | --- |
+| Syntax highlighting | `shiki@4.5.0` | MIT |
+| Code morphs | `@shikijs/magic-move@4.5.0` | MIT |
+| Seekable motion | `motion@14.7.1` | MIT |
+| Shape morphs | `flubber@0.4.2` | MIT |
+| Sketch style | `roughjs@4.6.6` | MIT |
+| Data visuals and scales | `d3@7.9.0` | ISC |
+| Diagram layout | `@dagrejs/dagre@3.1.3` | MIT |
+| Design tokens | `open-props@1.7.23` | MIT |
+| Icons, one set per deck | `lucide-static@1.62.0`, `@tabler/icons@3.50.0` | ISC, MIT |
+| Fonts | Fontsource: Inter, Space Grotesk, JetBrains Mono, Geist, Geist Mono, IBM Plex Sans, IBM Plex Mono, Source Serif 4, Source Sans 3, Fraunces, Instrument Serif, Archivo, Archivo Black, Space Mono, Caveat, DM Sans, Newsreader | OFL-1.1 |
+| Accessibility scan (verification only, never inlined) | `axe-core@4.14.0` | MPL-2.0 |
+
+- **Fonts:** inline the toolkit's latin `.woff2` files for the chosen pairing as base64 `@font-face` sources. Keep to two families and a few weights.
+- **Code:** pre-highlight with Shiki at build time into static HTML. For animated code changes, precompile tokens with `@shikijs/magic-move` and inline its renderer.
+- **Diagrams:** author as inline SVG, laying out larger graphs with dagre at build time and inlining the resulting SVG.
+- **Motion:** CSS transitions and the Web Animations API cover most needs. When timelines justify a library, inline Motion. Use the View Transitions API only with a fallback.
+- **Data visuals:** D3 for scales and shapes, Rough.js for a sketched style.
 - **Raster evidence:** screenshots as compressed WebP or PNG inlined; long video fallbacks as sibling files in the same folder.
 
-Record each vendored library's name, version and license in the production notes. Embed a license-notices block in the deck file (an HTML comment or a hidden `<section id="licenses">`) carrying the copyright line and full license text of every inlined library, font and icon set, since MIT, ISC and OFL require the notice to travel with copies.
+Record each inlined package's name, version and license in the production notes. Embed a license-notices block in the deck file (an HTML comment or a hidden `<section id="licenses">`) carrying the copyright line and full license text of every inlined library, font and icon set, taken from the package's `LICENSE` file, since MIT, ISC and OFL require the notice to travel with copies.

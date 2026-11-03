@@ -46,7 +46,7 @@ Concrete values from established design systems and design-engineering practice.
 
 Transferable motion patterns: `hyperframes-animation` `rules-index.md`, `transitions/catalog.md`, `adapters/waapi.md` and `adapters/css-animations.md`. Take the patterns, not the HyperFrames runtime.
 
-Every vendored library, font and icon set is under an OSI-approved open source license or the SIL OFL with no paid tier or field-of-use restriction. Proprietary "free" licenses (GSAP Standard License included) and freemium catalogs are excluded.
+Every inlined library, font and icon set comes from the installed deck toolkit listed in [runtime](runtime.md), each under an OSI-approved open source license or the SIL OFL with no paid tier or field-of-use restriction.
 
 ## Typography
 
@@ -73,10 +73,9 @@ Every vendored library, font and icon set is under an OSI-approved open source l
 - One stroke token for boxes, one for connectors, one radius per element type.
 - Orthogonal connectors with rounded turns; labels at the midpoint with a background knockout.
 - Size nodes to their labels; never clip or shrink a label to fit a box.
-- Lay out with ELK.js or D2 at build time, or hand-author SVG for small diagrams, then restyle with the deck tokens. Never ship a renderer's default theme.
+- Lay out with dagre at build time, or hand-author SVG for small diagrams, then draw with the deck tokens.
 - Focus by dimming the rest (`opacity: 0.25; filter: saturate(0.3)`) and thickening the focal element's stroke.
 - Icons: [Lucide](https://lucide.dev/) (ISC) or [Tabler](https://tabler.io/icons) (MIT), one set per deck. Represent cloud services with these sets and a text label.
-- Diagram semantics and label hierarchy: `mermaid-architecture-diagrams`.
 
 ## Code
 
@@ -86,15 +85,13 @@ Every vendored library, font and icon set is under an OSI-approved open source l
 - Show diffs with Shiki diff notation, recolored from the deck's added and removed scales.
 - Morph code between steps with `@shikijs/magic-move` using precompiled tokens.
 
-## Component and effect sources
+## Toolkit components and effects
 
-| Source | License | Use |
-| --- | --- | --- |
-| [Open Props](https://open-props.style/) | MIT | Easing, spring `linear()` curves, shadow and radius tokens to vendor as CSS |
-| [shadcn/ui](https://ui.shadcn.com/) | MIT | Reference markup and proportions for UI mockups; port to plain HTML |
-| [Magic UI open-source repository](https://github.com/magicuidesign/magicui) | MIT | Components from the MIT repository only, never Magic UI Pro. Effect techniques (beams, text reveals, borders) for the signature moment only; port from React to plain DOM |
-| [Motion](https://motion.dev/) | MIT | Seekable sequences, stagger, path draw. Use only the open `motion` package, never Motion+ |
-| [Flubber](https://github.com/veltman/flubber) | MIT | SVG shape interpolation |
-| [Rough.js](https://roughjs.com/) | MIT | Sketch-direction shapes |
+| Package | Use |
+| --- | --- |
+| [Open Props](https://open-props.style/) | Easing, spring `linear()` curves, shadow and radius tokens to inline as CSS |
+| [Motion](https://motion.dev/) | Seekable sequences, stagger, path draw |
+| [Flubber](https://github.com/veltman/flubber) | SVG shape interpolation |
+| [Rough.js](https://roughjs.com/) | Sketch-direction shapes |
 
-Every effect needs a job on its step: marking a section, revealing a change or directing attention. Effects without a job are cut.
+Build signature effects (beams, text reveals, animated borders) from these packages, CSS and SVG. Every effect needs a job on its step: marking a section, revealing a change or directing attention. Effects without a job are cut.

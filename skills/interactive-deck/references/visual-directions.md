@@ -12,7 +12,7 @@ Every deck commits to one fully specified visual direction before any step is bu
 
 ## Catalog
 
-All fonts below are SIL OFL 1.1 and may be subset and inlined.
+All fonts below are SIL OFL 1.1 and ship with the deck toolkit in [runtime](runtime.md).
 
 | Direction | Palette anchors (OKLCH) | Type | Geometry | Motion | Fits | Fails |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -46,7 +46,7 @@ Glassmorphism, purple-to-blue gradient fields and neon glow are excluded as defa
 | Everything centered in identical cards | Layout chosen per step: left-aligned reading, full-bleed diagrams, asymmetric grid placement |
 | Emoji bullets and stock icon rows | Typographic hierarchy, entity color codes, or one consistent line icon set |
 | Ambient particles, floating orbs, looping glows | Stillness, with motion only on the element being explained |
-| Vague headline copy ("Unlocking the power of...") | A full-sentence assertion with the specific claim; apply `no-ai-slop` to headlines and labels |
+| Vague headline copy ("Unlocking the power of...") | A full-sentence assertion with the specific claim |
 
 ## Exemplars to study
 

@@ -31,6 +31,7 @@ $pins = @{
     VSCODE_PLAYWRIGHT_SKILL = "https://github.com/microsoft/hve-core/tree/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/experimental/vscode-playwright"
     HYPERFRAMES_SKILLS = "https://github.com/heygen-com/hyperframes/tree/618c486734b3cbb697bd432bace7e9642e48b6be/skills"
     FRONTEND_DESIGN_SKILL = "https://github.com/anthropics/skills/tree/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design"
+    DECK_PACKAGES = "shiki@4.5.0 @shikijs/magic-move@4.5.0 motion@14.7.1 flubber@0.4.2 roughjs@4.6.6 d3@7.9.0 @dagrejs/dagre@3.1.3 axe-core@4.14.0 open-props@1.7.23 lucide-static@1.62.0 @tabler/icons@3.50.0 @fontsource-variable/inter@5.3.0 @fontsource-variable/space-grotesk@5.3.0 @fontsource-variable/jetbrains-mono@5.3.0 @fontsource-variable/geist@5.3.0 @fontsource-variable/geist-mono@5.3.0 @fontsource/ibm-plex-sans@5.3.0 @fontsource/ibm-plex-mono@5.3.0 @fontsource-variable/source-serif-4@5.3.1 @fontsource-variable/source-sans-3@5.3.1 @fontsource-variable/fraunces@5.3.0 @fontsource/instrument-serif@5.3.0 @fontsource-variable/archivo@5.3.0 @fontsource/space-mono@5.3.0 @fontsource-variable/caveat@5.3.0 @fontsource-variable/dm-sans@5.3.0 @fontsource-variable/newsreader@5.3.0 @fontsource/archivo-black@5.3.0"
 }
 
 $BaseUrl = if ($env:PROMPTLINGS_SOURCE) { $env:PROMPTLINGS_SOURCE.TrimEnd("/") } else {
@@ -97,7 +98,12 @@ if (-not $Agents -or @($Agents.Split(",") | Where-Object { $_ -notin $allAgents.
 if ($ProjectOnly -and -not $Project) { throw "-ProjectOnly requires -Project." }
 if ($SharedFrameworks -and -not $Project) { throw "-SharedFrameworks requires -Project." }
 if ($Project -and $NoDependencies) { throw "-Project cannot be combined with -NoDependencies." }
+# The interactive-presentation agent's flow depends on these tools, so selecting it overrides their opt-outs.
+$deck = $Agents.Split(",") -contains "interactive-presentation"
+if ($deck -and $NoDependencies) { throw "interactive-presentation requires its dependencies. Remove -NoDependencies or deselect the agent." }
+if ($deck) { $NoPlaywright = $false }
 Write-Host "Agents: $Agents"
+if ($deck) { Write-Host "interactive-presentation: installs Playwright CLI, the skills CLI, its design skills and the pinned deck toolkit regardless of opt-outs." }
 Write-Host "Promptlings skills: all bundled skills, published with the agents."
 Write-Host "Default: WinGet prerequisites, uv applications, global npm applications and published global skills."
 Write-Host "Opt-outs: memory=$NoMemory bmad=$NoBmad speckit=$NoSpeckit playwright=$NoPlaywright hyperframes=$NoHyperframes demo=$NoDemo"
@@ -293,12 +299,24 @@ try {
         Invoke-Native git --version
         Invoke-Native gh --version
         $packages = @()
-        if (-not $NoSkills) { $packages += $pins.SKILLS_PACKAGE }
+        if (-not $NoSkills -or $deck) { $packages += $pins.SKILLS_PACKAGE }
         if (-not $NoBmad) { $packages += $pins.BMAD_PACKAGE }
         if (-not $NoPlaywright) { $packages += $pins.PLAYWRIGHT_PACKAGE }
         if (-not $NoHyperframes) { $packages += $pins.HYPERFRAMES_PACKAGE }
         if (-not $NoDemo) { $packages += $pins.DIFF2HTML_PACKAGE }
+        if ($deck) { $packages += $pins.DECK_PACKAGES.Split(" ") }
         if ($packages.Count) { Invoke-Native npm.cmd install --global @packages }
+        if ($deck) {
+            $npmRoot = (Invoke-Native npm.cmd root --global | Select-Object -Last 1).Trim()
+            foreach ($package in $pins.DECK_PACKAGES.Split(" ")) {
+                $name = $package.Substring(0, $package.LastIndexOf("@"))
+                $manifest = Join-Path $npmRoot "$name\package.json"
+                if (-not (Test-Path -LiteralPath $manifest)) { throw "Deck toolkit package missing: $name" }
+                $installed = (Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json).version
+                if ("$name@$installed" -ne $package) { throw "Deck toolkit version mismatch: $name@$installed, expected $package" }
+            }
+            Write-Host "Deck toolkit: $npmRoot"
+        }
         if (-not $NoMemory) {
             if ($windows) {
                 # Windows cannot replace basic-memory while a previous server holds it, and stopping the task leaves its children running.
@@ -319,14 +337,18 @@ try {
         if (-not $NoMemory) { Invoke-Native basic-memory --version }
         if (-not $NoSpeckit) { Invoke-Native specify version }
         if (-not $NoBmad) { Invoke-Native bmad-method.cmd --version }
-        if (-not $NoSkills) {
+        if (-not $NoSkills -or $deck) {
             $env:DISABLE_TELEMETRY = "1"
-            $sources = @($pins.FRONTEND_DESIGN_SKILL)
-            if (-not $NoMemory) { $sources += $pins.MEMORY_SKILLS }
-            if (-not $NoPlaywright) { $sources += $pins.PLAYWRIGHT_SKILLS }
-            if (-not $NoHyperframes) { $sources += $pins.HYPERFRAMES_SKILLS }
-            if (-not $NoDemo) { $sources += $pins.DEMOTIME_SKILLS, $pins.VSCODE_PLAYWRIGHT_SKILL }
-            foreach ($source in $sources) {
+            $sources = @()
+            if (-not $NoSkills) {
+                $sources += $pins.FRONTEND_DESIGN_SKILL
+                if (-not $NoMemory) { $sources += $pins.MEMORY_SKILLS }
+                if (-not $NoPlaywright) { $sources += $pins.PLAYWRIGHT_SKILLS }
+                if (-not $NoHyperframes) { $sources += $pins.HYPERFRAMES_SKILLS }
+                if (-not $NoDemo) { $sources += $pins.DEMOTIME_SKILLS, $pins.VSCODE_PLAYWRIGHT_SKILL }
+            }
+            if ($deck) { $sources += $pins.FRONTEND_DESIGN_SKILL, $pins.PLAYWRIGHT_SKILLS, $pins.HYPERFRAMES_SKILLS, $pins.DEMOTIME_SKILLS }
+            foreach ($source in ($sources | Select-Object -Unique)) {
                 Invoke-Native skills.cmd add $source --global --skill "*" --yes --copy
             }
         }

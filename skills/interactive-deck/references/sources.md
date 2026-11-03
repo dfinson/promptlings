@@ -18,8 +18,8 @@ Reviewed on 2026-11-03. Evidence strength reflects the research base, not how of
 | [Distill, Research Debt](https://distill.pub/2017/research-debt/) | Moving interpretive labor from audience to author | Practitioner canon |
 | [reveal.js speaker view](https://revealjs.com/speaker-view/) | Speaker view requires a local server; notes, timer and preview conventions | Documentation |
 | [MDN BroadcastChannel](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel), [View Transitions support](https://caniuse.com/view-transitions) | Same-origin sync and browser support | Documentation |
-| [Motion](https://github.com/motiondivision/motion/blob/main/LICENSE.md), [Flubber](https://github.com/veltman/flubber/blob/master/LICENSE), [Rough.js](https://github.com/rough-stuff/rough/blob/master/LICENSE) | MIT licenses for vendored motion and shape libraries | License |
-| [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing) | Automated axe scans per step | Documentation |
+| [Motion](https://github.com/motiondivision/motion/blob/main/LICENSE.md), [Flubber](https://github.com/veltman/flubber/blob/master/LICENSE), [Rough.js](https://github.com/rough-stuff/rough/blob/master/LICENSE), [dagre](https://github.com/dagrejs/dagre/blob/master/LICENSE), [D3](https://github.com/d3/d3/blob/main/LICENSE) | MIT and ISC licenses for the inlined motion, shape, layout and data libraries | License |
+| [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing), [axe-core](https://github.com/dequelabs/axe-core) (MPL-2.0) | Automated axe scans per step | Documentation |
 | Duarte, *slide:ology* (2008); Reynolds, *Presentation Zen* (2011) | Projector legibility, restraint, one idea per slide | Practitioner consensus |
 | [Material Design 3 motion](https://m3.material.io/styles/motion/easing-and-duration/tokens-specs) | Easing curves and duration tokens | Design system |
 | [IBM Carbon motion](https://carbondesignsystem.com/elements/motion/overview/) | Productive and expressive curves, enter and exit asymmetry, duration by distance | Design system |
@@ -32,7 +32,7 @@ Reviewed on 2026-11-03. Evidence strength reflects the research base, not how of
 | [WCAG 2.2](https://www.w3.org/TR/WCAG22/) | Contrast floors for text and graphics | Standard |
 | [C4 model notation](https://c4model.com/diagrams/notation) | One abstraction level per diagram, typed elements | Practitioner canon |
 | [Shiki](https://shiki.style/), [Magic Move](https://github.com/shikijs/shiki-magic-move) | Pre-rendered highlighting, diff notation, token morphs | Documentation |
-| [google/fonts OFL directory](https://github.com/google/fonts/tree/main/ofl), [Lucide](https://lucide.dev/license), [Tabler Icons](https://github.com/tabler/tabler-icons/blob/main/LICENSE) | Licenses for inlined fonts and icons | License |
-| [Open Props](https://open-props.style/), [Magic UI repository](https://github.com/magicuidesign/magicui), [shadcn/ui](https://ui.shadcn.com/) | Token and effect techniques under MIT | License |
+| [Fontsource](https://fontsource.org/), [google/fonts OFL directory](https://github.com/google/fonts/tree/main/ofl), [Lucide](https://lucide.dev/license), [Tabler Icons](https://github.com/tabler/tabler-icons/blob/main/LICENSE) | Licenses for inlined fonts and icons | License |
+| [Open Props](https://open-props.style/) | Easing, spring and shadow tokens under MIT | License |
 | [Anthropic frontend-design skill](https://github.com/anthropics/skills/tree/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design) (Apache 2.0) | Subject-grounded direction and critique loop | Practitioner canon |
 | Murrell, "The Age of Average"; Chayka, *Filterworld* (2024) | Default convergence as the cause of generic looks | Practitioner commentary |

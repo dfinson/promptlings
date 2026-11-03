@@ -5,7 +5,7 @@ description: 'Write the suggested script a human uses to deliver an interactive 
 
 # Presenter Script
 
-This skill writes what the presenter says and does while a deck or demo runs. The deck belongs to `interactive-deck`; the story and approval belong to the directing agent (`interactive-presentation` when installed). Narration for recorded video belongs to `reasoning-first-narration` and the video workflows.
+This skill writes what the presenter says and does while a deck or demo runs. The deck belongs to `interactive-deck`; the story and approval belong to the directing agent (`interactive-presentation`). Narration for recorded video belongs to `reasoning-first-narration` and the video workflows.
 
 A live script is a support for a person, not a text to read aloud. Reading verbatim sounds read and breaks eye contact, while improvising every line drifts and overruns. Word in full only the parts that must land exactly, and give the presenter short cues for the rest.
 
