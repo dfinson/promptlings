@@ -31,7 +31,7 @@ $pins = @{
     VSCODE_PLAYWRIGHT_SKILL = "https://github.com/microsoft/hve-core/tree/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/experimental/vscode-playwright"
     HYPERFRAMES_SKILLS = "https://github.com/heygen-com/hyperframes/tree/618c486734b3cbb697bd432bace7e9642e48b6be/skills"
     FRONTEND_DESIGN_SKILL = "https://github.com/anthropics/skills/tree/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design"
-    EXPERIENCE_PACKAGES = "shiki@4.5.0 @shikijs/magic-move@4.5.0 motion@14.7.1 flubber@0.4.2 roughjs@4.6.6 d3@7.9.0 @dagrejs/dagre@3.1.3 axe-core@4.14.0 open-props@1.7.23 lucide-static@1.62.0 @tabler/icons@3.50.0 @fontsource-variable/inter@5.3.0 @fontsource-variable/space-grotesk@5.3.0 @fontsource-variable/jetbrains-mono@5.3.0 @fontsource-variable/geist@5.3.0 @fontsource-variable/geist-mono@5.3.0 @fontsource/ibm-plex-sans@5.3.0 @fontsource/ibm-plex-mono@5.3.0 @fontsource-variable/source-serif-4@5.3.1 @fontsource-variable/source-sans-3@5.3.1 @fontsource-variable/fraunces@5.3.0 @fontsource/instrument-serif@5.3.0 @fontsource-variable/archivo@5.3.0 @fontsource/space-mono@5.3.0 @fontsource-variable/caveat@5.3.0 @fontsource-variable/dm-sans@5.3.0 @fontsource-variable/newsreader@5.3.0 @fontsource/archivo-black@5.3.0"
+    EXPERIENCE_PACKAGES = "esbuild@0.28.2 shiki@4.5.0 @shikijs/magic-move@4.5.0 flubber@0.4.2 roughjs@4.6.6 d3@7.9.0 @dagrejs/dagre@3.1.3 axe-core@4.14.0 lucide-static@1.62.0 @tabler/icons@3.50.0 @fontsource-variable/inter@5.3.0 @fontsource/ibm-plex-sans@5.3.0 @fontsource/ibm-plex-mono@5.3.0 @fontsource-variable/space-grotesk@5.3.0 @fontsource-variable/jetbrains-mono@5.3.0 @fontsource-variable/fraunces@5.3.0 @fontsource-variable/newsreader@5.3.0 @fontsource/instrument-serif@5.3.0 @fontsource-variable/caveat@5.3.0"
 }
 
 $BaseUrl = if ($env:PROMPTLINGS_SOURCE) { $env:PROMPTLINGS_SOURCE.TrimEnd("/") } else {
@@ -347,7 +347,7 @@ try {
                 if (-not $NoHyperframes) { $sources += $pins.HYPERFRAMES_SKILLS }
                 if (-not $NoDemo) { $sources += $pins.DEMOTIME_SKILLS, $pins.VSCODE_PLAYWRIGHT_SKILL }
             }
-            if ($experience) { $sources += $pins.FRONTEND_DESIGN_SKILL, $pins.PLAYWRIGHT_SKILLS, $pins.HYPERFRAMES_SKILLS, $pins.DEMOTIME_SKILLS }
+            if ($experience) { $sources += $pins.FRONTEND_DESIGN_SKILL, $pins.PLAYWRIGHT_SKILLS, $pins.HYPERFRAMES_SKILLS }
             foreach ($source in ($sources | Select-Object -Unique)) {
                 Invoke-Native skills.cmd add $source --global --skill "*" --yes --copy
             }

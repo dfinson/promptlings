@@ -20,8 +20,25 @@ A stop earns the mini-app form when manipulating a working model shows something
 | Predict then run | A result the room can guess; ask, capture the call, then run the model | Capture the prediction, run to the revealing tick, show the room's call against the result | [Hohman et al.](https://distill.pub/2020/communicating-with-interactive-articles/) on belief elicitation |
 | Room-tuned run | The room chooses parameters and the model runs with them | A capture beat records the choice; the run uses it, with a fallback preset if the room is silent | Workshop exercises |
 | Live run with fallback | The audience must see the real system run | `R` cuts to the recorded fallback | Keynote demo practice |
-| Video stop | A demo step is too slow, fragile or busy to run live | Chapters as beats; cut back to a mini-app for questions | `technical-demo` output |
+| Video stop | The step cannot run live in the room (see [When to use video](#when-to-use-video)) | Chapters as beats; cut back to a mini-app for questions | `technical-demo` output |
 | Evidence stop | A single real artifact (a measurement, a screenshot, a code region) makes the point | Stepped reveal of one layer per beat | [Ciechanowski, Mechanical Watch](https://ciechanow.ski/mechanical-watch/) |
+
+## When to use video
+
+Video is optional; most experiences have none. Every clip trades the room's attention and the presenter's control of pace for something the live stops cannot give. Propose a clip only when one of these holds:
+
+- The live step depends on a network, cloud service, hardware or environment the venue cannot guarantee.
+- The evidence is in the physical world (a device, a lab, a site).
+- The point is proof that a real run happened (a recorded production run, a reproduced bug).
+- An authentic voice carries it: a customer, a user or an expert in their own words.
+- A slow process needs compressing (a twelve-minute build in thirty seconds).
+- The exact sequence must be identical every time.
+
+Never use a clip on a stop where the room enters data or where responding to the room is the point, and never for something a still or a mini-app shows as well. For a live run that might fail, the clip is the recorded fallback behind `R`, not a replacement for the run.
+
+- **Length:** 15 to 45 seconds for proof or a stand-in demo; up to about 90 seconds for a testimonial. Split anything longer into separate stops with live talk between them.
+- **Audio:** `muted` by default, with the presenter narrating live, because the same words spoken and heard twice overload the audience. `narrated` only for an authentic voice, with captions on and the presenter silent. `ambient` only when the sound is itself evidence. UI-only clips are always muted.
+- **In use:** the presenter introduces the clip (why it is recorded, the question it answers), seeks only to chapter marks, restates the takeaway after it and bridges back to a live stop. The fallback when a clip will not play is its poster and chapter stills with a one-line outcome.
 
 ## Building a good mini-app
 

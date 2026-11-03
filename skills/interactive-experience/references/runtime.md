@@ -8,7 +8,9 @@ The experience is a folder the presenter runs from their own machine with no int
 <talk>/
   index.html        audience view; ?view=presenter opens the presenter view
   app.css           all styles, fonts referenced as url(assets/fonts/...)
-  app.js            one classic script (no imports): runtime, stops and bundled libraries
+  src/              the runtime and one ES module per stop, the build input
+  build.mjs         pre-renders code and layouts into src/generated/, then bundles with esbuild
+  app.js            build output: one IIFE script with the runtime, stops and libraries
   assets/           fonts, images, posters, LICENSES.txt
   videos/           <id>.mp4 with <id>.chapters.vtt and <id>.captions.vtt
   data/             workshop records, one <stream>.ndjson per capture stream
@@ -87,7 +89,7 @@ Stepping backward through a simulation replays from the preset to tick N-1, whic
 - Embed the clip from the `technical-demo` agent's output as `videos/<id>.mp4`, H.264 video with AAC audio for universal hardware decoding, with a poster frame in `assets/`. Never inline video as base64.
 - Add `<track kind="chapters">` from `<id>.chapters.vtt`, generated from the clip's chapter or scene data, and `<track kind="captions">` from its narration. Bind beats to chapters so the storyline map, the presenter view and `[`/`]` share one chapter list.
 - Start playback only from a presenter key or click, which satisfies browser autoplay rules with sound. Show no native controls on the stage; the presenter view shows the playhead and chapter list.
-- Record whether each clip plays with its own narration or muted under the presenter's voice; the script follows that choice.
+- Record each clip's audio mode: `muted` (the default; the presenter narrates live), `narrated` (an authentic voice plays, captions on, presenter silent) or `ambient` (the sound is evidence). The stop list carries the mode, the stage shows a speaker icon only when sound plays, and the script follows the same mode.
 
 ## Workshop data capture
 
@@ -112,24 +114,23 @@ The promptlings installer installs this toolkit globally with the agent, at thes
 
 | Job | Package | License |
 | --- | --- | --- |
-| Syntax highlighting | `shiki@4.5.0` | MIT |
-| Code morphs | `@shikijs/magic-move@4.5.0` | MIT |
-| Seekable motion | `motion@14.7.1` | MIT |
+| Build: bundle `src/` into `app.js` | `esbuild@0.28.2` | MIT |
+| Syntax highlighting, build time only | `shiki@4.5.0` | MIT |
+| Code morphs at runtime (bundles `diff-match-patch-es`, Apache-2.0, and `ohash`, MIT) | `@shikijs/magic-move@4.5.0` | MIT |
 | Shape morphs | `flubber@0.4.2` | MIT |
-| Sketch style | `roughjs@4.6.6` | MIT |
-| Data visuals, scales and forces | `d3@7.9.0` | ISC |
-| Diagram layout | `@dagrejs/dagre@3.1.3` | MIT |
-| Design tokens | `open-props@1.7.23` | MIT |
-| Icons, one set per experience | `lucide-static@1.62.0`, `@tabler/icons@3.50.0` | ISC, MIT |
-| Fonts | Fontsource: Inter, Space Grotesk, JetBrains Mono, Geist, Geist Mono, IBM Plex Sans, IBM Plex Mono, Source Serif 4, Source Sans 3, Fraunces, Instrument Serif, Archivo, Archivo Black, Space Mono, Caveat, DM Sans, Newsreader | OFL-1.1 |
+| Sketch rendering for the notebook direction | `roughjs@4.6.6` | MIT |
+| Scales, shapes, forces, drag and zoom (import the `d3-*` submodules) | `d3@7.9.0` | ISC |
+| Diagram layout, build time | `@dagrejs/dagre@3.1.3` | MIT |
+| Icons, one set per experience, copied as single SVGs | `lucide-static@1.62.0`, `@tabler/icons@3.50.0` | ISC, MIT |
+| Fonts named by the [visual directions](visual-directions.md) | Fontsource: Inter, IBM Plex Sans, IBM Plex Mono, Space Grotesk, JetBrains Mono, Fraunces, Newsreader, Instrument Serif, Caveat | OFL-1.1 |
 | Accessibility scan (verification only, never bundled) | `axe-core@4.14.0` | MPL-2.0 |
 
 - **Fonts:** copy the toolkit's latin `.woff2` files for the chosen pairing into `assets/fonts/`. Keep to two families and a few weights.
-- **Code:** pre-highlight with Shiki at build time into static HTML. For animated code changes, precompile tokens with `@shikijs/magic-move` and bundle its renderer.
-- **Diagrams:** author as inline SVG, laying out larger graphs with dagre at build time.
-- **Models and simulations:** plain JavaScript state and update functions; D3 for scales, shapes and force layouts, with the force simulation stepped manually by the fixed clock.
-- **Motion:** CSS transitions and the Web Animations API cover most needs. When timelines justify a library, bundle Motion.
+- **Code:** highlight with Shiki in `build.mjs` and write the HTML, or the token snapshots for a code morph, into `src/generated/`. The browser loads only the magic-move core and renderer, never Shiki.
+- **Diagrams:** author as inline SVG, laying out larger graphs with dagre in `build.mjs`.
+- **Models and simulations:** plain JavaScript state and update functions on the fixed clock, seeded by a hand-written mulberry32 `rng(seed)`. Use D3 for scales, shapes and force layouts, stepping the force simulation manually from the clock. Write controls by hand in the direction's visual language; no GUI panel library and no physics engine.
+- **Motion:** CSS transitions for state changes and the Web Animations API for sequenced or seekable steps (`animation.currentTime` follows the beat); `flubber` interpolates morphs between unlike SVG paths.
 - **Raster evidence:** screenshots as compressed WebP or PNG in `assets/`.
-- **Bundling:** concatenate each library's prebuilt browser build (UMD or IIFE) and the experience code into `app.js`.
+- **Bundling:** `build.mjs` runs esbuild with `NODE_PATH` set to `npm root --global`, so bare imports resolve to the installed toolkit: `esbuild src/main.js --bundle --format=iife --target=es2020 --minify --legal-comments=eof --outfile=app.js`. One IIFE serves both the live server and the `file://` handout. Rebuild after every source change; never edit `app.js` by hand.
 
-Record each bundled package's name, version and license in the production notes. Write `assets/LICENSES.txt` with the copyright line and full license text of every bundled library, font and icon set, taken from the package's `LICENSE` file, and reference it from the storyline map, since MIT, ISC and OFL require the notice to travel with copies.
+Record each bundled package's name, version and license in the production notes. Write `assets/LICENSES.txt` with the copyright line and full license text of every bundled library (including the magic-move and flubber dependencies esbuild pulls in), font and icon set, taken from each package's `LICENSE` file, and reference it from the storyline map, since MIT, ISC, Apache-2.0 and OFL require the notice to travel with copies.

@@ -20,7 +20,7 @@ DEMOTIME_SKILLS=https://github.com/estruyf/vscode-demo-time/tree/96175a9b64a4f6e
 VSCODE_PLAYWRIGHT_SKILL=https://github.com/microsoft/hve-core/tree/c0726875613fed25bcd7d6d42cc720b96bfe1dda/.github/skills/experimental/vscode-playwright
 HYPERFRAMES_SKILLS=https://github.com/heygen-com/hyperframes/tree/618c486734b3cbb697bd432bace7e9642e48b6be/skills
 FRONTEND_DESIGN_SKILL=https://github.com/anthropics/skills/tree/41bbe19d1a1a7eaab5e7bb9050a417e5c6cffc8f/skills/frontend-design
-EXPERIENCE_PACKAGES="shiki@4.5.0 @shikijs/magic-move@4.5.0 motion@14.7.1 flubber@0.4.2 roughjs@4.6.6 d3@7.9.0 @dagrejs/dagre@3.1.3 axe-core@4.14.0 open-props@1.7.23 lucide-static@1.62.0 @tabler/icons@3.50.0 @fontsource-variable/inter@5.3.0 @fontsource-variable/space-grotesk@5.3.0 @fontsource-variable/jetbrains-mono@5.3.0 @fontsource-variable/geist@5.3.0 @fontsource-variable/geist-mono@5.3.0 @fontsource/ibm-plex-sans@5.3.0 @fontsource/ibm-plex-mono@5.3.0 @fontsource-variable/source-serif-4@5.3.1 @fontsource-variable/source-sans-3@5.3.1 @fontsource-variable/fraunces@5.3.0 @fontsource/instrument-serif@5.3.0 @fontsource-variable/archivo@5.3.0 @fontsource/space-mono@5.3.0 @fontsource-variable/caveat@5.3.0 @fontsource-variable/dm-sans@5.3.0 @fontsource-variable/newsreader@5.3.0 @fontsource/archivo-black@5.3.0"
+EXPERIENCE_PACKAGES="esbuild@0.28.2 shiki@4.5.0 @shikijs/magic-move@4.5.0 flubber@0.4.2 roughjs@4.6.6 d3@7.9.0 @dagrejs/dagre@3.1.3 axe-core@4.14.0 lucide-static@1.62.0 @tabler/icons@3.50.0 @fontsource-variable/inter@5.3.0 @fontsource/ibm-plex-sans@5.3.0 @fontsource/ibm-plex-mono@5.3.0 @fontsource-variable/space-grotesk@5.3.0 @fontsource-variable/jetbrains-mono@5.3.0 @fontsource-variable/fraunces@5.3.0 @fontsource-variable/newsreader@5.3.0 @fontsource/instrument-serif@5.3.0 @fontsource-variable/caveat@5.3.0"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_url="${PROMPTLINGS_SOURCE:-https://raw.githubusercontent.com/dfinson/promptlings/main}"
@@ -368,7 +368,7 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
       [ "$hyperframes" -eq 0 ] || sources+=("$HYPERFRAMES_SKILLS")
       [ "$demo" -eq 0 ] || sources+=("$DEMOTIME_SKILLS" "$VSCODE_PLAYWRIGHT_SKILL")
     fi
-    [ "$experience" -eq 0 ] || sources+=("$FRONTEND_DESIGN_SKILL" "$PLAYWRIGHT_SKILLS" "$HYPERFRAMES_SKILLS" "$DEMOTIME_SKILLS")
+    [ "$experience" -eq 0 ] || sources+=("$FRONTEND_DESIGN_SKILL" "$PLAYWRIGHT_SKILLS" "$HYPERFRAMES_SKILLS")
     unique=()
     for source in "${sources[@]}"; do [[ " ${unique[*]-} " == *" $source "* ]] || unique+=("$source"); done
     for source in "${unique[@]}"; do
