@@ -46,7 +46,7 @@ Concrete values from established design systems and design-engineering practice.
 
 Transferable motion patterns: `hyperframes-animation` `rules-index.md`, `transitions/catalog.md`, `adapters/waapi.md` and `adapters/css-animations.md`. Take the patterns, not the HyperFrames runtime.
 
-Every vendored library, font and icon set is under an OSI-approved open source license or the SIL OFL with no paid tier, field-of-use or attribution-only restriction. Proprietary "free" licenses (GSAP Standard License included) and freemium catalogs are excluded.
+Every vendored library, font and icon set is under an OSI-approved open source license or the SIL OFL with no paid tier or field-of-use restriction. Proprietary "free" licenses (GSAP Standard License included) and freemium catalogs are excluded.
 
 ## Typography
 
