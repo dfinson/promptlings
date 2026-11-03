@@ -19,7 +19,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | --- | --- |
 | [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | Reviews a PR with inline findings and a narrative explaining the change, its design choices, and its assumptions. |
 | [PR Walkthrough](agents/code-review/pr-walkthrough.agent.md) | Maps a PR's architecture and important decisions before you review the diff. Read-only, with output in conversation. |
-| [Sparring Partner](agents/reasoning/sparring-partner.agent.md) | Works through designs, debugging hypotheses, implementation plans, and testing questions with you. |
+| [Sparring Partner](agents/reasoning/sparring-partner.agent.md) | Reviews PRs and changes for correctness, design consequences, and regression protection. Also works through designs, debugging hypotheses, plans, and testing questions with you. |
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces a technical explainer or hands-on demo, from story and script approval through recording, narration, and review. |
 | [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Guides software delivery through the installed BMAD workflows. |
@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/dfinson/promptlings/main/install.sh
 bash install.sh
 ```
 
-For just the two review agents and bundled Promptlings skills, using an existing
+For just the three ensemble agents and bundled Promptlings skills, using an existing
 Node.js installation:
 
 ```powershell
@@ -90,16 +90,21 @@ Run the review ensemble on this branch against origin/main.
 ```
 
 The [review-ensemble](skills/review-ensemble/SKILL.md) skill runs the-nitcracker,
-PR Walkthrough, and the host's built-in rubber-duck independently in parallel.
+PR Walkthrough, and Sparring Partner independently in parallel.
 Your current agent investigates their findings and brings the results together.
 The host must support parallel subagents and provide all three identities.
 
-For Claude Code, or another host without rubber-duck, install Sparring Partner
-and choose it explicitly:
+Sparring Partner is the portable successor to the built-in rubber-duck role.
+For PR and change reviews it loads `technical-investigation`, `design-analysis`,
+`test-analysis`, and `evidence-verification` to trace behavior, examine design
+consequences, assess regression protection, and verify candidate findings.
+These methods form an adaptive flow, not four separate reports. The invoking
+agent still independently verifies and synthesizes the ensemble's results.
 
-```text
-Run the review ensemble with Sparring Partner instead of rubber-duck.
-```
+You can also select Sparring Partner directly for a standalone PR, branch diff,
+or local change review. For other reasoning questions it selects only the
+relevant methods. The historical ensemble with built-in rubber-duck remains
+available when explicitly requested, rather than as an automatic fallback.
 
 Review returns analysis. To have verified issues repaired too, ask for that:
 
