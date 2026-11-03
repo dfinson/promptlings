@@ -65,7 +65,7 @@ value() { [ "$#" -ge 2 ] && [ -n "$2" ] && [[ "$2" != --* ]] || fail "$1 require
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --all) agents="$all_agents"; selection=$((selection + 1)) ;;
-    --review) agents="the-nitcracker,pr-walkthrough"; selection=$((selection + 1)) ;;
+    --review) agents="the-nitcracker,pr-walkthrough,sparring-partner"; selection=$((selection + 1)) ;;
     --agents) value "$@"; agents="$2"; selection=$((selection + 1)); shift ;;
     --yes|-y) yes=1 ;;
     --dry-run) dry_run=1 ;;

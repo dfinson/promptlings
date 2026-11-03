@@ -80,7 +80,7 @@ if ($Help) {
 if (@("All", "Review", "Agents" | Where-Object { $PSBoundParameters.ContainsKey($_) }).Count -gt 1) {
     throw "Choose only one of -All, -Review or -Agents."
 }
-if ($Review) { $Agents = "the-nitcracker,pr-walkthrough" }
+if ($Review) { $Agents = "the-nitcracker,pr-walkthrough,sparring-partner" }
 elseif (-not $PSBoundParameters.ContainsKey("Agents")) { $Agents = $allAgents }
 if (-not $Agents -or @($Agents.Split(",") | Where-Object { $_ -notin $allAgents.Split(",") }).Count) {
     throw "Unknown or empty agent selection. Use -List."
