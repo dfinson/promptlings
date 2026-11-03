@@ -22,7 +22,7 @@ This skill supplies the change-specific discovery and story practice. The `techn
 
 1. **Why:** the problem and why it matters now, in one or two sentences.
 2. **Behavior:** when the change is visible to a user or an API caller, show the base and head behavior side by side or in sequence, captured from real builds of both commits.
-3. **Code tour:** one scene per hunk or tight hunk group, in consequence order, each with one takeaway: what changed and what it does.
+3. **Code tour:** one scene per hunk or tight hunk group, in consequence order, each with one takeaway: the problem the hunk addresses, shown by base behavior or a case the preceding scene showed on screen, and how the change addresses it.
 4. **Decisions to weigh:** design forks, migrations, compatibility and rollout steps the change actually carries.
 
 Summarize mechanical churn such as renames, formatting and generated files in one line with a count. Scale length to the change: a small fix needs about a minute.
