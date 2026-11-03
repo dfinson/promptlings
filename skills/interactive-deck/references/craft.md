@@ -36,15 +36,17 @@ Concrete values from established design systems and design-engineering practice.
 
 | Job | Tool | Why |
 | --- | --- | --- |
-| Multi-element step choreography that must seek and reverse | GSAP timeline with one label per step; `tl.seek(label)` for jumps, `tl.tweenTo(label)` for animated moves | Deterministic seek and free reversal |
+| Multi-element step choreography that must seek and reverse | Motion (MIT) sequence per step from `animate([...])`; set `controls.time` for jumps, `controls.speed = -1` to reverse | Deterministic seek and reversal |
 | Simple per-step transitions | CSS transitions driven by state classes set in `renderStep`, or WAAPI with `fill: "both"` and a settable `currentTime` | Zero dependency, seekable |
 | Shared-element morph on a single forward or back step | View Transitions API with `view-transition-name`; direct render on jump or when unsupported | Automatic morph, no FLIP math |
-| Shared-element morph that must scrub | FLIP into a GSAP or WAAPI transform tween | Seekable like any tween |
+| Shared-element morph that must scrub | FLIP into a WAAPI or Motion transform animation | Seekable like any tween |
 | Path draw-on | `stroke-dasharray` and `stroke-dashoffset`, or Motion `pathLength` | Standard technique |
-| Shape morph | GSAP MorphSVGPlugin | Handles differing point counts |
+| Shape morph | Flubber (MIT) interpolator driven by the step's animation progress | Handles differing point counts |
 | Code change | `@shikijs/magic-move` precompiled tokens | Token-level morph without the Shiki runtime |
 
-Transferable motion patterns: `hyperframes-animation` `rules-index.md`, `transitions/catalog.md`, `adapters/waapi.md`, `adapters/css-animations.md` and `adapters/gsap-timeline-and-labels.md`. Take the patterns, not the HyperFrames runtime.
+Transferable motion patterns: `hyperframes-animation` `rules-index.md`, `transitions/catalog.md`, `adapters/waapi.md` and `adapters/css-animations.md`. Take the patterns, not the HyperFrames runtime.
+
+Every vendored library, font and icon set is under an OSI-approved open source license or the SIL OFL with no paid tier, field-of-use or attribution-only restriction. Proprietary "free" licenses (GSAP Standard License included) and freemium catalogs are excluded.
 
 ## Typography
 
@@ -73,7 +75,7 @@ Transferable motion patterns: `hyperframes-animation` `rules-index.md`, `transit
 - Size nodes to their labels; never clip or shrink a label to fit a box.
 - Lay out with ELK.js or D2 at build time, or hand-author SVG for small diagrams, then restyle with the deck tokens. Never ship a renderer's default theme.
 - Focus by dimming the rest (`opacity: 0.25; filter: saturate(0.3)`) and thickening the focal element's stroke.
-- Icons: [Lucide](https://lucide.dev/) (ISC) or [Tabler](https://tabler.io/icons) (MIT), one set per deck. Cloud provider icons only under that vendor's icon terms, for that vendor's services.
+- Icons: [Lucide](https://lucide.dev/) (ISC) or [Tabler](https://tabler.io/icons) (MIT), one set per deck. Represent cloud services with these sets and a text label.
 - Diagram semantics and label hierarchy: `mermaid-architecture-diagrams`.
 
 ## Code
@@ -91,7 +93,8 @@ Transferable motion patterns: `hyperframes-animation` `rules-index.md`, `transit
 | [Open Props](https://open-props.style/) | MIT | Easing, spring `linear()` curves, shadow and radius tokens to vendor as CSS |
 | [shadcn/ui](https://ui.shadcn.com/) | MIT | Reference markup and proportions for UI mockups; port to plain HTML |
 | [Magic UI](https://magicui.design/) | MIT | Effect techniques (beams, text reveals, borders) for the signature moment only; port from React to plain DOM |
-| [Aceternity UI](https://ui.aceternity.com/) | Free tier plus paid catalog | Technique reference only; vendor only from the free tier |
-| `demotime-slide-theme` `assets/designed-theme.css` | Bundled with the skill | A hand-authored theme to study for token layout and slide-role CSS |
+| [Motion](https://motion.dev/) | MIT | Seekable sequences, stagger, path draw. Use only the open `motion` package, never Motion+ |
+| [Flubber](https://github.com/veltman/flubber) | MIT | SVG shape interpolation |
+| [Rough.js](https://roughjs.com/) | MIT | Sketch-direction shapes |
 
 Every effect needs a job on its step: marking a section, revealing a change or directing attention. Effects without a job are cut.

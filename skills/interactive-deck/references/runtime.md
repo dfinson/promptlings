@@ -42,7 +42,7 @@ Most clickers send `PageUp`, `PageDown` and `B`, so these bindings work without 
 - **Fonts:** subset to the glyphs used, convert to WOFF2 and inline as base64 `@font-face` sources. Keep to two families and a few weights.
 - **Code:** pre-highlight with Shiki at build time into static HTML. For animated code changes use `@shikijs/magic-move` (MIT), vendored at an exact version.
 - **Diagrams:** author as inline SVG, or pre-render Mermaid to SVG at build time and inline the result. Do not ship the Mermaid runtime.
-- **Motion:** CSS transitions and the Web Animations API cover most needs. When timelines justify a library, vendor one at an exact version: GSAP (free under the GSAP Standard License, including former bonus plugins), Motion (MIT) or Anime.js (MIT). Use the View Transitions API only with a fallback.
+- **Motion:** CSS transitions and the Web Animations API cover most needs. When timelines justify a library, vendor one at an exact version: Motion (MIT) or Anime.js (MIT). Only OSI-approved open source licenses qualify; GSAP's proprietary Standard License does not. Use the View Transitions API only with a fallback.
 - **Data visuals:** D3 (ISC), Rough.js (MIT) for a sketched style, Three.js (MIT) only for genuinely three-dimensional subjects.
 - **Raster evidence:** screenshots as compressed WebP or PNG inlined; long video fallbacks as sibling files in the same folder.
 

@@ -18,7 +18,7 @@ Reviewed on 2026-11-03. Evidence strength reflects the research base, not how of
 | [Distill, Research Debt](https://distill.pub/2017/research-debt/) | Moving interpretive labor from audience to author | Practitioner canon |
 | [reveal.js speaker view](https://revealjs.com/speaker-view/) | Speaker view requires a local server; notes, timer and preview conventions | Documentation |
 | [MDN BroadcastChannel](https://developer.mozilla.org/en-US/docs/Web/API/BroadcastChannel), [View Transitions support](https://caniuse.com/view-transitions) | Same-origin sync and browser support | Documentation |
-| [GSAP Standard License](https://gsap.com/community/standard-license/) | Free use including former bonus plugins | License |
+| [Motion](https://github.com/motiondivision/motion/blob/main/LICENSE.md), [Flubber](https://github.com/veltman/flubber/blob/master/LICENSE), [Rough.js](https://github.com/rough-stuff/rough/blob/master/LICENSE) | MIT licenses for vendored motion and shape libraries | License |
 | [Playwright accessibility testing](https://playwright.dev/docs/accessibility-testing) | Automated axe scans per step | Documentation |
 | Duarte, *slide:ology* (2008); Reynolds, *Presentation Zen* (2011) | Projector legibility, restraint, one idea per slide | Practitioner consensus |
 | [Material Design 3 motion](https://m3.material.io/styles/motion/easing-and-duration/tokens-specs) | Easing curves and duration tokens | Design system |

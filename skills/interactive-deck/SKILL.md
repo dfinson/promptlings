@@ -33,8 +33,8 @@ Load these design skills for the direction and critique work:
 
 - `frontend-design`: the subject-grounded brainstorm, explore, critique loop and its restraint rules. Required.
 - `hyperframes-creative`: `references/visual-styles.md` (eight named styles with palettes and type), `references/house-style.md`, `references/typography.md`, `references/design-adherence.md` and `references/motion-principles.md`. Required.
-- `demotime-slide-theme`: `assets/designed-theme.css` and the skill's slide-role guidance, as a worked token and layout model. Self-host every font it names.
-- `hyperframes-animation`: `rules-index.md`, `transitions/catalog.md` and the `adapters/` files for WAAPI, CSS and GSAP timelines, when choreographing steps.
+- `demotime-slide-theme`: its slide-role and layout guidance. Write the deck's own CSS; copy nothing from its assets.
+- `hyperframes-animation`: `rules-index.md`, `transitions/catalog.md`, `adapters/waapi.md` and `adapters/css-animations.md`, when choreographing steps.
 - `mermaid-architecture-diagrams` for diagram semantics and `no-ai-slop` for headlines and labels, when installed.
 
 Use these skills for design knowledge only; the deck runs on its own runtime, never on HyperFrames or Demo Time. Let one element dominate each step and spend spectacle on the signature device and the one or two moments the story turns on. Draw diagrams as inline SVG so they stay sharp, styleable and animatable. Present terminals and windows in the style `cue-synced-demo` describes unless the chosen direction specifies its own frame.
