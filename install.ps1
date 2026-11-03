@@ -136,7 +136,9 @@ function Invoke-ProjectInit {
     if (-not $NoBmad) { $methods += "bmad" }
     if (-not $NoSpeckit) { $methods += "speckit" }
     & $init -Project $Project -Method $methods -Integration $Integration -SharedFrameworks:$SharedFrameworks -CheckOnly:$CheckOnly
-}function Refresh-Path {
+}
+
+function Refresh-Path {
     $paths = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
         [Environment]::GetEnvironmentVariable("Path", "User") + ";" + $env:PATH
     $env:PATH = (($paths -split ";" | Where-Object { $_ } | Select-Object -Unique) -join ";")

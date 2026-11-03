@@ -58,6 +58,13 @@ if (Test-Path -LiteralPath $exclude) {
         }
     }
 }
+# Installation is skipped for an existing directory, so a directory without its marker cannot self-repair.
+foreach ($partial in @(@($bmad, "_bmad", "config.toml"), @($speckit, ".specify", "integration.json"))) {
+    $directory = Join-Path $Project $partial[1]
+    if ($partial[0] -and (Test-Path -LiteralPath $directory) -and -not (Test-Path -LiteralPath (Join-Path $directory $partial[2]) -PathType Leaf)) {
+        throw "Partial framework installation: $($partial[1]) exists without $($partial[1])/$($partial[2]) in $Project. Ask the user to remove $($partial[1]), then rerun."
+    }
+}
 if ($CheckOnly) { return }
 
 # Initialization uses installed tools only. The machine installer owns installing them.

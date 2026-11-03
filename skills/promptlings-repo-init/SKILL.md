@@ -44,4 +44,4 @@ Rerunning it is safe. Pass `-SharedFrameworks` or `--shared-frameworks` only whe
 
 ## Failures
 
-Report the script's exact error and stop the workflow that needed the framework. Never hand-create framework files, install or upgrade tools, edit `info/exclude` by hand, or force-add ignored files. A missing or mismatched CLI points to the machine installer. An exclusion conflict needs the user.
+Report the script's exact error and stop the workflow that needed the framework. Never hand-create framework files, install or upgrade tools, edit `info/exclude` by hand, or force-add ignored files. A missing or mismatched CLI points to the machine installer. An exclusion conflict needs the user. A framework directory without its marker is a partial installation: the user removes that directory before a rerun.

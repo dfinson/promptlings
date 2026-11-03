@@ -18,7 +18,7 @@ while [ "$#" -gt 0 ]; do
     --check-only) check_only=1 ;;
     --help|-h)
       echo "Initialize the bound method in this working copy: bash init.sh"
-      echo "Options: --project PATH, --method bmad|speckit (repeatable), --shared-frameworks, --integration copilot|claude"
+      echo "Options: --project PATH, --method bmad|speckit (repeatable), --shared-frameworks, --integration copilot|claude, --check-only"
       exit 0 ;;
     *) fail "Unknown option: $1. Use --help." ;;
   esac
@@ -32,6 +32,7 @@ project="$(cd "$project" && pwd)"
 if [ -z "$methods" ]; then
   methods="$(git -C "$project" config --get promptlings.method || true)"
   [ -n "$methods" ] || fail "Repository is not bound to a method. Set promptlings.method with the user's agreement, or pass --method."
+  [[ "$methods" == bmad || "$methods" == speckit ]] || fail "Unknown promptlings.method: $methods."
 fi
 bmad=0 speckit=0
 for method in $methods; do
@@ -59,6 +60,13 @@ if [ -f "$exclude" ]; then
     fi
   done
 fi
+# Installation is skipped for an existing directory, so a directory without its marker cannot self-repair.
+for partial in "$bmad _bmad config.toml" "$speckit .specify integration.json"; do
+  set -- $partial
+  if [ "$1" -eq 1 ] && [ -e "$project/$2" ] && [ ! -f "$project/$2/$3" ]; then
+    fail "Partial framework installation: $2 exists without $2/$3 in $project. Ask the user to remove $2, then rerun."
+  fi
+done
 [ "$check_only" -eq 0 ] || exit 0
 
 # Initialization uses installed tools only. The machine installer owns installing them.
