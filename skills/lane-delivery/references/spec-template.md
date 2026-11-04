@@ -1,8 +1,8 @@
 # Spec template
 
 Copy this to `specs/<slug>.md` on the integration branch. Keep it to one or two
-pages. `gate.py` parses the tables by their `##` headings and column names, so
-keep both. Write paths, commands and contract names in backticks.
+pages. Keep the `##` headings and table columns so lanes and gates can find
+each part. Write paths, commands and contract names in backticks.
 
 ```markdown
 # <Title>
@@ -59,7 +59,7 @@ What will not change.
 Graph amendments after approval, each with date and reason.
 ```
 
-## Rules the gate enforces
+## Spec rules
 
 - Criterion IDs are `AC-<n>` and unique. Method is one backticked command or
   `human`. Owner is a lane id or `integration`.
@@ -68,6 +68,6 @@ Graph amendments after approval, each with date and reason.
 - Every `Depends on` target exists and the graph has no cycle.
 - Each pair of concurrent lanes (no dependency path between them) that shares a
   declared contract, has overlapping write sets, writes the same lockfile or
-  migrations directory, or is passed with `--flag A,B` needs a Concurrency risks
-  row. `edge` rows need the dependency in the graph. `accept` rows need a
+  migrations directory, or was flagged by the coupling check needs a Concurrency
+  risks row. `edge` rows need the dependency in the graph. `accept` rows need a
   recovery.

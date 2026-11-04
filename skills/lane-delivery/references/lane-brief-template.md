@@ -38,10 +38,11 @@ Branch: <slug>/<id>, cut from <integration branch> at <sha>.
 - Subagents are allowed for transient work inside this lane.
 - Commit with messages prefixed `<id>:`. Open a PR into the integration branch
   linking the spec section.
-- Before handing off, run the gate yourself:
-  `python <skill>/scripts/gate.py lane-gate specs/<slug>.md --lane <id> --base <integration branch>`
-- Hand off with: the gate output, touched files, deviations from the spec, and
-  open questions. Your report is not evidence. The master reruns the gate.
+- Before handing off, commit everything, confirm
+  `git diff --name-only <integration branch>...HEAD` stays inside your write
+  set, and run each of your criterion commands.
+- Hand off with: those command outputs, touched files, deviations from the spec, and
+  open questions. Your report is not evidence. The master reruns the checks.
 
 Em dashes are banned from all output. Use commas, colons, semicolons, periods,
 or parentheses instead.

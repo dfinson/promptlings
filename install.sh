@@ -53,7 +53,6 @@ skill_files=(
   skills/lane-delivery/SKILL.md
   skills/lane-delivery/references/lane-brief-template.md
   skills/lane-delivery/references/spec-template.md
-  skills/lane-delivery/scripts/gate.py
   skills/narrative-transitions/SKILL.md
   skills/pr-video/SKILL.md
   skills/presenter-script/SKILL.md
