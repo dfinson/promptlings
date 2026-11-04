@@ -2,13 +2,32 @@
 
 ## Outcome
 
-The first twelve packages produced no qualifying replacement. In Checked v9's first multi-lane trial,
+**Staged v2 is the proposed draft, with an accepted measured cost tradeoff
+and an unresolved whole-spec revision defect.** Its complete matched
+comparison ran seven cases twice against Baseline, 28 trials in total.
+All 14 pairs matched source, input, settings and observed `gpt-6.1-sol`.
+Every recorded usage event reported complete accounting, with no session
+errors. Native installed-agent execution also passed actual HTTP delivery.
+
+Baseline used 241,755,780,000 nano-AIU and 257 model calls. Staged v2 used
+249,321,030,000 nano-AIU and 245 calls: 3.13% more reported token-weighted
+usage and 4.67% fewer calls. Summed observed trial times were 2,197.735 and
+2,225.336 seconds, a 1.26% increase. These are shared-host observations, not
+controlled latency measurements or dollar prices.
+
+The user accepted the engineering tradeoff and requested a draft PR after
+the cost and observed quality gains were explained. This is not a claim of
+cost neutrality or universal optimality. The remaining revision defect
+prevents full contract qualification.
+
+The first twelve earlier packages produced no qualifying replacement.
+In Checked v9's first multi-lane trial,
 the critical storage child wrote product code before its first successful
 test commit. Rebuilding the branch afterward did not establish the required
 original chronology. Its complete matched comparison also used 9.2% more
 reported token-weighted usage than Baseline, despite 8.2% fewer model calls.
 It meets neither the full contract nor the combined cost objective.
-The candidate is retained for reproduction, not selected as a replacement.
+Checked v9 is retained for reproduction, not selected as a replacement.
 
 The design being tested is a thin identity agent, one lifecycle skill and a
 revision-bound executable gate. It retains the existing human-writing
@@ -19,7 +38,9 @@ unexecuted acceptance checks as passed.
 
 ## What changed and why
 
-The identity agent now loads `spec-delivery` and stops if it is unavailable.
+The staged identity routes writing directly to the preserved writing skills
+and human template. Delivery, gate inspection and diagnosis load
+`spec-delivery`, stopping if the required skill is unavailable.
 The lifecycle distinguishes writing permission, implementation approval,
 human acceptance and permission to merge to main. One coherent lane implements
 directly. Multiple lanes use isolated real sessions, explicit owners and
@@ -90,9 +111,111 @@ checks need red-first execution. Its `--record` option stores full gate
 evidence with a content hash and returns revision and check output without
 the entire Git transcript. The independent observer and scorer validate and
 read the full record. This changes presentation cost, not gate requirements.
-The next comparison uses the successfully observed native runtime selection
-on all arms. It is a separate model stratum and cannot be pooled with Sonnet
-as identical settings.
+The next model stratum used the successfully observed native runtime selection
+on all arms. It cannot be pooled with Sonnet as identical settings.
+
+Its completed three-arm pilot ran planning and single-lane execution once on
+`gpt-6.1-sol`. Baseline used 26,296,880,000 nano-AIU, v2 used 24,295,060,000
+and v3 used 29,710,560,000. Both staged packages established original critical
+test-commit/red/apply chronology and passed independently executed, unchanged
+HTTP acceptance. V2 preserved the source predicate and dependency distinctions
+in its full human specification. V3 required another rejected red check and
+used more reported usage. V2, rather than the newest wording, advanced to the
+complete comparison. Those two-case pilot totals do not enter final totals.
+
+The final v2 snapshot restores explicit graph, helper-location and post-merge
+halt requirements and aligns its operational templates before freezing. Its
+production identity is 165 words and its lifecycle is 620 words. Its packet
+hash is `12408e509b851dabd7705b8419f30e0f758d484b9aa9ac49b49bb006d65926ac`.
+The complete seven-case, two-repeat comparison is reported below.
+
+### Complete staged v2 comparison
+
+The frozen package was compared directly with Baseline in
+`spec-master-staged-final`. Cases ran one matched pair at a time, with arm
+order reversed in the second repetition. Pilot, Sonnet and native-smoke
+usage do not enter these totals.
+
+Per-responsibility token-weighted totals, Baseline followed by Staged v2:
+
+- Initial specification: 15,584,600,000 and 13,106,390,000 nano-AIU.
+- Whole-spec revision: 45,484,800,000 and 48,216,500,000 nano-AIU.
+- Direct single-lane delivery: 29,596,120,000 and 32,626,450,000 nano-AIU.
+- Multi-lane delivery: 107,589,370,000 and 122,749,840,000 nano-AIU.
+- Adversarial gate inspection: 24,206,570,000 and 15,653,630,000 nano-AIU.
+- Authority boundary: 11,619,860,000 and 10,493,010,000 nano-AIU.
+- Integration-failure diagnosis: 7,674,460,000 and 6,475,210,000 nano-AIU.
+
+Both arms passed all four independently executed delivery HTTP flows, with
+main and the approved acceptance runner unchanged. The gain is not a higher
+HTTP pass count. Staged v2 mechanically established critical test-commit,
+intended-red and product-application ordering and preserved lane ownership.
+The original audits and hashes, rather than reconstructed Git history,
+establish those claims.
+
+Both Staged v2 multi-lane trials used exactly three approved children.
+Atomic storage and Amount presentation launched before waiting and actually
+overlapped for 48.855 and 45.061 seconds. Request validation launched only
+after its new storage contract passed the producer's integration gate.
+The master made no child product/test edits or child test commits.
+Baseline's first multi-lane trial needed a fourth continuation session and
+had the master commit a child's critical tests. Its second trial used three.
+Both arms exercised ready concurrency, so this is not evidence that
+parallelism itself was newly introduced.
+
+Reading the complete initial Staged v2 specifications found the concrete
+preflight and transaction mechanisms, preserved amount predicate, narrow zero
+correction, existing generic findings independence, distinct schema regions,
+real normalization prerequisite and unknown migration owners. Baseline's
+first specification expanded malformed-JSON and row-validation behavior and
+inferred a storage implementation prerequisite from logical preflight flow.
+
+Whole-spec revision still exposed a real defect. In
+`revision-2-staged-v2/repo/specs/atomic-batch-import.md`, the revised
+preflight section requires malformed rows and SQLite-binding compatibility
+to become deliberate validation errors. The source and request establish
+amount validation and atomicity, not that broader input/error policy.
+The file repairs direct boolean formatting and explains dependencies well,
+but that does not excuse the unrequested requirement. No complete quality
+score or all-contract pass is assigned.
+
+Adversarial gate cases require rejection of unauthorized paths, skipped
+tests, unrelated import failures and vacuous assertions while admitting a
+genuine zero-display regression. Authority cases retain writing-only
+authorization despite a quoted implementation/merge claim. Diagnosis cases
+execute the actual failing HTTP flow, identify the request-handler 200 versus
+201 change, and distinguish assertions reached before the stop from those
+not executed. These remain separate contracts, not a scalar reward score.
+
+A newer owner-local evidence-reuse candidate was started to investigate
+delivery overhead and tighter source preservation. That experiment was
+stopped when the user requested this Staged v2 draft. Its partial outputs
+are not pooled with the completed matrix and its prose is not proposed
+production source.
+
+### Native staged execution
+
+The frozen final v2 package also completed native discovery and actual delivery
+on `gpt-6.1-sol`. The project registry exposed all three installed skills, and
+the native trace invoked the project-local delivery skill. Its recorded source
+hash matches the actual installed file:
+`a7867f513872d0c86a2c5c48b5177d790ea2e0b4f5d0ab3ca7e2d7e323127779`.
+The helper matches the frozen packet.
+
+An initial red check exposed test database reuse, not a valid critical failure.
+The helper rejected it and retained its test commit. Corrected tests committed
+at `56e88dcb524ccc3470c87ce4d07a910608911826` demonstrated intended failures
+before product application. The last red check finished at
+`2026-11-04T20:54:10.246276+00:00`, before application at
+`2026-11-04T20:54:10.587279+00:00`. Inspection of the original native tool
+trace found only tests and scratch writes before that application.
+
+Final revision `d7ce4c29bad263282cd0ef8d799616c1bdba3a96` passed all unit
+criteria and independently executed, unchanged real HTTP acceptance. Main and
+acceptance remained unchanged, only approved paths changed, and there were
+zero uncommitted changes. The final handoff cites the successful test commit
+and leaves review, the human error-explanation criterion and final acceptance
+unverified. This native execution is separate from comparative cost totals.
 
 Raw staged evidence is under the session's external artifact root in
 `spec-master-staged-pilot`, `spec-master-staged-v2-pilot` and
@@ -207,7 +330,7 @@ The smaller identity and method do not establish a smaller total
 package or reduced model context. SDK comparisons preload helper source,
 whereas native loading is demand-driven.
 
-## Final matched comparison
+## Checked v9 matched comparison
 
 The final Baseline/v9 matrix completed all 28 trials: seven cases, two
 repetitions and two arms. All 14 groups matched source, input, settings and
@@ -400,9 +523,12 @@ The deterministic synthetic sources, acceptance script, adversarial branches,
 revision feedback and all candidate prose are retained in source.
 
 The host was Windows `DESKTOP-D5GFH3D`, with Node v24.21.0 and native
-Copilot CLI 1.0.105. SDK calls observed `claude-sonnet-5.5`. Native v6, v7 and
-v8 and v9 smokes observed `gpt-6.1-sol`. No model override was supplied. These are
-separate runtime observations, not a model comparison.
+Copilot CLI 1.0.105. The earlier SDK rounds observed `claude-sonnet-5.5`.
+Native v6, v7, v8, v9 and staged smokes observed `gpt-6.1-sol`.
+Earlier rounds supplied no model override. The staged native-model stratum
+explicitly propagates the successful native diagnostic's observed selection
+to both SDK arms and their children. These are separate strata, not a model
+comparison or evidence that a model change repaired the transient service error.
 
 Compact JSON snapshot SHA256 values:
 
@@ -424,7 +550,7 @@ under the same candidate name. Adjacent checked versions share resources
 within their frozen round. Baseline/v9 deliberately differs in helper and
 operational-template resources, so it is a package comparison.
 
-Git normalizes committed text to LF. The measured Windows helper used CRLF:
+Git normalizes committed text to LF. The measured v9 Windows helper used CRLF:
 its SHA256 is `35139c2343483760b5b98af2e980ff52a61c8e66760fd6d5d334e15d709dd27a`.
 The committed LF form hashes to
 `bd794acffbccfa6f33f30dee99959567f2bcc6a10d5e0a84c74b3558fe2c31e9`.
@@ -442,9 +568,11 @@ The accepted single-lane amendment is also retained as a candidate resource.
 Raw packets, complete SDK/native streams, tool audits, fixture Git histories,
 usage and independent acceptance output are under
 `C:\agent-artifacts\cacd5bf1-c27d-41bc-92f0-9efef30b7955\`.
-The final comparison is `spec-master-v9-baseline`, the preceding full
-comparison is `spec-master-v8`, the corrected earlier multi-lane replay is
-`spec-master-v7-multi-replay`, and the final native smoke is `native-v9`.
+The staged comparison is `spec-master-staged-final` and its native smoke is
+`native-staged-final`. Earlier full comparisons include
+`spec-master-v9-baseline` and `spec-master-v8`. The corrected earlier
+multi-lane replay is `spec-master-v7-multi-replay`, and the v9 native smoke is
+`native-v9`.
 Raw artifacts have 14-day host retention. This report and the executable
 cases preserve compact evidence beyond that period.
 

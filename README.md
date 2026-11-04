@@ -70,11 +70,14 @@ agent to use one without switching personas.
 
 ### Spec delivery
 
-**Experiment status:** this branch provisionally integrates the staged v2
-package for complete matched and native execution checks. The earlier Checked
-packages and staged pilots remain in the
-[measured results](tests/spec-delivery/results.md). Selection is pending the
-complete qualification, not inferred from passing HTTP behavior alone.
+**Draft status:** this branch proposes staged v2 after a complete 28-trial
+matched comparison and native installed-agent execution. It used 3.1% more
+token-weighted usage and 1.3% more observed elapsed time than Baseline.
+Both multi-lane trials preserved the three approved owner sessions and ready
+concurrency. A whole-spec revision still added unrequested malformed-input
+requirements, so the draft does not claim complete contract qualification.
+The [measured results](tests/spec-delivery/results.md) retain that defect,
+the accepted cost tradeoff and the rejected approaches.
 
 For a feature too large for one coding session, select Spec Master and describe
 the feature, or ask your current agent:
@@ -97,9 +100,18 @@ isolated child sessions, with independent ready work started together. A hard
 dependency needs an unavailable producer contract or a genuine ordering
 invariant. Shared files and existing generic interfaces alone do not create one.
 
+For human-marked critical behavior, the owner writes tests and a scratch JSON
+request containing proposed product contents. The bundled helper's `apply`
+operation commits the tests, requires an intended failure, then writes those
+contents. A rejected check leaves its evidence and revision available for repair.
+It does not authorize an earlier direct edit or reconstructed test history.
+
 Multi-lane handoffs use the bundled Python 3.9+ and Git
 [gate helper](skills/spec-delivery/scripts/gate.py) to bind exact scope,
 pass-on-head, intended fail-on-base, merge and immediate merged-criteria runs.
+Optional `--record` saves complete evidence under authorized scratch and returns
+check output, revisions, the record path and its SHA-256 without every Git
+transcript. Preserve the full record, not just its compact response.
 The master still reviews semantics and criterion coverage. Final acceptance
 executes the actual specified E2E flow, retains unavailable review and human
 judgments as unverified, and stops before main merge. Approval does not
