@@ -28,7 +28,7 @@ function printPlan(options) {
     console.log(`Basic Memory: login startup=${on(options.startup)}, loopback port=${options.memoryPort}, skills=${on(options.skills)}.`);
   }
   for (const notice of options.notices ?? []) console.log(notice);
-  console.log("Writes only to user-level locations (your home directory and global agent configuration). No repository files are changed.");
+  console.log("Agent, skill and memory files go to your home directory and global agent configuration. No repository files are changed.");
 }
 
 async function approved(options) {
