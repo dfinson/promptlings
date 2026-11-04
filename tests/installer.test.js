@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
-import { verifyExperience } from "../lib/tools.js";
+import { dpkgInstalled, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
 import { deps, installMemory } from "../lib/memory.js";
 import { packageBin, quoteForCmd, which } from "../lib/run.js";
@@ -125,6 +125,107 @@ test("experience toolkit verification checks installed versions", (t) => {
   assert.throws(() => verifyExperience(root, ["missing@1.0.0"]), /package missing: missing/);
   assert.throws(() => verifyExperience(root, ["plain@2.0.1"]), /expected plain@2\.0\.1, found plain@2\.0\.0/);
   for (const spec of pins.experiencePackages) assert.ok(spec.lastIndexOf("@") > 0, spec);
+});
+
+test("global npm installs only missing or differently versioned pins", (t) => {
+  const root = temporary(t);
+  const write = (name, version) => {
+    mkdirSync(join(root, name), { recursive: true });
+    writeFileSync(join(root, name, "package.json"), JSON.stringify({ name, version }));
+  };
+  write("@scope/pkg", "1.2.3");
+  write("plain", "2.0.0");
+  mkdirSync(join(root, "broken"));
+  writeFileSync(join(root, "broken", "package.json"), "{");
+  assert.deepEqual(npmMissing(root, ["@scope/pkg@1.2.3", "plain@2.0.1", "absent@1.0.0", "broken@1.0.0"]),
+    ["plain@2.0.1", "absent@1.0.0", "broken@1.0.0"]);
+  assert.deepEqual(npmMissing(root, ["@scope/pkg@1.2.3", "plain@2.0.0"]), []);
+});
+
+test("native package selection skips commands that are already present", () => {
+  const probes = (found) => {
+    const called = [];
+    const present = Object.fromEntries(["python", "git", "gh", "uv", "ffmpeg", "poppler", "code", "office"]
+      .map((name) => [name, () => { called.push(name); return found.includes(name); }]));
+    return { present, called };
+  };
+  const all = { hyperframes: true, demo: true };
+  assert.deepEqual(windowsPackageIds(all, probes(["python", "git", "gh", "uv", "ffmpeg", "poppler", "code", "office"]).present), []);
+  assert.deepEqual(windowsPackageIds(all, probes(["git", "uv", "code"]).present), ["Python.Python.3.12", "GitHub.cli",
+    "Gyan.FFmpeg", "oschwartz10612.Poppler", "TheDocumentFoundation.LibreOffice"]);
+  const minimal = probes([]);
+  assert.deepEqual(windowsPackageIds({ hyperframes: false, demo: false }, minimal.present),
+    ["Python.Python.3.12", "Git.Git", "GitHub.cli", "astral-sh.uv"]);
+  assert.deepEqual(minimal.called, ["python", "git", "gh", "uv"]);
+  assert.deepEqual([...listedNames("git 2.47.0\npython@3.12 3.12.7 3.12.6\n\n")], ["git", "python@3.12"]);
+  assert.deepEqual([...dpkgInstalled("git installed\ngh not-installed\nffmpeg config-files\ncurl installed\n")], ["git", "curl"]);
+});
+
+test("skill locks merge and keep the first install time", () => {
+  const shared = { version: 3, skills: { a: { source: "old", installedAt: "t0", updatedAt: "t0" } }, dismissed: { x: true } };
+  const merged = mergeSkillLocks(shared, [
+    { version: 3, skills: { a: { source: "new", installedAt: "t1", updatedAt: "t1" } } },
+    null,
+    { version: 3, skills: { b: { source: "b", installedAt: "t2", updatedAt: "t2" } } },
+  ]);
+  assert.deepEqual(merged.skills.a, { source: "new", installedAt: "t0", updatedAt: "t1" });
+  assert.equal(merged.skills.b.installedAt, "t2");
+  assert.deepEqual(merged.dismissed, { x: true });
+  assert.deepEqual(mergeSkillLocks(null, [{ version: 3, skills: { c: { installedAt: "t" } } }]).skills, { c: { installedAt: "t" } });
+});
+
+test("registry string values are parsed and expanded", () => {
+  const output = "\r\nHKEY_CURRENT_USER\\Environment\r\n    Path    REG_EXPAND_SZ    %HOME%\\bin;C:\\tools\r\n\r\n";
+  assert.equal(regString(output, { HOME: "C:\\Users\\me" }), "C:\\Users\\me\\bin;C:\\tools");
+  assert.equal(regString("\nHKEY_LOCAL_MACHINE\\x\n    (Default)    REG_SZ    C:\\Word\\WINWORD.EXE\n"), "C:\\Word\\WINWORD.EXE");
+  assert.equal(regString("\nHKEY_LOCAL_MACHINE\\x\n    (Default)    REG_SZ    \n"), null);
+  assert.equal(regString(""), null);
+});
+
+test("pinned skill sources already in the lock are skipped", () => {
+  const source = "https://github.com/acme/kit/tree/abc123/skills";
+  const single = "https://github.com/acme/kit/tree/abc123/skills/one";
+  const entry = (skillPath, ref = "abc123") => ({ source: "acme/kit", sourceType: "github", sourceUrl: "https://github.com/acme/kit.git", ref, skillPath });
+  const lock = { version: 3, skills: { one: entry("skills/one/SKILL.md"), two: entry("skills/two/SKILL.md") } };
+  const all = () => true;
+  assert.equal(skillSourceInstalled(lock, source, all), true);
+  assert.equal(skillSourceInstalled(lock, single, all), true);
+  assert.equal(skillSourceInstalled(lock, source, (name) => name !== "two"), false);
+  assert.equal(skillSourceInstalled({ skills: { one: entry("skills/one/SKILL.md", "old") } }, source, all), false);
+  assert.equal(skillSourceInstalled({ skills: { one: entry("other/one/SKILL.md") } }, source, all), false);
+  assert.equal(skillSourceInstalled({ skills: { one: { ...entry("skills/one/SKILL.md"), sourceType: "local" } } }, source, all), false);
+  assert.equal(skillSourceInstalled(null, source, all), false);
+  assert.deepEqual(pendingSkillSources([source, "https://github.com/acme/other/tree/abc123/skills"], lock, all),
+    ["https://github.com/acme/other/tree/abc123/skills"]);
+});
+
+test("external skills install concurrently with ordered output and a merged lock", async (t) => {
+  const state = temporary(t);
+  const saved = process.env.XDG_STATE_HOME;
+  t.after(() => { if (saved === undefined) delete process.env.XDG_STATE_HOME; else process.env.XDG_STATE_HOME = saved; });
+  process.env.XDG_STATE_HOME = state;
+  const printed = [];
+  t.mock.method(console, "log", (line) => printed.push(line));
+  let running = 0;
+  let peak = 0;
+  const runner = async (args, options) => {
+    running += 1;
+    peak = Math.max(peak, running);
+    const source = args[1];
+    assert.notEqual(options.env.XDG_STATE_HOME, state);
+    await new Promise((resolve) => setTimeout(resolve, source === "first" ? 30 : 5));
+    const lock = join(options.env.XDG_STATE_HOME, "skills", ".skill-lock.json");
+    mkdirSync(join(options.env.XDG_STATE_HOME, "skills"), { recursive: true });
+    writeFileSync(lock, JSON.stringify({ version: 3, skills: { [source]: { source, installedAt: "now" } } }));
+    running -= 1;
+    return { status: source === "bad" ? 1 : 0, output: `installed ${source}\n` };
+  };
+  await skillsAddConcurrent(["first", "second"], runner);
+  assert.equal(peak, 2);
+  assert.deepEqual(printed.slice(1), ["+ skills add first\ninstalled first", "+ skills add second\ninstalled second"]);
+  const lock = JSON.parse(readFileSync(join(state, "skills", ".skill-lock.json"), "utf8"));
+  assert.deepEqual(Object.keys(lock.skills).sort(), ["first", "second"]);
+  await assert.rejects(skillsAddConcurrent(["second", "bad"], runner), /External skill installation failed: bad \(1\)/);
 });
 
 test("memory installs, starts, waits, then registers clients", async (t) => {
