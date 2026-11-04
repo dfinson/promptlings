@@ -48,5 +48,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
+          echo "Publishing as: $(npm whoami 2>&1)"
+          npm view promptlings name version 2>&1 || true
           tag=$(node -p 'const v = require("./package.json").version; v.includes("-") ? v.split("-")[1].split(".")[0] : "latest"')
           npm publish --access public --provenance --tag "$tag"
