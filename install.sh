@@ -22,7 +22,7 @@ EXPERIENCE_PACKAGES="esbuild@0.28.2 shiki@4.5.0 @shikijs/magic-move@4.5.0 flubbe
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_url="${PROMPTLINGS_SOURCE:-https://raw.githubusercontent.com/dfinson/promptlings/main}"
-all_agents="the-nitcracker,pr-walkthrough,sparring-partner,memory-manager,artifact-inspector,technical-demo,interactive-presentation,lane-master"
+all_agents="the-nitcracker,pr-walkthrough,sparring-partner,memory-manager,artifact-inspector,technical-demo,interactive-presentation,spec-master"
 agent_path() {
   case "$1" in
     the-nitcracker|pr-walkthrough) echo "agents/code-review/$1.agent.md" ;;
@@ -30,7 +30,7 @@ agent_path() {
     memory-manager) echo "agents/context/$1.agent.md" ;;
     artifact-inspector) echo "agents/maintenance/$1.agent.md" ;;
     technical-demo|interactive-presentation) echo "agents/media/$1.agent.md" ;;
-    lane-master) echo "agents/orchestration/$1.agent.md" ;;
+    spec-master) echo "agents/orchestration/$1.agent.md" ;;
   esac
 }
 skill_files=(
@@ -51,9 +51,9 @@ skill_files=(
   skills/interactive-experience/references/runtime.md
   skills/interactive-experience/references/sources.md
   skills/interactive-experience/references/visual-directions.md
-  skills/lane-delivery/SKILL.md
-  skills/lane-delivery/references/lane-brief-template.md
-  skills/lane-delivery/references/spec-template.md
+  skills/spec-delivery/SKILL.md
+  skills/spec-delivery/references/lane-brief-template.md
+  skills/spec-delivery/references/spec-template.md
   skills/narrative-transitions/SKILL.md
   skills/pr-video/SKILL.md
   skills/presenter-script/SKILL.md

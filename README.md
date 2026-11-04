@@ -23,7 +23,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces a technical explainer or hands-on demo, from story and script approval through recording, narration, and review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
-| [Lane Master](agents/orchestration/lane-master.agent.md) | Runs spec-backed delivery for a feature too large for one session: a spec and lane graph you approve, one session per lane, and mechanical gates on every handoff. Never writes product code. |
+| [Spec Master](agents/orchestration/spec-master.agent.md) | Runs spec-backed delivery for a feature too large for one session: a spec and lane graph you approve, one session per lane, and mechanical gates on every handoff. Never writes product code. |
 
 [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a
 maintainer and CI helper for inspecting agent and skill definitions.
@@ -80,19 +80,19 @@ The [skills directory](skills/) also contains methods for investigation, test
 analysis, writing, narration, and design documents. You can ask your current
 agent to use one without switching personas.
 
-### Lane delivery
+### Spec delivery
 
-For a feature too large for one coding session, select Lane Master and describe
+For a feature too large for one coding session, select Spec Master and describe
 the feature, or ask your current agent:
 
 ```text
-Use lane-delivery to build this feature.
+Use spec-delivery to build this feature.
 ```
 
-The [lane-delivery](skills/lane-delivery/SKILL.md) skill writes a spec with
+The [spec-delivery](skills/spec-delivery/SKILL.md) skill writes a spec with
 testable acceptance criteria and a lane graph for your approval. It then runs
-each lane as its own session and checks the work with mechanical gates: a spec
-lint, a per-lane write-set and fail-on-base test check, merged acceptance runs,
+each lane as its own session and checks every handoff with git and test
+commands: a write-set check, a fail-on-base test check, merged acceptance runs,
 and a final review before you accept. Coupling risks between concurrent lanes
 are recorded and accepted explicitly rather than hidden.
 

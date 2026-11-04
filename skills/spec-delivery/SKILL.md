@@ -1,13 +1,13 @@
 ---
-name: lane-delivery
+name: spec-delivery
 description: Deliver a multi-part change through a human-approved spec and lane graph, one named session per lane, and mechanical gates. Use when the human starts a master session for spec-backed delivery, not for small fixes an ordinary session can make directly.
 ---
 
-# Lane Delivery
+# Spec Delivery
 
 Em dashes are banned from all output. Use commas, colons, semicolons, periods, or parentheses instead.
 
-A master session owns the spec, the lane graph and integration. Lane sessions own documented functionality. The human starts the master session, approves the spec and accepts the result. Every other pass or fail decision comes from a command the master runs or from CI, never from a session's own report.
+A master session owns the spec, the lane graph and integration. Lane sessions own documented functionality. The human starts the master session, approves the spec and accepts the result. The master checks the spec rules at G0, and the human's approval confirms them. Every other pass or fail decision comes from a command the master runs or from CI, never from a session's own report.
 
 ## Master rules
 
@@ -22,8 +22,8 @@ A master session owns the spec, the lane graph and integration. Lane sessions ow
 3. Run the coupling check on every pair of concurrent lanes with code intelligence (references, call and import graphs, LSP), falling back to grep. Flag a pair when A changes a contract B's write set references or B uses, when both change the same contract or symbol, when both touch a hotspot (lockfiles, migrations, registries, generated code, shared config, shared fixtures), or when both write the same files. Give each flagged pair a Concurrency risks row: `edge` (add the dependency) or `accept` with the recovery and its estimated cost.
 4. Check the spec against the rules in the [spec template](references/spec-template.md#spec-rules) and fix every violation.
 5. Optional readability aid: give a fresh reader with no conversation context only the spec and ask what changes and why, how it is built, what each lane owns and waits on, how completion is verified, what is out of scope and what the human must decide. Revise passages it gets wrong. After two failed rounds, raise the passage with the human.
-6. Present the spec. The human decides the Decisions rows, marks risky lanes and critical criteria, and approves. For each critical criterion, add an upstream test lane that writes its failing tests outside the implementing lane's write set, then recheck the spec rules.
-7. Commit the spec on the integration branch and tag the approved commit `spec/<slug>/approved`. A later change to Why, What, any criterion or its method, or a risky marking needs re-approval and a new tag. Graph amendments go in the Changelog.
+6. Present the spec. The human decides the Decisions rows, marks risky lanes and critical criteria, and approves. For each critical criterion, add an upstream test lane that writes its failing tests outside the implementing lane's write set, then recheck the spec rules. The implementing lane owns the criterion. The test lane lists it as `tests: AC-<n>` and owns none.
+7. Commit the spec on the integration branch and tag the approved commit `spec/<slug>/approved`. A later change to Why, What, any criterion or its method, or a risky marking needs re-approval: record the old tag's SHA in the Changelog and move the tag with `git tag -f`, and re-brief running lanes whose excerpts changed. Graph amendments go in the Changelog.
 
 ## 2. Lanes
 
@@ -52,6 +52,10 @@ On every handoff, in the lane's worktree, with `<base>` the integration branch. 
    git worktree remove --force <tmp>
    ```
 
+   The quoted output must show the new tests failing on their assertions. A collection, import or build error fails the check.
+
+A test lane replaces step 4 with the inverse: each criterion it writes tests for exits nonzero at its head, with output showing those tests failing on their assertions. That also covers step 5 for those tests, so the implementing lane skips step 5 for them and step 4 makes them pass.
+
 Send failures back to the lane with the exact command and output. After two failed rounds on one lane, stop and ask the human to amend the spec, re-split the lane or change approach.
 
 Then read the diff for contracts the lane changed but did not declare (signatures, schemas, endpoints, config keys, hotspot files). This does not fail the gate. Rerun the coupling check against lanes still running, send any new hit to the affected lane immediately, or add a Concurrency risks row and report it to the human.
@@ -60,7 +64,7 @@ Then read the diff for contracts the lane changed but did not declare (signature
 
 Merge each lane that passes G1 into the integration branch, then run the Method command of every criterion owned by a lane merged so far, at the integration head. Record each as a row of the criteria table: ID, command, exit code, and verified (exit 0) or unmet.
 
-A failure means a missing edge. Stop starting lanes, amend the graph and get re-approval. For an accepted concurrency risk that hits, the lane merged second rebases on the integration branch and reruns G1 and G2, as its recovery states. Then start the lanes this merge unblocked.
+A failure means a missing edge. Stop starting lanes, amend the graph and get re-approval. For an accepted concurrency risk that hits, fix forward: the lane merged second makes its recovery on a new branch `<slug>/<lane>-fix` cut from the integration head, then that branch passes G1 (with `<base>` the integration head and the lane's write set) and G2. Then start the lanes this merge unblocked.
 
 ## 5. Acceptance and review (G3)
 
