@@ -23,8 +23,6 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces a technical explainer or hands-on demo, from story and script approval through recording, narration, and review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
-| [BMAD Orchestrator](agents/orchestration/bmad-orchestrator.agent.md) | Guides software delivery through the installed BMAD workflows. |
-| [Spec-Kit Flow](agents/orchestration/speckit-flow.agent.md) | Guides software delivery through Spec-Kit specifications, plans, tasks, implementation, and acceptance. |
 
 [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a
 maintainer and CI helper for inspecting agent and skill definitions.
@@ -32,7 +30,7 @@ maintainer and CI helper for inspecting agent and skill definitions.
 ## Install
 
 The installer selects all agents and the supporting toolchain by default,
-including Basic Memory, BMAD, Spec-Kit, browser automation, and video tools.
+including Basic Memory, browser automation, and video tools.
 It prints a plan and asks for approval before installing.
 
 **PowerShell**
@@ -64,8 +62,6 @@ Restart your assistant after installation. See the [installation guide](docs/ins
 for supported systems, component selection, manual installation, and the Claude
 Code plugin.
 
-BMAD and Spec-Kit also need [initialization in each repository or worktree](docs/bmad-setup.md),
-which their coaches run automatically once the repository is bound.
 Memory Manager can help set up Basic Memory project routing.
 
 ## Try it
@@ -82,6 +78,21 @@ Make a demo explaining this change to a new contributor.
 The [skills directory](skills/) also contains methods for investigation, test
 analysis, writing, narration, and design documents. You can ask your current
 agent to use one without switching personas.
+
+### Lane delivery
+
+For a feature too large for one coding session, ask your current agent:
+
+```text
+Use lane-delivery to build this feature.
+```
+
+The [lane-delivery](skills/lane-delivery/SKILL.md) skill writes a spec with
+testable acceptance criteria and a lane graph for your approval. It then runs
+each lane as its own session and checks the work with mechanical gates: a spec
+lint, a per-lane write-set and fail-on-base test check, merged acceptance runs,
+and a final review before you accept. Coupling risks between concurrent lanes
+are recorded and accepted explicitly rather than hidden.
 
 ### Review ensemble
 

@@ -26,6 +26,20 @@ jobs:
           python-version: "3.12"
       - run: python skills/artifact-inspection/scripts/check_artifacts.py --root .
 
+  lane-gate:
+    name: Lane gate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests -p test_lane_gate.py -v
+
   memory-startup:
     name: Memory startup (${{ matrix.os }})
     runs-on: ${{ matrix.os }}

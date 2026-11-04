@@ -2,7 +2,7 @@
 
 ## Choose what to install
 
-The default installation includes all nine agents, bundled Promptlings skills,
+The default installation includes all seven agents, bundled Promptlings skills,
 and the supporting toolchain. Agent selection and dependency selection are
 separate: `--review` selects two agents but still installs the default tools.
 Use `--no-dependencies` to publish agents and bundled skills using an existing
@@ -37,12 +37,10 @@ such as `npx.cmd`, `playwright-cli.cmd`, and `hyperframes.cmd`.
 | --- | --- |
 | Python, Node.js, uv, Git, and GitHub CLI | Native packages and command checks, requiring Python 3.11+ and Node.js 22.20+ |
 | Basic Memory | uv tool, published memory skills, MCP registration, and user-login startup |
-| BMAD | Global npm application, with project-local skills added during repository initialization |
-| Spec-Kit | uv tool, repository initialization, and the Promptlings delivery workflow |
 | Playwright | Global npm application, published skill, Chrome browser, and a CLI browser check |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
 | Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
-| Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the skills CLI, the frontend-design and HyperFrames skills, and the pinned experience toolkit (esbuild, Shiki, Magic Move, Flubber, Rough.js, D3, dagre, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs. With `--no-dependencies` / `-NoDependencies`, the default selection leaves the agent out, and naming it with `--agents` / `-Agents` fails. `--project-only` / `-ProjectOnly` publishes no agents, so it installs none of these |
+| Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the skills CLI, the frontend-design and HyperFrames skills, and the pinned experience toolkit (esbuild, Shiki, Magic Move, Flubber, Rough.js, D3, dagre, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs. With `--no-dependencies` / `-NoDependencies`, the default selection leaves the agent out, and naming it with `--agents` / `-Agents` fails. |
 
 Document rendering uses Microsoft Word or LibreOffice. LibreOffice is installed
 only when neither is found. On Windows, its program directory is added to the
@@ -56,25 +54,19 @@ revisions are pinned at the top of both installers.
 
 | Bash / PowerShell | Effect |
 | --- | --- |
-| `--all` / `-All` | Select all nine agents, the default |
+| `--all` / `-All` | Select all seven agents, the default |
 | `--review` / `-Review` | Select the three ensemble agents: the-nitcracker, PR Walkthrough, and Sparring Partner |
 | `--agents a,b` / `-Agents "a,b"` | Select agents by name |
 | `--no-dependencies` / `-NoDependencies` | Publish agents and bundled skills without installing tools, external skills, MCP, or startup. Requires Node.js |
 | `--no-system-packages` / `-NoSystemPackages` | Use existing Python, Node, Git, gh, FFmpeg, and uv, but still install selected applications and skills |
-| `--no-bmad` / `-NoBmad` | Skip BMAD |
-| `--no-speckit` / `-NoSpeckit` | Skip Spec-Kit and its delivery workflow |
 | `--no-memory` / `-NoMemory` | Skip Basic Memory, its skills, MCP, startup, and read-side instruction |
 | `--no-startup` / `-NoStartup` | Register client-launched stdio MCP instead of login startup |
 | `--memory-port 8123` / `-MemoryPort 8123` | Use a different Basic Memory port |
 | `--no-playwright` / `-NoPlaywright` | Skip Playwright CLI, its browser check, and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` / `-NoHyperframes` | Skip HyperFrames, media binaries, and skills |
 | `--no-demo` / `-NoDemo` | Skip VS Code, Demo Time, vscode-playwright, LibreOffice, Poppler, and diff2html |
-| `--no-skills` / `-NoSkills` | Skip external published skills, not bundled Promptlings skills or repository-local framework integrations |
+| `--no-skills` / `-NoSkills` | Skip external published skills, not bundled Promptlings skills |
 | `--no-readside` / `-NoReadSide` | Skip the global memory read-side rule |
-| `--project PATH` / `-Project PATH` | Initialize an existing Git repository through official framework installers |
-| `--project-only` / `-ProjectOnly` | Initialize the named repository without installing global tools or changing profiles/startup |
-| `--shared-frameworks` / `-SharedFrameworks` | With a project path, make framework setup and documents eligible for version control |
-| `--integration claude` / `-Integration claude` | Choose Claude instead of the default Copilot Spec-Kit integration |
 | `--list` / `-List` | List agent names and exit |
 | `--dry-run` / `-DryRun` | Print the plan without downloading or writing |
 | `--yes` / `-Yes` | Approve the printed installation plan without a prompt |
@@ -180,27 +172,6 @@ Session capture needs the relevant conversation or an accessible source.
 Automatic end-of-session capture requires a supported, configured, verified
 host hook.
 
-## Initialize a delivery repository
-
-Machine installation does not initialize arbitrary repositories. Each clone or
-linked worktree needs initialization before BMAD or Spec-Kit runs there. The
-bound coach does this automatically through the installed `promptlings-repo-init`
-skill. The installer can also do it:
-
-```powershell
-.\install.ps1 -Project C:\repos\my-project -ProjectOnly -Yes
-```
-
-```bash
-bash install.sh --project "$HOME/repos/my-project" --project-only --yes
-```
-
-Framework setup and generated planning documents are locally ignored by default
-through Git's `info/exclude`. Add `--shared-frameworks` or `-SharedFrameworks`
-for a team that wants to commit them. Initialization never stages or commits files.
-
-See [framework setup and repository ownership](bmad-setup.md) for details.
-Framework upgrades use their official update operations, not a global CLI update.
 Provider accounts, secrets, licensed assets, and narration voice choices remain
 separate production inputs.
 

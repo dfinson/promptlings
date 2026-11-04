@@ -3,18 +3,13 @@ param(
     [switch]$All, [switch]$Review, [string]$Agents, [switch]$List,
     [switch]$DryRun, [switch]$Yes, [switch]$Help,
     [switch]$NoDependencies, [switch]$NoSystemPackages, [switch]$NoSkills,
-    [switch]$NoMemory, [switch]$NoStartup, [switch]$NoBmad,
-    [switch]$NoSpeckit, [switch]$NoPlaywright,
+    [switch]$NoMemory, [switch]$NoStartup, [switch]$NoPlaywright,
     [switch]$NoHyperframes, [switch]$NoDemo, [switch]$NoReadSide,
-    [string]$Project, [switch]$ProjectOnly, [switch]$SharedFrameworks,
-    [ValidateSet("copilot", "claude")][string]$Integration = "copilot",
     [ValidateRange(1, 65535)][int]$MemoryPort = 8000
 )
 $ErrorActionPreference = "Stop"
 # Pinned upstream tools. Keep these values identical in install.sh.
 $pins = @{
-    BMAD_PACKAGE = "bmad-method@6.12.4"
-    SPECKIT_PACKAGE = "git+https://github.com/github/spec-kit.git@v1.2.5"
     MEMORY_PACKAGE = "basic-memory==0.24.1"
     SKILLS_PACKAGE = "skills@1.7.4"
     RULESYNC_PACKAGE = "rulesync@42.0.0"
@@ -45,8 +40,6 @@ $agentPaths = [ordered]@{
     "artifact-inspector" = "agents/maintenance/artifact-inspector.agent.md"
     "technical-demo" = "agents/media/technical-demo.agent.md"
     "interactive-presentation" = "agents/media/interactive-presentation.agent.md"
-    "bmad-orchestrator" = "agents/orchestration/bmad-orchestrator.agent.md"
-    "speckit-flow" = "agents/orchestration/speckit-flow.agent.md"
 }
 $skillFiles = @(
     "skills/artifact-inspection/SKILL.md"
@@ -66,13 +59,13 @@ $skillFiles = @(
     "skills/interactive-experience/references/runtime.md"
     "skills/interactive-experience/references/sources.md"
     "skills/interactive-experience/references/visual-directions.md"
+    "skills/lane-delivery/SKILL.md"
+    "skills/lane-delivery/references/lane-brief-template.md"
+    "skills/lane-delivery/references/spec-template.md"
+    "skills/lane-delivery/scripts/gate.py"
     "skills/narrative-transitions/SKILL.md"
     "skills/pr-video/SKILL.md"
     "skills/presenter-script/SKILL.md"
-    "skills/promptlings-repo-init/SKILL.md"
-    "skills/promptlings-repo-init/scripts/init.ps1"
-    "skills/promptlings-repo-init/scripts/init.sh"
-    "skills/promptlings-repo-init/workflows/promptlings-delivery.yml"
     "skills/reasoning-first-narration/SKILL.md"
     "skills/reasoning-first-writing/SKILL.md"
     "skills/reasoning-first-writing/references/sources.md"
@@ -85,10 +78,8 @@ $allAgents = $agentPaths.Keys -join ","
 if ($List) { $allAgents.Split(","); return }
 if ($Help) {
     Write-Host "Install all agents and tools: .\install.ps1 -Yes"
-    Write-Host "Initialize a repository: .\install.ps1 -Project PATH -ProjectOnly -Yes"
-    Write-Host "Frameworks and generated documents are locally ignored. Opt into tracking with -SharedFrameworks."
     Write-Host "Opt-outs: -NoDependencies, -NoSystemPackages, -NoSkills, -NoReadSide,"
-    Write-Host "-NoMemory, -NoStartup, -NoBmad, -NoSpeckit, -NoPlaywright, -NoHyperframes, -NoDemo."
+    Write-Host "-NoMemory, -NoStartup, -NoPlaywright, -NoHyperframes, -NoDemo."
     return
 }
 if (@("All", "Review", "Agents" | Where-Object { $PSBoundParameters.ContainsKey($_) }).Count -gt 1) {
@@ -99,27 +90,20 @@ elseif (-not $PSBoundParameters.ContainsKey("Agents")) { $Agents = $allAgents }
 if (-not $Agents -or @($Agents.Split(",") | Where-Object { $_ -notin $allAgents.Split(",") }).Count) {
     throw "Unknown or empty agent selection. Use -List."
 }
-if ($ProjectOnly -and -not $Project) { throw "-ProjectOnly requires -Project." }
-if ($SharedFrameworks -and -not $Project) { throw "-SharedFrameworks requires -Project." }
-if ($Project -and $NoDependencies) { throw "-Project cannot be combined with -NoDependencies." }
 # The interactive-presentation agent's flow depends on these tools, so selecting it overrides their opt-outs.
 if ($NoDependencies -and -not $PSBoundParameters.ContainsKey("Agents") -and $Agents.Split(",") -contains "interactive-presentation") {
     $Agents = ($Agents.Split(",") | Where-Object { $_ -ne "interactive-presentation" }) -join ","
     Write-Host "interactive-presentation skipped: it requires dependencies and -NoDependencies is set."
 }
-$experience = -not $ProjectOnly -and $Agents.Split(",") -contains "interactive-presentation"
+$experience = $Agents.Split(",") -contains "interactive-presentation"
 if ($experience -and $NoDependencies) { throw "interactive-presentation requires its dependencies. Remove -NoDependencies or deselect the agent." }
 if ($experience) { $NoPlaywright = $false }
-if ($Project -and $NoBmad -and $NoSpeckit) { throw "-Project needs BMAD or Spec-Kit." }
 Write-Host "Agents: $Agents"
 if ($experience) { Write-Host "interactive-presentation: installs Playwright CLI, the skills CLI, its design skills and the pinned experience toolkit regardless of opt-outs." }
 Write-Host "Promptlings skills: all bundled skills, published with the agents."
 Write-Host "Default: WinGet prerequisites, uv applications, global npm applications and published global skills."
-Write-Host "Opt-outs: memory=$NoMemory bmad=$NoBmad speckit=$NoSpeckit playwright=$NoPlaywright hyperframes=$NoHyperframes demo=$NoDemo"
+Write-Host "Opt-outs: memory=$NoMemory playwright=$NoPlaywright hyperframes=$NoHyperframes demo=$NoDemo"
 Write-Host "Basic Memory: native user-login startup=$(-not $NoStartup), loopback port=$MemoryPort."
-$frameworkPolicy = if ($SharedFrameworks) { "shared, eligible for tracking" } else { "local, ignored including generated documents" }
-Write-Host "Repository: $Project. Framework policy: $frameworkPolicy."
-Write-Host "Project-only=$ProjectOnly. NoDependencies=$NoDependencies. NoSystemPackages=$NoSystemPackages. NoSkills=$NoSkills."
 Write-Host "Package installation can request elevation. No private runtimes, global Git exclusions, staging or commits."
 if ($DryRun) { Write-Host "Dry run. Nothing was downloaded or written."; return }
 if (-not $Yes) {
@@ -141,20 +125,6 @@ function Get-Asset {
         Copy-Item -LiteralPath $local -Destination $Destination
     }
     else { Invoke-WebRequest "$BaseUrl/$Relative" -OutFile $Destination -UseBasicParsing }
-}
-# Repository initialization is the installed promptlings-repo-init skill, staged here with its bundled workflow.
-function Invoke-ProjectInit {
-    param([switch]$CheckOnly)
-    $init = Join-Path $temporary "repo-init\scripts\init.ps1"
-    if (-not (Test-Path -LiteralPath $init)) {
-        $null = New-Item -ItemType Directory -Force -Path (Split-Path $init), (Join-Path $temporary "repo-init\workflows")
-        Get-Asset skills/promptlings-repo-init/scripts/init.ps1 $init
-        Get-Asset skills/promptlings-repo-init/workflows/promptlings-delivery.yml (Join-Path $temporary "repo-init\workflows\promptlings-delivery.yml")
-    }
-    $methods = @()
-    if (-not $NoBmad) { $methods += "bmad" }
-    if (-not $NoSpeckit) { $methods += "speckit" }
-    & $init -Project $Project -Method $methods -Integration $Integration -SharedFrameworks:$SharedFrameworks -CheckOnly:$CheckOnly
 }
 
 function Refresh-Path {
@@ -180,7 +150,7 @@ $taskName = "Promptlings Basic Memory"
 $null = New-Item -ItemType Directory -Path $temporary
 try {
     $windows = $env:OS -eq "Windows_NT"
-    if (-not $NoDependencies -and -not $ProjectOnly -and -not $NoSystemPackages) {
+    if (-not $NoDependencies -and -not $NoSystemPackages) {
         if (-not $windows) { throw "Use install.sh on macOS and Ubuntu/Debian." }
         if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
             throw "Install Microsoft's App Installer (WinGet): https://aka.ms/getwinget . Then rerun."
@@ -201,8 +171,7 @@ try {
     }
     $python = Get-Command python.exe -ErrorAction SilentlyContinue
     if (-not $python) { $python = Get-Command python3 -ErrorAction SilentlyContinue }
-    if ($Project) { Invoke-ProjectInit -CheckOnly }
-    if (-not $NoDependencies -and -not $ProjectOnly) {
+    if (-not $NoDependencies) {
         foreach ($command in @("uv", "node", "npm.cmd", "git", "gh")) {
             if (-not (Get-Command $command -ErrorAction SilentlyContinue)) { throw "Missing prerequisite: $command" }
         }
@@ -213,7 +182,6 @@ try {
         Invoke-Native gh --version
         $packages = @()
         if (-not $NoSkills -or $experience) { $packages += $pins.SKILLS_PACKAGE }
-        if (-not $NoBmad) { $packages += $pins.BMAD_PACKAGE }
         if (-not $NoPlaywright) { $packages += $pins.PLAYWRIGHT_PACKAGE }
         if (-not $NoHyperframes) { $packages += $pins.HYPERFRAMES_PACKAGE }
         if (-not $NoDemo) { $packages += $pins.DIFF2HTML_PACKAGE }
@@ -242,14 +210,11 @@ try {
             }
             Invoke-Native uv tool install --force --python 3.12 $pins.MEMORY_PACKAGE
         }
-        if (-not $NoSpeckit) { Invoke-Native uv tool install --force --python 3.12 $pins.SPECKIT_PACKAGE }
         Invoke-Native uv tool update-shell
         if ($windows) { Refresh-Path }
         $toolBin = Invoke-Native uv tool dir --bin
         $env:PATH = "$toolBin;$env:PATH"
         if (-not $NoMemory) { Invoke-Native basic-memory --version }
-        if (-not $NoSpeckit) { Invoke-Native specify version }
-        if (-not $NoBmad) { Invoke-Native bmad-method.cmd --version }
         if (-not $NoSkills -or $experience) {
             $env:DISABLE_TELEMETRY = "1"
             $sources = @()
@@ -308,76 +273,74 @@ try {
             Invoke-Native diff2html.cmd --version
         }
     }
-    if ($Project) { Invoke-ProjectInit }
-    if (-not $ProjectOnly) {
-        if (-not (Get-Command npx.cmd -ErrorAction SilentlyContinue)) {
-            throw "Node.js npx is required to publish agents and register MCP servers."
+    if (-not (Get-Command npx.cmd -ErrorAction SilentlyContinue)) {
+        throw "Node.js npx is required to publish agents and register MCP servers."
+    }
+    $memoryCommand = $null
+    if (-not $NoMemory -and -not $NoDependencies) {
+        $memoryCommand = (Get-Command basic-memory -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+        if (-not $memoryCommand) { throw "basic-memory is not on PATH after installation." }
+        if (-not $NoStartup) {
+            # A previous run of this service would hold the memory port.
+            if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) { Stop-ScheduledTask -TaskName $taskName }
+            $probe = [Net.Sockets.TcpClient]::new()
+            try { $open = $probe.ConnectAsync("127.0.0.1", $MemoryPort).Wait(1000) } catch { $open = $false } finally { $probe.Dispose() }
+            if ($open) { throw "Memory port $MemoryPort is in use. Stop that listener or pass another port." }
         }
-        $memoryCommand = $null
-        if (-not $NoMemory -and -not $NoDependencies) {
-            $memoryCommand = (Get-Command basic-memory -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
-            if (-not $memoryCommand) { throw "basic-memory is not on PATH after installation." }
-            if (-not $NoStartup) {
-                # A previous run of this service would hold the memory port.
-                if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) { Stop-ScheduledTask -TaskName $taskName }
-                $probe = [Net.Sockets.TcpClient]::new()
-                try { $open = $probe.ConnectAsync("127.0.0.1", $MemoryPort).Wait(1000) } catch { $open = $false } finally { $probe.Dispose() }
-                if ($open) { throw "Memory port $MemoryPort is in use. Stop that listener or pass another port." }
-            }
+    }
+    $source = Join-Path $temporary "rulesync"
+    $null = New-Item -ItemType Directory -Force -Path (Join-Path $source "subagents")
+    $utf8 = [Text.UTF8Encoding]::new($false)
+    $download = Join-Path $temporary "asset.md"
+    foreach ($name in $Agents.Split(",")) {
+        Get-Asset $agentPaths[$name] $download
+        $text = [IO.File]::ReadAllText($download).Replace("`r`n", "`n")
+        if (-not $text.StartsWith("---`n")) { throw "Agent has no frontmatter: $($agentPaths[$name])" }
+        # rulesync skips sources without targets.
+        [IO.File]::WriteAllText((Join-Path $source "subagents\$name.md"), "---`ntargets: [`"*`"]`n" + $text.Substring(4), $utf8)
+    }
+    $memoryRule = "memory-manager" -in $Agents.Split(",") -and -not $NoReadSide -and -not $NoMemory
+    if ($memoryRule) {
+        Get-Asset agents/context/memory-manager-read-side.md $download
+        $block = [IO.File]::ReadAllText($download).Replace("`r`n", "`n")
+        if (-not $block.StartsWith("<!-- memory-manager-read-side-start -->`n") -or
+            -not $block.TrimEnd().EndsWith("<!-- memory-manager-read-side-end -->")) {
+            throw "Invalid downloaded memory read-side rule."
         }
-        $source = Join-Path $temporary "rulesync"
-        $null = New-Item -ItemType Directory -Force -Path (Join-Path $source "subagents")
-        $utf8 = [Text.UTF8Encoding]::new($false)
-        $download = Join-Path $temporary "asset.md"
-        foreach ($name in $Agents.Split(",")) {
-            Get-Asset $agentPaths[$name] $download
-            $text = [IO.File]::ReadAllText($download).Replace("`r`n", "`n")
-            if (-not $text.StartsWith("---`n")) { throw "Agent has no frontmatter: $($agentPaths[$name])" }
-            # rulesync skips sources without targets.
-            [IO.File]::WriteAllText((Join-Path $source "subagents\$name.md"), "---`ntargets: [`"*`"]`n" + $text.Substring(4), $utf8)
-        }
-        $memoryRule = "memory-manager" -in $Agents.Split(",") -and -not $NoReadSide -and -not $NoMemory
+        $null = New-Item -ItemType Directory -Force -Path (Join-Path $source "rules")
+        [IO.File]::WriteAllText((Join-Path $source "rules\promptlings-memory.md"),
+            "---`ntargets: [`"*`"]`nglobs: [`"**/*`"]`n---`n" + $block, $utf8)
+    }
+    $skillSources = $skillFiles
+    if ("memory-manager" -in $Agents.Split(",") -and -not $NoMemory) {
+        $skillSources += "skills/promptlings-memory-capture/SKILL.md"
+    }
+    foreach ($path in $skillSources) {
+        $target = Join-Path $source $path
+        $null = New-Item -ItemType Directory -Force -Path (Split-Path $target)
+        if ((Split-Path $path -Leaf) -ne "SKILL.md") { Get-Asset $path $target; continue }
+        Get-Asset $path $download
+        $text = [IO.File]::ReadAllText($download).Replace("`r`n", "`n")
+        if (-not $text.StartsWith("---`n")) { throw "Skill has no frontmatter: $path" }
+        [IO.File]::WriteAllText($target, "---`ntargets: [`"*`"]`n" + $text.Substring(4), $utf8)
+    }
+    Push-Location $source
+    try {
+        Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t "*" -f "subagents,skills"
+        # Only targets with a dedicated global rule file. Others share a root file rulesync would replace.
         if ($memoryRule) {
-            Get-Asset agents/context/memory-manager-read-side.md $download
-            $block = [IO.File]::ReadAllText($download).Replace("`r`n", "`n")
-            if (-not $block.StartsWith("<!-- memory-manager-read-side-start -->`n") -or
-                -not $block.TrimEnd().EndsWith("<!-- memory-manager-read-side-end -->")) {
-                throw "Invalid downloaded memory read-side rule."
-            }
-            $null = New-Item -ItemType Directory -Force -Path (Join-Path $source "rules")
-            [IO.File]::WriteAllText((Join-Path $source "rules\promptlings-memory.md"),
-                "---`ntargets: [`"*`"]`nglobs: [`"**/*`"]`n---`n" + $block, $utf8)
+            Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t $pins.RULESYNC_RULE_TARGETS -f rules
         }
-        $skillSources = $skillFiles
-        if ("memory-manager" -in $Agents.Split(",") -and -not $NoMemory) {
-            $skillSources += "skills/promptlings-memory-capture/SKILL.md"
-        }
-        foreach ($path in $skillSources) {
-            $target = Join-Path $source $path
-            $null = New-Item -ItemType Directory -Force -Path (Split-Path $target)
-            if ((Split-Path $path -Leaf) -ne "SKILL.md") { Get-Asset $path $target; continue }
-            Get-Asset $path $download
-            $text = [IO.File]::ReadAllText($download).Replace("`r`n", "`n")
-            if (-not $text.StartsWith("---`n")) { throw "Skill has no frontmatter: $path" }
-            [IO.File]::WriteAllText($target, "---`ntargets: [`"*`"]`n" + $text.Substring(4), $utf8)
-        }
-        Push-Location $source
-        try {
-            Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t "*" -f "subagents,skills"
-            # Only targets with a dedicated global rule file. Others share a root file rulesync would replace.
-            if ($memoryRule) {
-                Invoke-Native npx.cmd --yes $pins.RULESYNC_PACKAGE generate -g --input-roots . -t $pins.RULESYNC_RULE_TARGETS -f rules
-            }
-        }
-        finally { Pop-Location }
-        if ($memoryCommand) {
-            $server = @(if ($NoStartup) { $memoryCommand, "--args", "mcp" } else { "http://127.0.0.1:$MemoryPort/mcp" })
-            $transport = if ($NoStartup) { "stdio" } else { "http" }
-            # add-mcp aborts if any detected client lacks the transport. Stdio-only clients reach the HTTP server through mcp-remote.
-            $addMcp = Join-Path $temporary "add-mcp"
-            Invoke-Native npm.cmd install --prefix $addMcp --no-save --no-fund --no-audit $pins.ADD_MCP_PACKAGE
-            $detect = Join-Path $temporary "detect-mcp-clients.mjs"
-            [IO.File]::WriteAllText($detect, @'
+    }
+    finally { Pop-Location }
+    if ($memoryCommand) {
+        $server = @(if ($NoStartup) { $memoryCommand, "--args", "mcp" } else { "http://127.0.0.1:$MemoryPort/mcp" })
+        $transport = if ($NoStartup) { "stdio" } else { "http" }
+        # add-mcp aborts if any detected client lacks the transport. Stdio-only clients reach the HTTP server through mcp-remote.
+        $addMcp = Join-Path $temporary "add-mcp"
+        Invoke-Native npm.cmd install --prefix $addMcp --no-save --no-fund --no-audit $pins.ADD_MCP_PACKAGE
+        $detect = Join-Path $temporary "detect-mcp-clients.mjs"
+        [IO.File]::WriteAllText($detect, @'
 const [library, transport] = process.argv.slice(2);
 const { pathToFileURL } = await import("node:url");
 const { agents, detectGlobalAgents } = await import(pathToFileURL(library).href);
@@ -388,42 +351,41 @@ for (const agent of await detectGlobalAgents()) {
   else console.error(`Skipping ${agents[agent].displayName}: no ${transport} MCP support.`);
 }
 '@, [Text.UTF8Encoding]::new($false))
-            $clients = @(Invoke-Native node $detect (Join-Path $addMcp "node_modules\add-mcp\dist\lib.js") $transport)
-            $addMcpCli = Join-Path $addMcp "node_modules\add-mcp\dist\index.js"
-            $direct = @($clients | Where-Object { $_ -like "direct *" } | ForEach-Object { "-a"; $_.Substring(7) })
-            $bridge = @($clients | Where-Object { $_ -like "bridge *" } | ForEach-Object { "-a"; $_.Substring(7) })
-            if ($direct.Count) { Invoke-Native node $addMcpCli @server -g -y -n basic-memory @direct }
-            if ($bridge.Count) {
-                Invoke-Native node $addMcpCli $pins.MCP_REMOTE_PACKAGE --args "http://127.0.0.1:$MemoryPort/mcp" -g -y -n basic-memory @bridge
-            }
-            if (-not $clients.Count) { Write-Warning "No supported MCP client was detected. basic-memory was not registered." }
+        $clients = @(Invoke-Native node $detect (Join-Path $addMcp "node_modules\add-mcp\dist\lib.js") $transport)
+        $addMcpCli = Join-Path $addMcp "node_modules\add-mcp\dist\index.js"
+        $direct = @($clients | Where-Object { $_ -like "direct *" } | ForEach-Object { "-a"; $_.Substring(7) })
+        $bridge = @($clients | Where-Object { $_ -like "bridge *" } | ForEach-Object { "-a"; $_.Substring(7) })
+        if ($direct.Count) { Invoke-Native node $addMcpCli @server -g -y -n basic-memory @direct }
+        if ($bridge.Count) {
+            Invoke-Native node $addMcpCli $pins.MCP_REMOTE_PACKAGE --args "http://127.0.0.1:$MemoryPort/mcp" -g -y -n basic-memory @bridge
         }
-        if ($memoryCommand -and -not $NoStartup) {
-            # An interactive task gives a console program a visible window; headless conhost hosts it without one.
-            $action = New-ScheduledTaskAction -Execute (Join-Path $env:SystemRoot "System32\conhost.exe") `
-                -Argument "--headless `"$memoryCommand`" mcp --transport streamable-http --host 127.0.0.1 --port $MemoryPort"
-            $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-            $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
-            $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
-            # Priority 4 keeps CPU, memory and I/O at Normal. Priority 5 still lowers memory priority.
-            $settings = New-ScheduledTaskSettingsSet -Priority 4 -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
-            Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
-            Start-ScheduledTask -TaskName $taskName
-            $request = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"promptlings-installer","version":"1"}}}'
-            $ready = $false
-            # A cold start after reinstalling can take several minutes.
-            $deadline = (Get-Date).AddSeconds(600)
-            while (-not $ready -and (Get-Date) -lt $deadline) {
-                try {
-                    $response = Invoke-WebRequest "http://127.0.0.1:$MemoryPort/mcp" -Method Post -Body $request -UseBasicParsing -TimeoutSec 2 `
-                        -ContentType "application/json" -Headers @{ Accept = "application/json, text/event-stream" }
-                    $ready = [Text.Encoding]::UTF8.GetString($response.RawContentStream.ToArray()) -match '"name": ?"basic[ _-]?memory"'
-                }
-                catch { $ready = $false }
-                if (-not $ready) { Start-Sleep -Seconds 1 }
+        if (-not $clients.Count) { Write-Warning "No supported MCP client was detected. basic-memory was not registered." }
+    }
+    if ($memoryCommand -and -not $NoStartup) {
+        # An interactive task gives a console program a visible window; headless conhost hosts it without one.
+        $action = New-ScheduledTaskAction -Execute (Join-Path $env:SystemRoot "System32\conhost.exe") `
+            -Argument "--headless `"$memoryCommand`" mcp --transport streamable-http --host 127.0.0.1 --port $MemoryPort"
+        $user = [Security.Principal.WindowsIdentity]::GetCurrent().Name
+        $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
+        $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
+        # Priority 4 keeps CPU, memory and I/O at Normal. Priority 5 still lowers memory priority.
+        $settings = New-ScheduledTaskSettingsSet -Priority 4 -MultipleInstances IgnoreNew -ExecutionTimeLimit ([TimeSpan]::Zero) -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+        Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+        Start-ScheduledTask -TaskName $taskName
+        $request = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"promptlings-installer","version":"1"}}}'
+        $ready = $false
+        # A cold start after reinstalling can take several minutes.
+        $deadline = (Get-Date).AddSeconds(600)
+        while (-not $ready -and (Get-Date) -lt $deadline) {
+            try {
+                $response = Invoke-WebRequest "http://127.0.0.1:$MemoryPort/mcp" -Method Post -Body $request -UseBasicParsing -TimeoutSec 2 `
+                    -ContentType "application/json" -Headers @{ Accept = "application/json, text/event-stream" }
+                $ready = [Text.Encoding]::UTF8.GetString($response.RawContentStream.ToArray()) -match '"name": ?"basic[ _-]?memory"'
             }
-            if (-not $ready) { throw "Basic Memory did not become ready at 127.0.0.1:$MemoryPort. Inspect its scheduled task." }
+            catch { $ready = $false }
+            if (-not $ready) { Start-Sleep -Seconds 1 }
         }
+        if (-not $ready) { throw "Basic Memory did not become ready at 127.0.0.1:$MemoryPort. Inspect its scheduled task." }
     }
     Write-Host "Installed selected components. Restart your terminal and assistant. Repository changes remain unstaged."
 }
