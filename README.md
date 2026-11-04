@@ -15,7 +15,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 
 ## Walkthrough
 
-<https://github.com/user-attachments/assets/2df720bb-465f-48d3-bb33-d0b6987f715b>
+<https://github.com/user-attachments/assets/4d0d159a-39b8-4f21-b310-acf665c9ef8a>
 
 ## Choose an agent
 
@@ -25,7 +25,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [PR Walkthrough](agents/code-review/pr-walkthrough.agent.md) | Maps a PR's architecture and important decisions before you review the diff. Read-only, with output in conversation. |
 | [Sparring Partner](agents/reasoning/sparring-partner.agent.md) | Reviews PRs and changes for correctness, design consequences, and regression protection. Also works through designs, debugging hypotheses, plans, and testing questions with you. |
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
-| [Technical Demo](agents/media/technical-demo.agent.md) | Produces a technical explainer or hands-on demo, from story and script approval through recording, narration, and review. |
+| [Technical Demo](agents/media/technical-demo.agent.md) | Produces technical videos, including explainers and recorded demonstrations, from story and script approval through production and final review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
 | [Spec Master](agents/orchestration/spec-master.agent.md) | Runs spec-backed delivery for a feature too large for one session: a spec and lane graph you approve, one session per lane, and mechanical gates on every handoff. Never writes product code. |
 
