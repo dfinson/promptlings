@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import test from "node:test";
@@ -88,6 +89,28 @@ test("verification observes the actual worktree and refuses changed or external 
     assert.equal(verified.mainUnchanged, true);
     assert.equal(verified.acceptanceUnchanged, true);
     assert.equal(verified.acceptance.exit, 0, JSON.stringify(verified.acceptance));
+    writeFileSync(join(directory, "audit.jsonl"), JSON.stringify({
+      argv: ["python", "gate.py", "apply"],
+      stdout: JSON.stringify({ status: "verified", tests_head: head,
+        applied_at: "2026-11-04T00:00:00Z", evidence: [{ cwd: integration }] }),
+    }) + "\n");
+    const applied = await verifyDelivery(directory, { approved, mainAtStart: approved });
+    assert.equal(applied.integration, integration);
+    assert.equal(applied.acceptance.exit, 0);
+    const fullRecord = JSON.stringify({ status: "verified", integration_head: head, evidence: [{ cwd: integration }] });
+    const recordPath = join(directory, "record.json");
+    writeFileSync(recordPath, fullRecord);
+    writeFileSync(join(directory, "audit.jsonl"), JSON.stringify({
+      argv: ["python", "gate.py", "merge"],
+      stdout: JSON.stringify({ status: "verified", record: recordPath,
+        record_sha256: createHash("sha256").update(fullRecord).digest("hex"), evidence: [] }),
+    }) + "\n");
+    const recorded = await verifyDelivery(directory, { approved, mainAtStart: approved });
+    assert.equal(recorded.integration, integration);
+    assert.equal(recorded.acceptance.exit, 0);
+    writeFileSync(recordPath, "{}");
+    await assert.rejects(verifyDelivery(directory, { approved }), /content hash/);
+    record(integration);
     writeFileSync(join(integration, "acceptance.py"),
       "from pathlib import Path\nPath('unexpected-execution').touch()\n");
     const changed = await verifyDelivery(directory, { approved, mainAtStart: approved });
@@ -106,6 +129,8 @@ test("token-weighted scoring preserves unknown billing instead of inventing zero
   const directory = mkdtempSync(join(artifacts, "runtime-scoring-"));
   const trial = join(directory, "plan-1-candidate");
   mkdirSync(trial);
+  mkdirSync(join(trial, "repo"));
+  writeFileSync(join(trial, "repo", "human-spec.md"), "# Human specification\n");
   const result = {
     arm: "candidate", kind: "plan", repeat: 1, seconds: 1, base: "base", approved: "base",
     final: { main: "base", head: "base", branch: "delivery", status: "", diff: "" },
@@ -119,11 +144,15 @@ test("token-weighted scoring preserves unknown billing instead of inventing zero
     return JSON.parse(readFileSync(join(directory, "summary.json"), "utf8")).rows[0];
   };
   try {
-    writeFileSync(join(trial, "audit.jsonl"), "");
+    writeFileSync(join(trial, "audit.jsonl"), [
+      { tool: "fixture_write", owner: "master", path: "human-spec.md" },
+      { tool: "fixture_write", owner: "master", path: "..\\..\\outside.md" },
+    ].map(JSON.stringify).join("\n") + "\n");
     const complete = await score();
     assert.equal(complete.nanoAiu, 12000000000);
     assert.equal(complete.billingComplete, true);
     assert.equal(complete.billingUnits, 2);
+    assert.deepEqual(complete.specFiles.map((document) => document.file), ["human-spec.md"]);
     delete result.usage[1].copilotUsage;
     const incomplete = await score();
     assert.equal(incomplete.nanoAiu, null);

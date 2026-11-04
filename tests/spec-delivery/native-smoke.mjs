@@ -20,7 +20,7 @@ const cli = option("--cli");
 const output = option("--output");
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const body = (text) => text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, "");
-const canonical = (text) => text.replace("# Spec delivery: checked candidate", "# Spec Delivery").trim().split(/\s+/).join(" ");
+const canonical = (text) => text.replace(/# Spec delivery: (checked|staged) candidate/, "# Spec Delivery").trim().split(/\s+/).join(" ");
 const sourceAgent = readFileSync(join(root, "agents", "orchestration", "spec-master.agent.md"), "utf8");
 const sourceMethod = readFileSync(join(root, "skills", "spec-delivery", "SKILL.md"), "utf8");
 if (canonical(body(sourceAgent)) !== canonical(packet.agent) || canonical(body(sourceMethod)) !== canonical(packet.method)) {
@@ -57,6 +57,7 @@ checked(["git", "branch", "main", prior.approved]);
 checked(["git", "remote", "remove", "origin"]);
 checked(["git", "config", "user.name", "Benchmark"]);
 checked(["git", "config", "user.email", "benchmark@example.invalid"]);
+write(join(repo, ".git", "info", "exclude"), ".gate-worktrees/\n.lanes/\n.base-check/\n");
 for (const name of ["spec-delivery", "design-writing", "reasoning-first-writing"]) {
   cpSync(join(root, "skills", name), join(repo, ".github", "skills", name), {
     recursive: true, filter: (path) => !/(__pycache__|\.pyc$)/.test(path),
@@ -86,6 +87,7 @@ const original = readFileSync(join(trial, "input.txt"), "utf8").split("Host adap
 const prompt = original.replaceAll(prior.approved, approved) +
   "\nUse the project-local spec-delivery skill through native skill discovery, not a quoted substitute. " +
   "Record its actual source path and hash. The immutable approval tag is spec/native/approved. " +
+  "Use .gate-worktrees as the authorized scratch directory, excluded from Git status as in the SDK fixture. " +
   "Stay inside this disposable repository. Do not install global customizations or contact another repository.";
 write(join(output, "input.txt"), prompt);
 const stdout = openSync(join(output, "native.jsonl"), "w");

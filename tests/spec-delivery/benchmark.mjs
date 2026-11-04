@@ -27,6 +27,15 @@ const arms = option("--arms", "baseline,essential,compact").split(",");
 const cases = option("--cases", "plan,gates,single,multi,authority").split(",");
 const repeats = Number(option("--repeats", "2"));
 const caseConcurrency = Number(option("--case-concurrency", "1"));
+const resourceMode = option("--resource-mode", "preload");
+const modelRecordPath = option("--effective-model-record");
+const modelRecord = modelRecordPath ? JSON.parse(readFileSync(resolve(modelRecordPath), "utf8")) : null;
+const effectiveModel = modelRecord?.currentModel;
+if (modelRecord && (typeof effectiveModel !== "string" || !effectiveModel ||
+    modelRecord.aiCreditsStatus !== "complete" || !(modelRecord.modelMetrics?.[effectiveModel]?.requests?.count > 0))) {
+  throw new Error("The effective-model record must contain a successful native usage result");
+}
+if (!["preload", "lazy"].includes(resourceMode)) throw new Error("--resource-mode must be preload or lazy");
 if (!Number.isInteger(caseConcurrency) || caseConcurrency < 1) throw new Error("--case-concurrency must be a positive integer");
 mkdirSync(output, { recursive: true });
 
@@ -54,9 +63,11 @@ const git = (...argv) => checked(root, ["git", ...argv]);
 const sha = (text) => createHash("sha256").update(text).digest("hex");
 const read = (path) => readFileSync(path, "utf8");
 const gateSource = read(join(root, "skills", "spec-delivery", "scripts", "gate.py"));
-const settingsHash = sha(JSON.stringify({ node: process.version, caseConcurrency,
+const settingsHash = sha(JSON.stringify({ node: process.version, caseConcurrency, resourceMode,
   sdk: sdkPath ? sha(read(sdkPath)) : null, cli: cliPath ? sha(read(cliPath)) : null,
-  modelOverride: null, customInstructions: false, builtInMcps: false,
+  modelOverride: modelRecord ? { source: "native-effective-model", id: effectiveModel,
+    evidenceHash: sha(readFileSync(resolve(modelRecordPath))) } : null,
+  customInstructions: false, builtInMcps: false,
   adapter: sha(read(fileURLToPath(import.meta.url))), verification: sha(read(join(here, "verify-delivery.mjs"))) }));
 function write(path, content) {
   mkdirSync(dirname(path), { recursive: true });
@@ -65,6 +76,10 @@ function write(path, content) {
 for (const file of ["benchmark.mjs", "score.mjs", "verify-delivery.mjs", "native-smoke.mjs", "test_gate.py", "protocol.md"]) {
   write(join(output, "harness", file), read(join(here, file)));
 }
+if (modelRecord) write(join(output, "effective-model.json"), JSON.stringify({
+  source: "Observed native runtime selection, not inferred from advertised model availability",
+  model: effectiveModel, evidenceHash: sha(readFileSync(resolve(modelRecordPath))),
+}, null, 2));
 function packet(arm) {
   const prior = "e71892fc8df72cb3b7628feea050df37f477d541";
   const single = "\n\n" + read(join(here, "candidates", "single-lane-amendment.md")).replaceAll("\r\n", "\n").trim() + "\n\n";
@@ -106,9 +121,15 @@ function packet(arm) {
   const agent = arm === "baseline"
     ? git("show", `${prior}:agents/orchestration/spec-master.agent.md`) +
       "\nAuthority correction: on a single lane the master implements directly, as the accepted amendment states.\n"
+    : arm.startsWith("staged") ? read(join(here, "candidates", `${arm}-agent.md`))
     : arm.startsWith("checked-")
       ? "You are Spec Master. Load spec-delivery at the start and follow it. If it is unavailable, stop and report the missing dependency. Em dashes are banned from all output."
       : "You are Spec Master. Follow spec-delivery below. Em dashes are banned from all output.";
+  if (arm.startsWith("staged")) {
+    for (const path of ["skills/spec-delivery/references/execution-plan-template.md", "skills/spec-delivery/references/lane-brief-template.md", "skills/spec-delivery/scripts/gate.py"]) {
+      resources[path] = path.endsWith("scripts/gate.py") ? gateSource : read(join(root, path));
+    }
+  }
   return { agent, method, resources };
 }
 const packets = Object.fromEntries(arms.map((arm) => [arm, packet(arm)]));
@@ -364,8 +385,12 @@ if (args.includes("--prepare-only")) {
     const usage = [];
     const sessionErrors = [];
     const resourceRead = new Set();
-    const system = `${bundle.agent}\n\nThe host preloads the required spec-delivery skill here:\n${bundle.method}\n\n` +
-      Object.entries(bundle.resources).map(([path, text]) => `\nRESOURCE ${path}\n${text}`).join("\n");
+    const system = resourceMode === "preload"
+      ? `${bundle.agent}\n\nThe host preloads the required spec-delivery skill here:\n${bundle.method}\n\n` +
+        Object.entries(bundle.resources).map(([path, text]) => `\nRESOURCE ${path}\n${text}`).join("\n")
+      : `${bundle.agent}\n\nInstalled skills: spec-delivery, design-writing, reasoning-first-writing. Load them using fixture_skill. Read references at their package paths using fixture_read. Skills are instructions, not implementation approval.`;
+    const resources = { ...bundle.resources, "skills/spec-delivery/SKILL.md": bundle.method };
+    const packetHash = resourceMode === "lazy" ? sha(JSON.stringify(bundle)) : sha(system);
     const safePath = (cwd, path) => {
       if (isAbsolute(path)) throw new Error("Paths must be relative to the fixture root");
       const target = resolve(cwd, path);
@@ -381,6 +406,19 @@ if (args.includes("--prepare-only")) {
           name: "fixture_read", description: "Read a fixture-relative file, or list a directory. Required skill resources are already preloaded verbatim.",
           parameters: schema({ path: string }, ["path"]),
           handler: ({ path }) => {
+            const resourcePath = path.replaceAll("\\", "/").replace(/\/$/, "");
+            const resource = resources[resourcePath];
+            if (resource !== undefined) {
+              resourceRead.add(path.replaceAll("\\", "/"));
+              audit({ owner, tool: "fixture_read", path, found: true, resource: true });
+              return resource;
+            }
+            const entries = [...new Set(Object.keys(resources).filter((key) => key.startsWith(resourcePath + "/"))
+              .map((key) => key.slice(resourcePath.length + 1).split("/")[0]))];
+            if (entries.length) {
+              audit({ owner, tool: "fixture_read", path, found: true, resource: true });
+              return entries;
+            }
             const target = safePath(cwd, path);
             const result = existsSync(target) && readdirOrRead(target);
             audit({ owner, tool: "fixture_read", path, found: result !== false });
@@ -415,6 +453,19 @@ if (args.includes("--prepare-only")) {
           },
         },
       ];
+      if (resourceMode === "lazy") {
+        tools.push({
+          name: "fixture_skill", description: "Load an installed skill: spec-delivery, design-writing or reasoning-first-writing. References are separately available through fixture_read at their package paths.",
+          parameters: schema({ name: string }, ["name"]),
+          handler: ({ name }) => {
+            const path = `skills/${name}/SKILL.md`;
+            if (!Object.hasOwn(resources, path)) throw new Error(`Skill unavailable: ${name}`);
+            resourceRead.add(path);
+            audit({ owner, tool: "fixture_skill", name, path });
+            return { path, content: resources[path] };
+          },
+        });
+      }
       if (owner === "master") {
         tools.push({
           name: "start_lane", description: "Start a real independent Copilot child session asynchronously on an isolated local worktree/branch based on base_ref. Returns an id immediately. Approval, lane brief and scope are the master's responsibility. Wait using wait_lane. No hidden gate enforcement.",
@@ -444,6 +495,7 @@ if (args.includes("--prepare-only")) {
         });
       }
       const active = await client.createSession({
+        ...(effectiveModel ? { model: effectiveModel } : {}),
         workingDirectory: cwd, enableConfigDiscovery: false,
         tools: tools.map((tool) => ({ ...tool, handler: async (arguments_, invocation) => {
           try {
@@ -501,15 +553,15 @@ if (args.includes("--prepare-only")) {
         diff: await checkedLive(repo, ["git", "diff", approved, "--"]),
       };
       const verification = ["single", "multi"].includes(kind) ? await verifyDelivery(directory, { approved, mainAtStart }) : null;
-      result = { arm, kind, repeat, packetHash: sha(system), inputHash: sha(prompt), settingsHash, caseConcurrency, base, approved, mainAtStart, response,
+      result = { arm, kind, repeat, packetHash, inputHash: sha(prompt), settingsHash, caseConcurrency, resourceMode, base, approved, mainAtStart, response,
         final: verification?.final ?? final, rootCheckout: final, acceptance: verification?.acceptance ?? null,
         usage, sessionErrors, seconds: (Date.now() - start) / 1000, resourceRead: [...resourceRead] };
       if (verification) {
         write(join(directory, "delivery-verification.json"), JSON.stringify(verification, null, 2));
       }
     } catch (error) {
-      result = { arm, kind, repeat, settingsHash, caseConcurrency, base, approved, mainAtStart,
-        packetHash: sha(system), inputHash: existsSync(join(directory, "input.txt")) ? sha(read(join(directory, "input.txt"))) : null,
+      result = { arm, kind, repeat, settingsHash, caseConcurrency, resourceMode, base, approved, mainAtStart,
+        packetHash, inputHash: existsSync(join(directory, "input.txt")) ? sha(read(join(directory, "input.txt"))) : null,
         error: errorText(error), seconds: (Date.now() - start) / 1000, usage, sessionErrors };
     } finally {
       for (const active of sessions) await active.disconnect();

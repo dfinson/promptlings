@@ -7,6 +7,86 @@ global instructions or accept delivery on behalf of a human.
 
 Observed outcomes and rejected approaches are in [the results](results.md).
 
+## Staged architecture experiment
+
+The next candidate replaces accumulated guard paragraphs with
+[a routing identity](candidates/staged-agent.md) and
+[a staged delivery method](candidates/staged.md). Writing-only requests load
+the preserved writing skills and human template directly. Delivery loads its
+lifecycle separately. Critical implementation uses the helper's `apply`
+operation: approved tests are committed and must fail for the intended reason
+before the helper writes any proposed product file. The proposed contents are
+data in authorized scratch, not product edits. This does not excuse a prior
+direct product edit or authorize a broader scope.
+
+Compare Baseline and Staged using `--resource-mode lazy`. Both receive the
+same resource-loading tools and installed resource paths. Neither receives
+all instruction and helper source preloaded into its initial context.
+The host does not enforce lane ownership, temporal order or gate use.
+The candidate must choose and invoke its packaged procedure. Resource reads,
+complete packets, helper command timestamps and actual edits remain evidence.
+This models demand-driven loading separately from the earlier preload rounds.
+Do not pool costs or timings across these modes.
+
+Start with one matched repetition of plan, single, multi and revision as a
+qualification pilot. If those pass, run all seven unchanged cases twice in a
+new directory before selection. Preserve the same hard quality, source,
+authority, concurrency, chronology and actual E2E requirements. Measure the
+complete reported token-weighted usage, including loaded resources and children.
+No new cost ceiling or overhead tolerance is introduced.
+
+The first Staged pilot is retained as a failed writing qualification. Its
+single-lane helper also selected a nested worktree that the old observer did
+not recognize. Preserve the original observation and append independent
+verification at the successful helper's recorded worktree. The observer now
+recognizes successful `apply` evidence as well as merge evidence, for both arms.
+Its regression executes the same acceptance at the wrong and actual worktrees.
+
+Staged v2 uses [the explicit writing router](candidates/staged-v2-agent.md) and
+[a coherent revised method](candidates/staged-v2.md). It specifies the installed
+template location, requires a case-partitioned behavior delta before drafting,
+keeps direct single-lane work in its existing delivery worktree and replaces
+the long critical CLI invocation with one scratch JSON request. The helper also
+rejects new-test skip markers and mutations caused by the red check. These
+are new frozen packages, not amendments to the running pilot's evidence.
+First qualify v2 on matched plan, revision and single cases once. If qualified,
+run all seven cases twice before selecting it. Resource-discovery and observer
+changes apply equally to both arms. Never pool old and new package costs.
+
+The v2 pilot completed writing, but both single-lane arms encountered the same
+service error, `400 The requested model is not supported`. Retain that as
+infrastructure evidence and replay both arms in fresh sessions. Advertised
+availability is not proof of request support. A native diagnostic succeeded and
+reported an administrator-managed `gpt-6.1-sol` selection, while the preceding
+SDK writing calls reported `claude-sonnet-5.5`. The next model stratum uses
+`--effective-model-record <native-usage.json>` to propagate that observed native
+selection to both SDK arms. It records the selection and evidence hash and
+requires successful native usage evidence. No model is guessed, and results
+from the two observed models are never pooled as identical settings.
+The fresh default-model replay subsequently completed both single-lane arms
+on Sonnet. The service error was transient. Native selection is a separate
+experimental stratum, not a claim that changing models repaired the service.
+
+Staged v3 replaces the writing router's ambiguous fact-versus-decision wording
+with a baseline-preservation policy. It keeps unrequested existing behavior
+as constraints and reserves decisions for unknowns necessary to the request.
+Its coherent delivery method scopes red-first work to human-marked critical
+behavior and supplies runnable tools and scratch to children. `--record`
+retains full, hashed gate evidence while returning revisions and check output
+without every Git transcript. The independent observer and scorer resolve and
+verify that record, not a lossy substitute. Compare v2, v3 and Baseline first on
+plan and single under the native-observed model. Qualifying packages then need
+the complete seven-case, two-repeat matched comparison. Keep all earlier failed
+writing, ownership, chronology, test-fixture assumptions and costs.
+
+The native-model qualification made v2 the lower-usage staged package across
+the two pilot cases. Before the full comparison, align its operational
+templates with the critical helper and separate approval and lane-base SHAs.
+Its final frozen method explicitly retains the post-merge failure halt.
+These changes belong to the full packet, not the earlier pilot snapshot.
+Compare this v2 package directly with Baseline across all seven cases twice.
+No pilot measurements enter that final comparison's totals.
+
 ## Comparisons and selection rule
 
 Compare three complete instruction packages:

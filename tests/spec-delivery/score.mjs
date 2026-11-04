@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readGateReport } from "./verify-delivery.mjs";
 
 if (!process.argv[2]) throw new Error("Specify an existing external benchmark directory");
 const directory = resolve(process.argv[2]);
@@ -25,7 +26,7 @@ for (const name of readdirSync(directory).sort()) {
   const helperGates = [];
   for (const event of toolExecutions) {
     if (!event.argv.some((part) => part.endsWith("gate.py")) || !event.stdout.trim().startsWith("{")) continue;
-    const report = JSON.parse(event.stdout);
+    const report = readGateReport(event, join(directory, name));
     if (Array.isArray(report.evidence)) helperGates.push({ owner: event.owner, argv: event.argv, exit: event.exit, ...report });
   }
   const executions = [...toolExecutions, ...helperGates.flatMap((gate) => gate.evidence.map((event) => ({ owner: gate.owner, ...event })))];
@@ -34,12 +35,21 @@ for (const name of readdirSync(directory).sort()) {
   const beforeFirstWait = audit.slice(0, firstWait < 0 ? audit.length : firstWait).filter((e) => e.tool === "start_lane");
   const writes = audit.filter((e) => ["fixture_write", "write_file"].includes(e.tool));
   const masterProductWrites = writes.filter((e) => e.owner === "master" && /^(store|formatting|app)\.py$|^tests[\\/]/.test(e.path));
+  for (const gate of helperGates.filter((gate) => gate.owner === "master" && gate.applied_at)) {
+    masterProductWrites.push(...gate.product_paths.map((path) => ({ owner: "master", tool: "gate.apply", path })));
+  }
   const testFailures = executions.filter((e) => e.exit !== 0 && /FAIL:|AssertionError/.test(e.stdout + e.stderr));
   const specDirectory = join(directory, name, "repo", "specs");
-  const specs = existsSync(specDirectory) ? readdirSync(specDirectory).map((file) => {
-    const text = readFileSync(join(specDirectory, file), "utf8");
+  const documentPaths = new Set(existsSync(specDirectory) ? readdirSync(specDirectory).map((file) => join("specs", file)) : []);
+  for (const event of writes.filter((event) => event.owner === "master" && event.path?.endsWith(".md"))) {
+    const path = resolve(directory, name, "repo", event.path);
+    const fromRepo = relative(resolve(directory, name, "repo"), path);
+    if (fromRepo && !isAbsolute(fromRepo) && fromRepo !== ".." && !fromRepo.startsWith(`..${sep}`) && existsSync(path)) documentPaths.add(fromRepo);
+  }
+  const specs = [...documentPaths].map((file) => {
+    const text = readFileSync(join(directory, name, "repo", file), "utf8");
     return { file, sha256: hash(text), words: text.split(/\s+/).length, tables: /^\s*\|/m.test(text), text };
-  }) : [];
+  });
   const usage = result.usage ?? [];
   const billingComplete = usage.length > 0 && usage.every((entry) =>
     entry.aiCreditsStatus === "complete" && Number.isSafeInteger(entry.copilotUsage?.totalNanoAiu) &&

@@ -70,11 +70,11 @@ agent to use one without switching personas.
 
 ### Spec delivery
 
-**Experiment status:** this branch retains the unqualified Checked v9 candidate
-for reproduction. No tested replacement met every required contract.
-The [measured results](tests/spec-delivery/results.md) explain the execution
-failure and higher reported usage cost. The behavior below describes the
-candidate, not a selected winner.
+**Experiment status:** this branch provisionally integrates the staged v2
+package for complete matched and native execution checks. The earlier Checked
+packages and staged pilots remain in the
+[measured results](tests/spec-delivery/results.md). Selection is pending the
+complete qualification, not inferred from passing HTTP behavior alone.
 
 For a feature too large for one coding session, select Spec Master and describe
 the feature, or ask your current agent:

@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -64,6 +65,17 @@ class GateTests(unittest.TestCase):
         self.assertEqual(report["base"], self.base)
         self.assertTrue(any(e["exit"] != 0 and "AssertionError" in e["stderr"] for e in report["evidence"]))
 
+    def test_record_preserves_complete_evidence_and_returns_check_results(self):
+        status, report = self.invoke("--record")
+        self.assertEqual(status, 0, report)
+        data = Path(report["record"]).read_bytes()
+        self.assertEqual(hashlib.sha256(data).hexdigest(), report["record_sha256"])
+        complete = json.loads(data)
+        self.assertEqual(complete["head"], report["head"])
+        self.assertTrue(any(item["argv"][0] == "git" for item in complete["evidence"]))
+        self.assertTrue(report["evidence"])
+        self.assertTrue(all(item["argv"][0] != "git" for item in report["evidence"]))
+        self.assertTrue(any(item["exit"] != 0 for item in report["evidence"]))
     def test_recorded_base_must_be_an_ancestor(self):
         self.git("switch", "-c", "wrong-base", self.base)
         self.write("unrelated.txt", "separate history")
@@ -143,6 +155,110 @@ class GateTests(unittest.TestCase):
         self.assertNotEqual(status, 0)
         self.assertIn("not main", report["error"])
         self.assertEqual(self.git("rev-parse", "HEAD"), self.base)
+
+    def prepare_apply(self, proposal=None):
+        self.git("switch", "-c", "critical-apply", self.base)
+        self.write("test_value.py", "import unittest\nfrom value import value\nclass Value(unittest.TestCase):\n    def test_existing(self): self.assertIsInstance(value(), int)\n    def test_changed(self): self.assertEqual(value(), 1)\n")
+        self.scratch.mkdir()
+        payload = self.scratch / "proposal.json"
+        payload.write_text(json.dumps(proposal or {"value.py": "def value(): return 1\n"}), encoding="utf-8")
+        return ["apply", "--lane", str(self.root), "--base", self.base,
+                "--path", "value.py", "--path", "test_value.py",
+                "--test-file", "test_value.py", "--scratch", str(self.scratch),
+                "--check", json.dumps([os.sys.executable, "-m", "unittest", "test_value"]),
+                "--proposal", str(payload), "--message", "Commit critical tests"]
+
+    def apply_report(self, arguments):
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            status = gate.main(arguments)
+        return status, json.loads(buffer.getvalue())
+
+    def test_apply_commits_and_proves_red_before_product_write(self):
+        status, report = self.apply_report(self.prepare_apply())
+        self.assertEqual(status, 0, report)
+        self.assertEqual(self.git("show", f"{report['tests_head']}:value.py"), "def value(): return 0")
+        self.assertEqual(self.git("show", "--format=", "--name-only", report["tests_head"]), "test_value.py")
+        self.assertEqual((self.root / "value.py").read_text(), "def value(): return 1\n")
+        commit = next(e for e in report["evidence"] if e["argv"][:2] == ["git", "commit"])
+        red = next(e for e in report["evidence"] if e["exit"] != 0)
+        self.assertLessEqual(commit["finished_at"], red["started_at"])
+        self.assertLessEqual(red["finished_at"], report["applied_at"])
+
+    def test_apply_request_uses_the_same_critical_sequence(self):
+        self.prepare_apply()
+        request = self.scratch / "request.json"
+        request.write_text(json.dumps({
+            "lane": str(self.root), "base": self.base,
+            "paths": ["value.py", "test_value.py"], "tests": ["test_value.py"],
+            "checks": [[os.sys.executable, "-m", "unittest", "test_value"]],
+            "files": {"value.py": "def value(): return 1\n"}, "message": "critical tests",
+        }), encoding="utf-8")
+        status, report = self.apply_report(["apply", "--request", str(request)])
+        self.assertEqual(status, 0, report)
+        self.assertEqual(self.git("show", f"{report['tests_head']}:value.py"), "def value(): return 0")
+        self.assertEqual((self.root / "value.py").read_text(), "def value(): return 1\n")
+
+    def test_apply_request_rejects_bad_schema_without_product_edits(self):
+        self.prepare_apply()
+        request = self.scratch / "request.json"
+        for data in [{}, {"base": 3}, ["not an object"]]:
+            request.write_text(json.dumps(data), encoding="utf-8")
+            status, report = self.apply_report(["apply", "--request", str(request)])
+            self.assertNotEqual(status, 0, report)
+            self.assertEqual((self.root / "value.py").read_text(), "def value(): return 0\n")
+
+    def test_apply_rejects_product_edits_before_test_commit(self):
+        arguments = self.prepare_apply()
+        self.write("value.py", "def value(): return 2\n")
+        before = self.git("rev-parse", "HEAD")
+        status, report = self.apply_report(arguments)
+        self.assertNotEqual(status, 0, report)
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
+        self.assertEqual((self.root / "value.py").read_text(), "def value(): return 2\n")
+
+    def test_apply_does_not_write_after_vacuous_or_setup_failure(self):
+        arguments = self.prepare_apply()
+        for content in [
+            "import unittest\nclass Test(unittest.TestCase):\n    def test_vacuous(self): self.assertTrue(True)\n",
+            "import nonexistent_unrelated_dependency\n",
+        ]:
+            self.write("test_value.py", content)
+            status, report = self.apply_report(arguments)
+            self.assertNotEqual(status, 0, report)
+            self.assertEqual((self.root / "value.py").read_text(), "def value(): return 0\n")
+
+    def test_apply_rejects_out_of_scope_proposal_before_commit(self):
+        arguments = self.prepare_apply({"unapproved.py": "valuable = False\n"})
+        before = self.git("rev-parse", "HEAD")
+        status, report = self.apply_report(arguments)
+        self.assertNotEqual(status, 0, report)
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
+        self.assertFalse((self.root / "unapproved.py").exists())
+
+    def test_apply_refuses_to_change_critical_test_assertions(self):
+        arguments = self.prepare_apply({"test_value.py": "import unittest\n"})
+        status, report = self.apply_report(arguments)
+        self.assertNotEqual(status, 0, report)
+        self.assertIn("product file", report["error"])
+
+    def test_apply_checks_markers_in_new_untracked_tests_before_commit(self):
+        arguments = self.prepare_apply()
+        self.write("new_test.py", "import unittest\n@unittest.skip('later')\nclass Test(unittest.TestCase):\n    def test_omitted(self): self.fail()\n")
+        arguments += ["--path", "new_test.py", "--test-file", "new_test.py"]
+        before = self.git("rev-parse", "HEAD")
+        status, report = self.apply_report(arguments)
+        self.assertNotEqual(status, 0, report)
+        self.assertIn("marker", report["error"])
+        self.assertEqual(self.git("rev-parse", "HEAD"), before)
+
+    def test_apply_rejects_product_mutation_by_the_red_test(self):
+        arguments = self.prepare_apply()
+        self.write("test_value.py", "import unittest\nfrom pathlib import Path\nclass Test(unittest.TestCase):\n    def test_mutation(self):\n        Path('value.py').write_text('unexpected = True\\n')\n        self.fail('not legitimate proof')\n")
+        status, report = self.apply_report(arguments)
+        self.assertNotEqual(status, 0, report)
+        self.assertIn("changed", report["error"])
+        self.assertEqual((self.root / "value.py").read_text(), "unexpected = True\n")
 
 
 class FailureClassificationTests(unittest.TestCase):

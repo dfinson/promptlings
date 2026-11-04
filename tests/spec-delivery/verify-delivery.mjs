@@ -1,5 +1,6 @@
 // Independent acceptance at the actual integration worktree, preserving original observations.
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,17 +33,34 @@ async function git(cwd, ...args) {
   return result.stdout.trim();
 }
 
+export function readGateReport(event, directory) {
+  const report = JSON.parse(event.stdout);
+  if (!report.record) return report;
+  const path = resolve(report.record);
+  const fromDirectory = relative(resolve(directory), path);
+  if (!fromDirectory || isAbsolute(fromDirectory) || fromDirectory === ".." || fromDirectory.startsWith(`..${sep}`)) {
+    throw new Error("Gate record is outside this fixture");
+  }
+  const data = readFileSync(path);
+  if (createHash("sha256").update(data).digest("hex") !== report.record_sha256) {
+    throw new Error("Gate record content hash does not match");
+  }
+  const complete = JSON.parse(data);
+  if (complete.status !== report.status) throw new Error("Gate record and summary statuses disagree");
+  return { ...complete, record: path, record_sha256: report.record_sha256 };
+}
+
 export async function verifyDelivery(directory, result) {
   const repo = resolve(directory, "repo");
   let integration = repo;
   const audit = readFileSync(join(directory, "audit.jsonl"), "utf8").trim().split("\n").filter(Boolean).map(JSON.parse);
   for (const event of audit) {
-    if (!event.argv?.includes("merge") || !event.argv.some((part) => part.endsWith("gate.py")) ||
+    if (!event.argv?.some((part) => ["merge", "apply"].includes(part)) || !event.argv.some((part) => part.endsWith("gate.py")) ||
         !event.stdout?.trim().startsWith("{")) continue;
-    const report = JSON.parse(event.stdout);
-    if (!report.integration_head) continue;
+    const report = readGateReport(event, directory);
+    if (!report.integration_head && !(report.tests_head && report.applied_at && report.status === "verified")) continue;
     const location = report.evidence?.[0]?.cwd;
-    if (!location) throw new Error("Merge evidence lacks its integration worktree");
+    if (!location) throw new Error("Gate evidence lacks its execution worktree");
     const target = resolve(location);
     const fromRepo = relative(repo, target);
     if (fromRepo && (isAbsolute(fromRepo) || fromRepo === ".." || fromRepo.startsWith(`..${sep}`))) {
@@ -66,7 +84,7 @@ export async function verifyDelivery(directory, result) {
     error: "Acceptance differs from its approved Git content. Refusing to execute the changed script.",
   };
   return {
-    integration, selection: integration === repo ? "fixture root" : "recorded merge worktree",
+    integration, selection: integration === repo ? "fixture root" : "recorded gate worktree",
     expectedAcceptanceBlob: expectedBlob, actualAcceptanceBlob: actualBlob, acceptanceUnchanged,
     mainUnchanged: final.main === (result.mainAtStart ?? result.approved), final, acceptance,
   };

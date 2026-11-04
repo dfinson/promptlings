@@ -2,7 +2,7 @@
 
 ## Outcome
 
-There is no winner among the twelve tested packages. In Checked v9's first multi-lane trial,
+The first twelve packages produced no qualifying replacement. In Checked v9's first multi-lane trial,
 the critical storage child wrote product code before its first successful
 test commit. Rebuilding the branch afterward did not establish the required
 original chronology. Its complete matched comparison also used 9.2% more
@@ -33,6 +33,72 @@ out-of-scope, skipped, unrelated-setup and vacuous-test handoffs. It preserves
 a failing merged revision instead of disguising it as a successful inspection.
 Semantic review, approval and completeness of the supplied check list remain
 outside the helper.
+
+## Staged architecture rounds
+
+The user directed continued work after that null result. These are new
+packages and loading modes, not a reinterpretation of the rejected v9.
+They demand-load writing or delivery instructions and move critical chronology
+into an operation that commits tests, proves intended red and only then applies
+product contents supplied as scratch data. The preserved writing repair remains
+unchanged.
+
+The first lazy Baseline/Staged pilot completed plan, single, multi and revision
+once per arm on `claude-sonnet-5.5`. Baseline recorded 95 calls and
+106,166,210,000 nano-AIU. Staged recorded 96 calls and 139,369,670,000 nano-AIU,
+31.3% more. Summed observed trial times were 569.181 and 729.141 seconds.
+This pilot did not qualify:
+
+- The writer failed to load the human template, then still introduced
+  unnecessary choices about source-established behavior.
+- Multi-lane final HTTP acceptance passed, but the master invoked product
+  application and committed a child's product after that child was blocked.
+  Final behavior did not establish the required ownership boundary.
+- A request-validation test hit an incidental base `TypeError`. The merge
+  helper rejected it, and an owner repair later passed.
+
+Single-lane Staged initially recorded independent HTTP exit 1 because the
+observer selected the unchanged root rather than the worktree used by
+successful `apply`. Independent HTTP execution at the recorded worktree
+subsequently exited 0 at `a548c5be88837e472d19b28696ae2a4ac8cc9ff6`.
+Main and approved acceptance remained unchanged. The original observation and
+new `delivery-verification-apply-aware.json` are both retained. That observer
+error is not attributed to the candidate's product behavior.
+
+Staged v2 explicitly locates the template, asks for a source-case partition,
+keeps direct single-lane work in its existing delivery worktree and uses one
+scratch JSON request instead of a long apply command. Its completed matched
+writing pilot recorded 33,458,480,000 nano-AIU for Baseline and
+32,539,710,000 for v2. Both used 14 calls over plan and three-turn revision.
+Those are writing-only measurements, not full lifecycle cost neutrality.
+The final v2 revision still asked whether `None` should keep its existing
+display behavior.
+
+Both original v2 single arms stopped at the same model-support service error.
+A fresh two-arm replay completed successfully on the same observed Sonnet
+model. It retained real HTTP acceptance and mechanically established v2's
+critical chronology, but v2 needed a rejected red check and subsequent
+test-fixture repairs. It used 28 calls and 32,170,520,000 nano-AIU against
+Baseline's 17 calls and 18,427,360,000. Its handoff cited the earlier test
+commit rather than the successful gate's `tests_head`. Baseline itself reported
+that concurrent calls had put implementation in its supposed test-only commit.
+Neither replay is a qualified full delivery result.
+
+Staged v3 uses a narrower writing policy: unrequested existing behavior is a
+constraint, not another requested human choice. Only human-marked critical
+checks need red-first execution. Its `--record` option stores full gate
+evidence with a content hash and returns revision and check output without
+the entire Git transcript. The independent observer and scorer validate and
+read the full record. This changes presentation cost, not gate requirements.
+The next comparison uses the successfully observed native runtime selection
+on all arms. It is a separate model stratum and cannot be pooled with Sonnet
+as identical settings.
+
+Raw staged evidence is under the session's external artifact root in
+`spec-master-staged-pilot`, `spec-master-staged-v2-pilot` and
+`spec-master-staged-v2-single-replay`. These folders have the host's 14-day
+artifact retention. This report, runnable fixtures and candidate sources
+preserve the failed approaches beyond that retention.
 
 Readback is an actual operation, not a writing slogan. V6's first planning
 audit records a write, saved-file read, correction and another saved-file

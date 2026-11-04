@@ -7,10 +7,13 @@ the lane reads the words the human approved at the same commit.
 ```markdown
 You own <meaningful task name> of <slug>. Implement only this task.
 
-Human specification: specs/<slug>.md, approved at <sha>.
-Execution plan, only if authorized: specs/<slug>-lanes.md, approved at the same <sha>.
+Human specification: specs/<slug>.md, approved at <approval-sha>.
+Execution plan, only if authorized: specs/<slug>-lanes.md, approved at the same <approval-sha>.
 Task key: <descriptive-task-key>.
-Branch: <slug>/<task-key>, cut from <integration branch> at <sha>.
+Branch: <slug>/<task-key>, cut from <integration branch> at <lane-base-sha>.
+Recorded lane base: <lane-base-sha>, containing passed prerequisites.
+Runnable gate helper: <actual location accessible from this lane worktree>.
+Authorized scratch: <actual location accessible from this lane worktree>.
 
 ## Why
 <verbatim Why>
@@ -37,15 +40,19 @@ explanation of their behavior and any decision that constrains them>
   master a graph amendment request with the reason. Never edit either planning file.
 - Link tests to their criterion. Changed-behavior checks must fail without
   your implementation for the intended reason. Existing regression checks
-  may pass on base. For critical behavior, commit tests and demonstrate their
-  intended failure before implementation, then preserve their assertions.
+  may pass on base. For human-marked critical behavior, use the master's supplied
+  `gate.py apply` request procedure. Write tests in approved test paths and put
+  proposed product contents in scratch data. The helper must commit tests and
+  prove intended red before applying product contents. Preserve the assertions. If the operation is
+  unavailable, report the blocker. Do not write critical product files directly
+  or have the master apply them for you.
 - Never modify or delete an existing test outside the write set. Never add skip,
   xfail or focus markers.
 - Subagents are allowed for transient work inside this lane.
 - Commit with messages prefixed `<task-key>:`. Open a PR only when the user
   requested one, using the requested target and linking the spec section.
 - Before handing off, commit everything, confirm
-  `git diff --name-only <integration branch>...HEAD` stays inside your write
+  `git diff --name-only <lane-base-sha> HEAD` stays inside your write
   set, and run each of your criterion commands.
 - Hand off with: base and head SHAs, those command outputs, touched files, deviations from the spec, and
   open questions. Your report is not evidence. The master reruns the checks.

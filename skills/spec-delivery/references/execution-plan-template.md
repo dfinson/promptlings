@@ -62,6 +62,10 @@ If no pairs are flagged, state that briefly.
   specification. Method is one backticked command or `human`. Owner is a
   descriptive task key or `integration`. Critical is `yes` or `no`, and every
   `yes` identifies tests committed and shown failing before implementation.
+  Its owner uses the bundled `gate.py apply` operation, not a later
+  reconstruction of test-only history. Record the human approval SHA
+  separately from each lane's starting base and supply runnable helper and
+  authorized scratch locations in its brief.
   A separate test task is needed only for genuinely independent ownership.
   On the single-lane path the owner is `integration`, with no lane handoff.
 - Every task has a meaningful name, its own section, and a unique descriptive
