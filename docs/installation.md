@@ -4,7 +4,7 @@
 
 Run `npx promptlings` as shown in the [README](../README.md#install). Node.js
 22.20 or later is the only prerequisite. The default installation includes all
-eight agents, bundled Promptlings skills, and the supporting toolchain.
+nine agents, bundled Promptlings skills, and the supporting toolchain.
 
 | Command | Effect |
 | --- | --- |
@@ -49,6 +49,7 @@ execution is restricted.
 | Playwright | Global npm application, published skill, Chrome browser, and a CLI browser check |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
 | Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
+| Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the skills CLI, the frontend-design and HyperFrames skills, and the pinned experience toolkit (esbuild, Shiki, Magic Move, Flubber, Rough.js, D3, dagre, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs. Under `npx promptlings publish`, the default selection leaves the agent out, and naming it with `--agents` fails |
 
 Document rendering uses Microsoft Word or LibreOffice. LibreOffice is installed
 only when neither is found. On Windows, its program directory is added to the
@@ -63,7 +64,7 @@ pinned package dependencies.
 
 | Option | Effect |
 | --- | --- |
-| `--all` | Select all eight agents, the default |
+| `--all` | Select all nine agents, the default |
 | `--review` | Select the three ensemble agents: the-nitcracker, PR Walkthrough, and Sparring Partner |
 | `--agents a,b` | Select agents by name |
 | `--no-system-packages` | Use existing Python, Git, gh, FFmpeg, and uv, but still install selected applications and skills |

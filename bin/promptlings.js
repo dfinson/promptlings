@@ -27,6 +27,7 @@ function printPlan(options) {
   if (steps.memory) {
     console.log(`Basic Memory: login startup=${on(options.startup)}, loopback port=${options.memoryPort}, skills=${on(options.skills)}.`);
   }
+  for (const notice of options.notices ?? []) console.log(notice);
   console.log("Writes only to user-level locations (your home directory and global agent configuration). No repository files are changed.");
 }
 

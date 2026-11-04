@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
-import { parseArgs, phases, reviewAgents } from "../lib/options.js";
+import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
+import { verifyExperience } from "../lib/tools.js";
 import { pins, versionOf } from "../lib/pins.js";
 import { deps, installMemory } from "../lib/memory.js";
 import { packageBin, quoteForCmd, which } from "../lib/run.js";
@@ -103,6 +104,36 @@ test("options select agents and phases", () => {
   assert.throws(() => parseArgs(["memory", "--no-memory"], all), /--no-memory does not apply to the memory command/);
   assert.throws(() => parseArgs(["publish", "--no-bmad"], all), /--no-bmad does not apply to the publish command/);
   assert.throws(() => parseArgs(["--agents", "-x"], all), /requires a value/);
+});
+
+test("interactive presentation installs its toolkit and publish skips it", () => {
+  const all = [...discoverAgents().keys()];
+  assert.ok(all.includes(experienceAgent));
+  const install = parseArgs(["--agents", experienceAgent, "--no-playwright"], all);
+  assert.equal(install.experience, true);
+  assert.equal(install.playwright, true);
+  assert.equal(install.notices.length, 1);
+  const publish = parseArgs(["publish"], all);
+  assert.equal(publish.experience, false);
+  assert.ok(!publish.agents.includes(experienceAgent));
+  assert.match(publish.notices[0], /skipped/);
+  assert.throws(() => parseArgs(["publish", "--agents", experienceAgent], all), /requires its dependencies/);
+  assert.throws(() => parseArgs(["publish", "--all"], all), /requires its dependencies/);
+  assert.equal(parseArgs(["--review"], all).experience, false);
+});
+
+test("experience toolkit verification checks installed versions", (t) => {
+  const root = temporary(t);
+  const write = (name, version) => {
+    mkdirSync(join(root, name), { recursive: true });
+    writeFileSync(join(root, name, "package.json"), JSON.stringify({ name, version }));
+  };
+  write("@scope/pkg", "1.2.3");
+  write("plain", "2.0.0");
+  verifyExperience(root, ["@scope/pkg@1.2.3", "plain@2.0.0"]);
+  assert.throws(() => verifyExperience(root, ["missing@1.0.0"]), /package missing: missing/);
+  assert.throws(() => verifyExperience(root, ["plain@2.0.1"]), /expected plain@2\.0\.1, found plain@2\.0\.0/);
+  for (const spec of pins.experiencePackages) assert.ok(spec.lastIndexOf("@") > 0, spec);
 });
 
 test("memory installs, starts, waits, then registers clients", async (t) => {
