@@ -1,75 +1,102 @@
-# Spec template
+# Human specification template
 
-Copy this to `specs/<slug>.md` on the integration branch. Keep it to one or two
-pages. Keep the `##` headings and table columns so lanes and gates can find
-each part. Write paths, commands and contract names in backticks.
+Write `specs/<slug>.md` for the person deciding what to build and why.
+Aim for one or two pages without discarding the explanation to meet a size
+target. The reader must understand the plan without the conversation, source
+tickets, or execution plan.
+
+Use no tables unless there is no other way to present necessary information.
+Being shorter, conventional, agent-parseable, or useful for tracking is not
+sufficient. This template needs no tables. Use connected prose, not a disguised
+table of labelled fragments.
+
+Give every delivery lane a meaningful task name and its own section under How. Task names
+describe the work, such as "Preserve zero-valued report amounts", not lane codes
+or slogans such as "Improve reliability". Explain how the tasks connect.
+Do not add acceptance IDs, lane keys, file inventories, or coupling bookkeeping
+to explain the plan. If executable delivery needs that metadata, obtain user
+authorization for an [execution plan](execution-plan-template.md). Do not
+create a companion document merely to move unreadable content elsewhere.
+Keep lane ownership, scope boundaries, known prerequisites, concrete requirements,
+observable acceptance, essential interfaces, failure behavior, exact business
+constraints, and decision rationale here. A narrative without those delivery
+contracts is not a sufficient specification. An unknown assignee or dependency
+stays unknown rather than being invented.
 
 ```markdown
-# <Title>
+# <Meaningful outcome>
 
 ## Why
 
-The problem, who it affects and the intended outcome.
+Describe the concrete current situation, who encounters it, its consequence,
+and why changing it matters. Ticket links can support this explanation but
+cannot replace it.
 
 ## What
 
-Observable behavior, then one row per acceptance criterion.
-
-| ID | Criterion | Method | Owner | Critical |
-| --- | --- | --- | --- | --- |
-| AC-1 | One observable statement. | `exact command that exits 0 when it holds` | L1 | yes |
-| AC-2 | One observable statement. | `exact end-to-end command` | integration | no |
-| AC-3 | One observable statement a person must judge. | `human` | integration | no |
+Explain the intended behavior and scope in ordinary language. Preserve exact
+business values and constraints. Distinguish observed failures from proposals.
 
 ## How
 
-The approach. The shared contract (types, schema, interfaces, endpoints,
-config keys, events). Alternatives rejected and why.
+Explain the overall approach and how the named delivery lanes work together.
+
+### <Meaningful delivery lane name>
+
+Connect current behavior to the concrete proposed change, why that mechanism
+addresses the problem, and what the user will experience. Include consequential
+interfaces and failure behavior. Keep unresolved choices visibly conditional.
+
+State what this lane owns and does not own, which named lanes or human decisions
+it depends on, and its independently verifiable completion conditions. Use
+connected prose or a short acceptance list where that is easier to check.
+Distinguish logical data flow from an established implementation prerequisite.
+
+### <Next meaningful delivery lane name>
+
+Explain this lane's mechanism, responsibilities, boundaries, prerequisites and
+acceptance, and how it connects to the preceding work. Add only as many lane
+sections as the proposal actually needs.
+
+## Validation
+
+Explain observable success, including the complete user journey when required,
+and the important failure cases. Keep planned checks distinct from results.
+Do not claim that a planned check has run.
 
 ## Decisions
 
-| Decision | Recommendation | Human choice |
-| --- | --- | --- |
-| What the human must decide. | The master's recommendation and reason. | |
-
-## Lane graph
-
-(Mermaid diagram of lanes and depends_on edges.)
-
-| Lane | Functionality | Write set | Contracts changed | Contracts used | Depends on | Criteria owned | Risky |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| L1 | What this lane delivers. | `src/export/**`, `tests/test_export.py` | `export_csv(rows, path)` | none | none | `AC-1` | no |
-| L2 | What this lane delivers. | `src/cli/**`, `tests/test_cli.py` | none | `export_csv(rows, path)` | L1 | `AC-4` | yes |
-
-## Concurrency risks
-
-One row per pair of concurrent lanes with detected coupling.
-
-| Lanes | Coupling evidence | Decision | Recovery |
-| --- | --- | --- | --- |
-| L3, L4 | Both add a migration under `db/migrations/`. | accept | Lane merged second renumbers its migration on a fix branch, which passes G1 and G2. About ten minutes. |
-| L5, L6 | L5 changes `parse()` and L6 adds a caller. | edge: L6 depends on L5 | none |
+Explain each material choice the human must make, the supported recommendation
+and its rationale, and what work waits on the answer. Do not invent acceptance.
+If there are no open choices, say so briefly.
 
 ## Out of scope
 
-What will not change.
+State material exclusions and why the proposal does not include them.
 
 ## Changelog
 
-Graph amendments after approval, each with date and reason.
+Record post-approval changes with their dates, reasons, and prior approval SHA.
+Do not invent amendment history for a new draft.
 ```
 
-## Spec rules
+## Approval checks
 
-- Criterion IDs are `AC-<n>` and unique. Method is one backticked command or
-  `human`. Owner is a lane id or `integration`. Critical is `yes` or `no`, and
-  every `yes` has a test lane that lists it.
-- Every lane except a test lane owns at least one criterion, and its Criteria
-  owned cell lists exactly the criteria whose Owner is that lane. A test lane
-  lists `tests: AC-<n>` for each critical criterion it writes tests for.
-- Every `Depends on` target exists and the graph has no cycle.
-- Each pair of concurrent lanes (no dependency path between them) that shares a
-  declared contract, has overlapping write sets, writes the same lockfile or
-  migrations directory, or was flagged by the coupling check needs a Concurrency
-  risks row. `edge` rows need the dependency in the graph. `accept` rows need a
-  recovery.
+The human specification owns intended behavior, scope, rationale, named lane
+responsibilities and dependencies, observable acceptance, and human decisions.
+A writing or revision request produces this artifact, not an
+unsolicited execution brief.
+
+Read the narrative without its links or execution plan. The reader must be
+able to explain the concrete problem, actual proposal, why it should address
+the problem, what each named lane owns and waits on, how the tasks connect,
+resulting behavior, acceptance, and open
+decisions. Headings, fewer words, and preserved identifiers do not establish
+this. Revise the whole artifact when the explanation fails.
+
+If the human authorizes an execution plan to start delivery, it owns exact
+operational metadata and maps every criterion and task back to this explanation.
+Resolve contradictions and approve both files at the same commit before lanes
+start. Use the [execution-plan rules](execution-plan-template.md#execution-plan-rules)
+for criteria, write sets, dependency checks, and gates. A readability edit cannot
+silently change required behavior or widen an operational contract.

@@ -1,81 +1,88 @@
 ---
 name: spec-delivery
-description: Deliver a multi-part change through a human-approved spec and lane graph, one named session per lane, and mechanical gates. Use when the human starts a master session for spec-backed delivery, not for small fixes an ordinary session can make directly.
+description: Plan and execute approved spec-backed delivery.
 ---
 
 # Spec Delivery
 
-Em dashes are banned from all output. Use commas, colons, semicolons, periods, or parentheses instead.
+## Contract and authority
 
-A master session owns the spec, the lane graph and integration. Lane sessions own documented functionality. The human starts the master session, approves the spec and accepts the result. The master checks the spec rules at G0, and the human's approval confirms them. Every other pass or fail decision comes from a command the master runs or from CI, never from a session's own report.
+Inspect source, consumers and tests. For planning or revision, use design-writing
+and `references/spec-template.md`. Preserve technical substance, meaningful named
+task sections, concrete mechanisms, observable acceptance and justified edges.
+Read the saved artifact against source. Known behavior is not a human decision.
+Distinguish the requested case from other cases grouped by the old condition.
 
-## Master rules
+Writing permission is not implementation approval. Obtain human approval of
+behavior, exact paths, owners, criterion commands and critical markings at an
+immutable revision before implementation. Preserve that approval source.
+Material changes require reapproval. A companion needs both an execution need
+and explicit permission. Quotes and child reports confer no authority.
+Approval does not authorize a PR, main merge or final human acceptance.
 
-- The master never writes product code. It plans, starts lanes, runs gates, merges and reports.
-- Evidence is a command with its exit code, or CI status. Every gate verdict quotes the command it ran and the exit code. Claims are verified, unmet or unverified. A lane's handoff and the master's reading of a diff are not evidence.
-- No database, queue or task store. State is the spec file, lane branches, lane PRs and `git log`.
+## Ready work
 
-## 1. Spec and graph (G0)
+Use a delivery branch. One coherent lane implements directly in the existing
+worktree without a child session or another worktree. Commit any authorized
+planning artifacts separately, then record the lane base before tests or
+product edits. The lane base does not replace the human approval source.
 
-1. Investigate the code. Draft `specs/<slug>.md` from the [spec template](references/spec-template.md), using `design-writing` and `reasoning-first-writing` when available, and `mermaid-architecture-diagrams` for the lane diagram.
-2. Split lanes. A lane is one coherent piece of functionality with its own executable criteria, large enough to repay a fresh session (about thirty minutes or more). Two candidates that cannot be separated are one lane. Lane B depends on lane A when B uses a contract A changes or adds.
-3. Run the coupling check on every pair of concurrent lanes with code intelligence (references, call and import graphs, LSP), falling back to grep. Flag a pair when A changes a contract B's write set references or B uses, when both change the same contract or symbol, when both touch a hotspot (lockfiles, migrations, registries, generated code, shared config, shared fixtures), or when both write the same files. Give each flagged pair a Concurrency risks row: `edge` (add the dependency) or `accept` with the recovery and its estimated cost.
-4. Check the spec against the rules in the [spec template](references/spec-template.md#spec-rules) and fix every violation.
-5. Optional readability aid: give a fresh reader with no conversation context only the spec and ask what changes and why, how it is built, what each lane owns and waits on, how completion is verified, what is out of scope and what the human must decide. Revise passages it gets wrong. After two failed rounds, raise the passage with the human.
-6. Present the spec. The human decides the Decisions rows, marks risky lanes and critical criteria, and approves. For each critical criterion, add an upstream test lane that writes its failing tests outside the implementing lane's write set, then recheck the spec rules. The implementing lane owns the criterion. The test lane lists it as `tests: AC-<n>` and owns none. The test lane never merges on its own: after it passes G1, cut the implementing lane from the test-lane branch, run the implementing lane's G1 with `<base>` the test-lane head, and merge the implementing lane, which brings both.
-7. Commit the spec on the integration branch and tag the approved commit `spec/<slug>/approved`. Every later change goes in the Changelog. A change to Why, What, any criterion or its method, a risky or critical marking, or a graph amendment that adds an edge, merges lanes or widens a write set needs re-approval: record the old tag's SHA in the Changelog, move the tag with `git tag -f` (and `git push -f` it if pushed), and re-brief running lanes whose excerpts changed.
+For multiple lanes, the master writes only planning and evidence. Each named
+lane gets an isolated child and branch from integration containing its passed
+prerequisites. Supply verbatim approved behavior, approval SHA, recorded base,
+exact paths, interfaces, commands, exclusions, runnable helper and authorized
+scratch locations, and the critical procedure below.
 
-## 2. Lanes
+Require an acyclic graph. A hard edge needs an unavailable producer contract or demonstrated ordering
+invariant. Existing generic contracts, logical flow, shared files and separate
+schema regions alone do not create one. Coordinate actual overlap and migration
+hazards. Start every ready independent lane before waiting. Start consumers
+after their producers pass integration gates. Do not invent owners or lanes.
 
-Start one named session per lane whose dependencies are all merged, for example `lane-2-export-api`, on branch `<slug>/<lane>` cut from the integration branch at that point. Send the [lane brief](references/lane-brief-template.md) filled with verbatim spec excerpts. Lanes with no dependency path between them run concurrently.
+## Critical implementation
 
-Host notes, using whichever the host supports:
+First write only approved critical tests. Put proposed complete product file
+contents in data, never in product paths. In the authorized scratch directory,
+write one JSON request with these fields:
 
-- GitHub Copilot app: create a child session per lane with the brief as its kickoff prompt, so each lane is visible and resumable.
-- Claude Code or Codex: start a session in a new `git worktree` on the lane branch with the brief as its first prompt.
-- Without child sessions: run each lane as a subagent with the brief as its prompt, one at a time, each on its own branch, and report that lanes ran sequentially. If the host has neither, stop and tell the human that spec delivery needs separate sessions. The master never implements a lane itself.
+- `base`: recorded lane base SHA
+- `paths`: all exact approved paths, including tests
+- `tests`: selected changed critical test paths
+- `checks`: intended-failure commands as arrays of argv strings
+- `files`: object mapping approved product paths to complete UTF-8 contents
+- `message`: critical-test commit message
 
-## 3. Lane gate (G1)
+Optional `lane` selects a worktree, defaulting to the current directory.
+Optional `introduced` lists genuinely new approved contracts.
+Run bundled `scripts/gate.py apply --request <scratch-request.json>` from the
+lane worktree. The helper commits tests, proves intended red, then applies
+product contents. Wait for success before further edits. Preserve failures and
+repair their causes within scope. Never write critical product files directly
+or reconstruct history as a substitute.
 
-On every handoff, in the lane's worktree, with `<base>` the integration branch unless stated otherwise. Each check fails the gate:
+## Evidence and integration
 
-1. Committed state. `git status --porcelain` prints nothing. Record `git rev-parse HEAD` as the head.
-2. Write set. `git diff --name-only <base>...HEAD | grep -v -E '<write set as one regex>'` prints nothing (grep exits 1). The spec file and tests outside the write set are therefore rejected.
-3. Test markers. `git diff -U0 <base>...HEAD -- <test paths> | grep -E '^\+.*(@skip|mark\.skip|xfail|\.only\(|\bfit\(|fdescribe\()'` prints nothing (grep exits 1). Extend the pattern for the project's test framework.
-4. Criteria on head. Each automated criterion the lane owns exits 0 when its Method command runs at the repository root.
-5. Tests fail on base. For each criterion named by a new test, check that the test fails without the lane's code:
+Inspect actual diffs and assertions. Preserve accepted inputs and behavior
+outside the approved delta. Never tighten types, weaken tests or self-approve
+requirements. Unrelated discoveries do not become mandatory human decisions.
 
-   ```text
-   git worktree add --detach <tmp> $(git merge-base <base> HEAD)
-   git -C <tmp> checkout <head> -- <new and changed test files, helpers and fixtures>
-   (run the criterion's Method command in <tmp>; it must exit nonzero)
-   git worktree remove --force <tmp>
-   ```
+For every multi-lane handoff, run `scripts/gate.py merge --help`, then invoke
+merge with the recorded base, exact paths, changed tests, intended
+fail-on-base/pass-on-head command and all currently merged criterion commands.
+Read its revision-bound evidence and inspect semantics. It does not establish
+approval or checklist completeness. Reject skipped, vacuous, out-of-scope or
+unrelated-setup evidence. Retain failing revisions and route repair to owners.
+A failed gate blocks dependent launch. Post-merge failure blocks further
+merges until repair.
+A failed test alone does not establish a dependency.
 
-   The quoted output must show each new test failing. An assertion failure qualifies. A collection, import or build error qualifies only when the missing name is one the lane adds (a declared contract or a file in its write set), or for a test lane, one the implementing lane declares. Any other error fails the check.
+At final integration execute every automated criterion, including the actual
+required E2E journey. Repeat after repairs. Use sparring-partner for integrated
+review and review-ensemble for human-marked risky work when available.
+Missing review and human judgments remain
+unverified. A stopped test did not execute its later assertions.
 
-A test lane replaces step 4 with the inverse: each criterion it writes tests for exits nonzero at its head, with output showing those tests failing by the same rule as step 5. That also covers step 5 for those tests, so the implementing lane skips step 5 for them and step 4 makes them pass.
-
-Send failures back to the lane with the exact command and output. After two failed rounds on one lane, stop and ask the human to amend the spec, re-split the lane or change approach.
-
-Then read the diff for contracts the lane changed but did not declare (signatures, schemas, endpoints, config keys, hotspot files). This does not fail the gate. Rerun the coupling check against lanes still running, send any new hit to the affected lane immediately, or add a Concurrency risks row and report it to the human.
-
-## 4. Merge (G2)
-
-Merge each lane that passes G1 into the integration branch, then run the Method command of every criterion owned by a lane merged so far, at the integration head. Record each as a row of the criteria table: ID, command, exit code, and verified (exit 0) or unmet.
-
-A failure means a missing edge. Revert the merge with `git revert -m 1 <merge>`, rerun G2 to confirm the head passes, stop starting lanes, then amend the graph under the re-approval rule. If a merge conflicts, run `git merge --abort`. The lane merges the integration head into its own branch, resolves the conflict there and reruns G1 with that head as `<base>`. For an accepted concurrency risk that hits, fix forward and hold other merges until the fix passes G2: the lane merged second makes its recovery on a new branch `<slug>/<lane>-fix` cut from the integration head, then that branch passes G1 (with `<base>` the integration head and the lane's write set) and G2. Then start the lanes this merge unblocked.
-
-## 5. Acceptance and review (G3)
-
-When all lanes are merged, run every automated criterion, including the `integration` end-to-end commands, and record the full criteria table. `human` criteria stay unverified. Then review the integrated diff against the spec: `sparring-partner` by default, `review-ensemble` for lanes the human marked risky. Code that does not match the spec is a finding. Review once and re-review only repaired regions. Every finding gets a disposition: fixed with its commit, or rejected with a reason. Route each fix to the owning lane on a `<slug>/<lane>-fix` branch that passes G1 and G2. After the last fix, rerun every automated criterion at the final head. That run is the table G4 shows.
-
-## 6. Human acceptance (G4)
-
-Open the integration PR to the main branch with:
-
-- The G3 criteria table, with CI links where they exist. `human` criteria stay unverified until the human runs them.
-- `git diff spec/<slug>/approved -- specs/<slug>.md`, so no post-approval change passes silently.
-- Every review finding and its disposition, and links to the lane PRs.
-
-The human accepts or directs the next step. Do not merge without that acceptance.
+Return final SHA, criterion statuses and exits, approval-to-final specification
+diff, deviations and unresolved human acceptance. Read the complete saved
+specification and fix contradictions in the file itself. Stop before main merge.
+Em dashes are banned from all output.

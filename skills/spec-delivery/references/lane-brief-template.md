@@ -1,26 +1,33 @@
 # Lane brief template
 
 The master sends this as the lane session's kickoff. Every quoted section is a
-verbatim excerpt of the approved spec, so the lane reads the words the human
-approved.
+verbatim excerpt of the approved human specification or execution plan, so
+the lane reads the words the human approved at the same commit.
 
 ```markdown
-You are lane <id> of <slug>. Implement only this lane.
+You own <meaningful task name> of <slug>. Implement only this task.
 
-Spec: specs/<slug>.md, approved at <sha>.
-Branch: <slug>/<id>, cut from <integration branch> at <sha>.
+Human specification: specs/<slug>.md, approved at <approval-sha>.
+Execution plan, only if authorized: specs/<slug>-lanes.md, approved at the same <approval-sha>.
+Task key: <descriptive-task-key>.
+Branch: <slug>/<task-key>, cut from <integration branch> at <lane-base-sha>.
+Recorded lane base: <lane-base-sha>, containing passed prerequisites.
+Runnable gate helper: <actual location accessible from this lane worktree>.
+Authorized scratch: <actual location accessible from this lane worktree>.
 
 ## Why
 <verbatim Why>
 
 ## Your functionality
-<verbatim lane row: functionality, contracts changed, contracts used>
+<verbatim named task section from the human specification>
+<verbatim approved functionality, contracts changed, contracts used>
 
 ## Your acceptance criteria
-<verbatim rows of the criteria this lane owns>
+<verbatim approved criteria and exact commands this task owns>
 
 ## Contract
-<verbatim How excerpt covering the contracts this lane changes or uses>
+<verbatim approved contracts this task changes or uses, plus the human
+explanation of their behavior and any decision that constrains them>
 
 ## Write set
 <verbatim write set>
@@ -30,18 +37,24 @@ Branch: <slug>/<id>, cut from <integration branch> at <sha>.
 
 ## Rules
 - Write only inside the write set. If you need to cross it, stop and send the
-  master a graph amendment request with the reason. Never edit the spec.
-- Name every new test after the criterion it verifies, for example
-  `test_ac_1_exports_header_row`. It must fail without your implementation.
+  master a graph amendment request with the reason. Never edit either planning file.
+- Link tests to their criterion. Changed-behavior checks must fail without
+  your implementation for the intended reason. Existing regression checks
+  may pass on base. For human-marked critical behavior, use the master's supplied
+  `gate.py apply` request procedure. Write tests in approved test paths and put
+  proposed product contents in scratch data. The helper must commit tests and
+  prove intended red before applying product contents. Preserve the assertions. If the operation is
+  unavailable, report the blocker. Do not write critical product files directly
+  or have the master apply them for you.
 - Never modify or delete an existing test outside the write set. Never add skip,
   xfail or focus markers.
 - Subagents are allowed for transient work inside this lane.
-- Commit with messages prefixed `<id>:`. Open a PR into the integration branch
-  linking the spec section.
+- Commit with messages prefixed `<task-key>:`. Open a PR only when the user
+  requested one, using the requested target and linking the spec section.
 - Before handing off, commit everything, confirm
-  `git diff --name-only <integration branch>...HEAD` stays inside your write
+  `git diff --name-only <lane-base-sha> HEAD` stays inside your write
   set, and run each of your criterion commands.
-- Hand off with: those command outputs, touched files, deviations from the spec, and
+- Hand off with: base and head SHAs, those command outputs, touched files, deviations from the spec, and
   open questions. Your report is not evidence. The master reruns the checks.
 
 Em dashes are banned from all output. Use commas, colons, semicolons, periods,
