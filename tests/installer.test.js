@@ -91,10 +91,9 @@ test("options select agents and phases", () => {
   assert.throws(() => parseArgs(["--review", "--all"], all), /only one/);
   assert.throws(() => parseArgs(["--agents", "nope"], all), /Unknown agent/);
   assert.throws(() => parseArgs(["--memory-port", "70000"], all), /port/);
-  assert.throws(() => parseArgs(["--project", "x"], all), /--project: Repository installs were removed/);
+  assert.throws(() => parseArgs(["--no-dependencies"], all), /--no-dependencies was removed/);
   assert.throws(() => parseArgs(["memory", "--no-memory"], all), /--no-memory does not apply to the memory command/);
   assert.throws(() => parseArgs(["publish", "--no-demo"], all), /--no-demo does not apply to the publish command/);
-  assert.throws(() => parseArgs(["--no-bmad"], all), /--no-bmad: BMAD was removed/);
   assert.throws(() => parseArgs(["--agents", "-x"], all), /requires a value/);
 });
 
