@@ -42,9 +42,9 @@ execution is restricted.
 
 | Component | What the installer provides |
 | --- | --- |
-| Python, uv, Git, and GitHub CLI | Native packages and command checks, requiring Python 3.11+ |
+| Python, uv, Git, and GitHub CLI | Native packages, requiring Python 3.11+ |
 | Basic Memory | uv tool, published memory skills, MCP registration, and user-login startup |
-| Playwright | Global npm application, published skill, Chrome browser, and a CLI browser check |
+| Playwright | Global npm application, published skill, and Chrome browser |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
 | Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
 | Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the frontend-design and HyperFrames skills, and the pinned experience toolkit (esbuild, Shiki, Magic Move, Flubber, Rough.js, D3, dagre, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs. Under `npx promptlings publish`, the default selection leaves the agent out, and naming it with `--agents` fails |
@@ -69,7 +69,7 @@ pinned package dependencies.
 | `--no-memory` | Skip Basic Memory, its skills, MCP, startup, and read-side instruction |
 | `--no-startup` | Register client-launched stdio MCP instead of login startup |
 | `--memory-port 8123` | Use a different Basic Memory port |
-| `--no-playwright` | Skip Playwright CLI, its browser check, and skill. Linux Chrome is still required by HyperFrames |
+| `--no-playwright` | Skip Playwright CLI, its browser, and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` | Skip HyperFrames, media binaries, and skills |
 | `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, LibreOffice, Poppler, and diff2html |
 | `--no-skills` | Skip external published skills, not bundled Promptlings skills |

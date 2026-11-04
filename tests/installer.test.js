@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
-import { dpkgInstalled, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
+import { dpkgInstalled, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
 import { deps, installMemory } from "../lib/memory.js";
 import { packageBin, quoteForCmd, which } from "../lib/run.js";
@@ -172,6 +172,14 @@ test("skill locks merge and keep the first install time", () => {
   assert.equal(merged.skills.b.installedAt, "t2");
   assert.deepEqual(merged.dismissed, { x: true });
   assert.deepEqual(mergeSkillLocks(null, [{ version: 3, skills: { c: { installedAt: "t" } } }]).skills, { c: { installedAt: "t" } });
+});
+
+test("registry string values are parsed and expanded", () => {
+  const output = "\r\nHKEY_CURRENT_USER\\Environment\r\n    Path    REG_EXPAND_SZ    %HOME%\\bin;C:\\tools\r\n\r\n";
+  assert.equal(regString(output, { HOME: "C:\\Users\\me" }), "C:\\Users\\me\\bin;C:\\tools");
+  assert.equal(regString("\nHKEY_LOCAL_MACHINE\\x\n    (Default)    REG_SZ    C:\\Word\\WINWORD.EXE\n"), "C:\\Word\\WINWORD.EXE");
+  assert.equal(regString("\nHKEY_LOCAL_MACHINE\\x\n    (Default)    REG_SZ    \n"), null);
+  assert.equal(regString(""), null);
 });
 
 test("pinned skill sources already in the lock are skipped", () => {
