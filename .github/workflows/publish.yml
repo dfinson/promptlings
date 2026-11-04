@@ -41,13 +41,9 @@ jobs:
       - name: Check tag matches package version
         run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
       - run: npm ci --no-fund --no-audit
-      # Trusted publishing (OIDC) is used once configured on npmjs.com. Until then, the first
-      # publish of a new package authenticates with the NPM_TOKEN repository secret.
+      # Authenticates through the npm trusted publisher for this workflow (OIDC). No token is stored.
       # Prerelease versions publish under their identifier (alpha, beta) so latest stays stable.
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          echo "Publishing as: $(npm whoami 2>&1)"
           tag=$(node -p 'const v = require("./package.json").version; v.includes("-") ? v.split("-")[1].split(".")[0] : "latest"')
-          npm publish --access public --provenance --tag "$tag" --loglevel verbose
+          npm publish --access public --provenance --tag "$tag"
