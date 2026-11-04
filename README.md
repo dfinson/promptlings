@@ -15,9 +15,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 
 ## Walkthrough
 
-[![Watch Promptlings: Put Your Attention Where It Matters on YouTube](docs/walkthrough-cover.png)](https://youtu.be/pLdbgtyCRUY)
-
-[Watch the walkthrough on YouTube (14:44).](https://youtu.be/pLdbgtyCRUY)
+https://github.com/user-attachments/assets/2df720bb-465f-48d3-bb33-d0b6987f715b
 
 ## Choose an agent
 
