@@ -42,8 +42,7 @@ jobs:
         run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
       - run: npm ci --no-fund --no-audit
       # Authenticates through the npm trusted publisher for this workflow (OIDC). No token is stored.
-      # Prerelease versions publish under their identifier (alpha, beta) so latest stays stable.
+      # Only prereleases exist so far, so each release is published as latest and plain `npx promptlings` resolves it.
+      # Trusted publishing cannot run `npm dist-tag`, so the tag is set here.
       - name: Publish
-        run: |
-          tag=$(node -p 'const v = require("./package.json").version; v.includes("-") ? v.split("-")[1].split(".")[0] : "latest"')
-          npm publish --access public --provenance --tag "$tag"
+        run: npm publish --access public --provenance --tag latest

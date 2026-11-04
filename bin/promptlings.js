@@ -59,7 +59,7 @@ async function main() {
   const runAddMcp = (args) => runPackage("add-mcp", args);
   const temporary = mkdtempSync(join(tmpdir(), "promptlings-"));
   try {
-    if (steps.tools) (await import("../lib/tools.js")).installTools(options, temporary, runSkills);
+    if (steps.tools) await (await import("../lib/tools.js")).installTools(options, temporary);
     if (steps.publish) publish(options, temporary);
     if (steps.memory) await (await import("../lib/memory.js")).installMemory(options, { runSkills, runAddMcp });
   } finally {
