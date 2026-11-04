@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -72,8 +72,6 @@ test("agents and skills are discovered from the package", () => {
   assert.ok(withMemory.includes("promptlings-memory-capture/SKILL.md"));
   assert.ok(!withoutMemory.some((path) => path.startsWith("promptlings-memory-capture/")));
   assert.ok(withoutMemory.includes("spec-delivery/references/spec-template.md"));
-  assert.ok(withoutMemory.includes("spec-delivery/references/execution-plan-template.md"));
-  assert.ok(withoutMemory.includes("spec-delivery/scripts/gate.py"));
   assert.ok(!withMemory.some((path) => /__pycache__|\.pyc$/.test(path)));
 });
 
@@ -204,8 +202,5 @@ test("rulesync publishes staged agents and skills into an isolated home", (t) =>
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.ok(existsSync(join(home, ".claude", "agents", "sparring-partner.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "review-ensemble", "SKILL.md")));
-  const gate = join("spec-delivery", "scripts", "gate.py");
-  assert.equal(readFileSync(join(home, ".claude", "skills", gate), "utf8"),
-    readFileSync(join(packageRoot, "skills", gate), "utf8"));
   assert.ok(!existsSync(join(home, ".claude", "skills", "promptlings-memory-capture")));
 });

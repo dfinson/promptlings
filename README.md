@@ -23,7 +23,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces a technical explainer or hands-on demo, from story and script approval through recording, narration, and review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
-| [Spec Master](agents/orchestration/spec-master.agent.md) | Coordinates approved spec-backed delivery. Implements a coherent single lane directly, or delegates independent lanes and uses revision-bound merge gates. |
+| [Spec Master](agents/orchestration/spec-master.agent.md) | Runs spec-backed delivery for a feature too large for one session: a spec and lane graph you approve, one session per lane, and mechanical gates on every handoff. Never writes product code. |
 
 [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a
 maintainer and CI helper for inspecting agent and skill definitions.
@@ -70,15 +70,6 @@ agent to use one without switching personas.
 
 ### Spec delivery
 
-**Draft status:** this branch proposes staged v2 after a complete 28-trial
-matched comparison and native installed-agent execution. It used 3.1% more
-token-weighted usage and 1.3% more observed elapsed time than Baseline.
-Both multi-lane trials preserved the three approved owner sessions and ready
-concurrency. A whole-spec revision still added unrequested malformed-input
-requirements, so the draft does not claim complete contract qualification.
-The [measured results](tests/spec-delivery/results.md) retain that defect,
-the accepted cost tradeoff and the rejected approaches.
-
 For a feature too large for one coding session, select Spec Master and describe
 the feature, or ask your current agent:
 
@@ -86,40 +77,12 @@ the feature, or ask your current agent:
 Use spec-delivery to build this feature.
 ```
 
-The [spec-delivery](skills/spec-delivery/SKILL.md) skill writes a human-readable
-specification explaining the problem, concrete proposal and rationale, with a
-meaningfully named section for each lane, its responsibility, dependencies and
-observable acceptance. It uses no tables unless there is no
-other way to present necessary information. Writing-only requests produce that
-specification alone. When delivery needs a separate execution plan holding
-exact criteria, commands, file scope and dependencies, it asks permission
-before creating one. You approve the specification and any authorized
-execution plan at the same commit before tasks start.
-One coherent lane runs directly on a delivery branch. Multiple lanes use named,
-isolated child sessions, with independent ready work started together. A hard
-dependency needs an unavailable producer contract or a genuine ordering
-invariant. Shared files and existing generic interfaces alone do not create one.
-
-For human-marked critical behavior, the owner writes tests and a scratch JSON
-request containing proposed product contents. The bundled helper's `apply`
-operation commits the tests, requires an intended failure, then writes those
-contents. A rejected check leaves its evidence and revision available for repair.
-It does not authorize an earlier direct edit or reconstructed test history.
-
-Multi-lane handoffs use the bundled Python 3.9+ and Git
-[gate helper](skills/spec-delivery/scripts/gate.py) to bind exact scope,
-pass-on-head, intended fail-on-base, merge and immediate merged-criteria runs.
-Optional `--record` saves complete evidence under authorized scratch and returns
-check output, revisions, the record path and its SHA-256 without every Git
-transcript. Preserve the full record, not just its compact response.
-The master still reviews semantics and criterion coverage. Final acceptance
-executes the actual specified E2E flow, retains unavailable review and human
-judgments as unverified, and stops before main merge. Approval does not
-authorize a PR automatically.
-
-The [benchmark protocol](tests/spec-delivery/protocol.md) and
-[measured results](tests/spec-delivery/results.md) preserve the matched writing,
-dependency, gate, authorization and real execution cases behind this design.
+The [spec-delivery](skills/spec-delivery/SKILL.md) skill writes a spec with
+testable acceptance criteria and a lane graph for your approval. It then runs
+each lane as its own session and checks every handoff with git and test
+commands: a write-set check, a fail-on-base test check, merged acceptance runs,
+and a final review before you accept. Coupling risks between concurrent lanes
+are recorded and accepted explicitly rather than hidden.
 
 ### Review ensemble
 
