@@ -2,8 +2,6 @@
 set -euo pipefail
 
 # Pinned upstream tools. Keep these values identical in install.ps1.
-BMAD_PACKAGE=bmad-method@6.12.4
-SPECKIT_PACKAGE=git+https://github.com/github/spec-kit.git@v1.2.5
 MEMORY_PACKAGE=basic-memory==0.24.1
 SKILLS_PACKAGE=skills@1.7.4
 RULESYNC_PACKAGE=rulesync@42.0.0
@@ -24,7 +22,7 @@ EXPERIENCE_PACKAGES="esbuild@0.28.2 shiki@4.5.0 @shikijs/magic-move@4.5.0 flubbe
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source_url="${PROMPTLINGS_SOURCE:-https://raw.githubusercontent.com/dfinson/promptlings/main}"
-all_agents="the-nitcracker,pr-walkthrough,sparring-partner,memory-manager,artifact-inspector,technical-demo,interactive-presentation,bmad-orchestrator,speckit-flow"
+all_agents="the-nitcracker,pr-walkthrough,sparring-partner,memory-manager,artifact-inspector,technical-demo,interactive-presentation,spec-master"
 agent_path() {
   case "$1" in
     the-nitcracker|pr-walkthrough) echo "agents/code-review/$1.agent.md" ;;
@@ -32,7 +30,7 @@ agent_path() {
     memory-manager) echo "agents/context/$1.agent.md" ;;
     artifact-inspector) echo "agents/maintenance/$1.agent.md" ;;
     technical-demo|interactive-presentation) echo "agents/media/$1.agent.md" ;;
-    bmad-orchestrator|speckit-flow) echo "agents/orchestration/$1.agent.md" ;;
+    spec-master) echo "agents/orchestration/$1.agent.md" ;;
   esac
 }
 skill_files=(
@@ -53,13 +51,12 @@ skill_files=(
   skills/interactive-experience/references/runtime.md
   skills/interactive-experience/references/sources.md
   skills/interactive-experience/references/visual-directions.md
+  skills/spec-delivery/SKILL.md
+  skills/spec-delivery/references/lane-brief-template.md
+  skills/spec-delivery/references/spec-template.md
   skills/narrative-transitions/SKILL.md
   skills/pr-video/SKILL.md
   skills/presenter-script/SKILL.md
-  skills/promptlings-repo-init/SKILL.md
-  skills/promptlings-repo-init/scripts/init.ps1
-  skills/promptlings-repo-init/scripts/init.sh
-  skills/promptlings-repo-init/workflows/promptlings-delivery.yml
   skills/reasoning-first-narration/SKILL.md
   skills/reasoning-first-writing/SKILL.md
   skills/reasoning-first-writing/references/sources.md
@@ -70,8 +67,8 @@ skill_files=(
 )
 agents="$all_agents"
 yes=0 dry_run=0 dependencies=1 system_packages=1 skills=1 readside=1
-memory=1 startup=1 bmad=1 speckit=1 playwright=1 hyperframes=1 demo=1
-explicit_agents=0 project="" project_only=0 shared_frameworks=0 integration=copilot memory_port=8000
+memory=1 startup=1 playwright=1 hyperframes=1 demo=1
+explicit_agents=0 memory_port=8000
 selection=0
 fail() { echo "Installation incomplete: $*" >&2; exit 1; }
 value() { [ "$#" -ge 2 ] && [ -n "$2" ] && [[ "$2" != --* ]] || fail "$1 requires a value."; }
@@ -88,24 +85,16 @@ while [ "$#" -gt 0 ]; do
     --no-readside) readside=0 ;;
     --no-memory) memory=0 ;;
     --no-startup) startup=0 ;;
-    --no-bmad) bmad=0 ;;
-    --no-speckit) speckit=0 ;;
     --no-playwright) playwright=0 ;;
     --no-hyperframes) hyperframes=0 ;;
     --no-demo) demo=0 ;;
-    --project) value "$@"; project="$2"; shift ;;
-    --project-only) project_only=1 ;;
-    --shared-frameworks) shared_frameworks=1 ;;
-    --integration) value "$@"; integration="$2"; shift ;;
     --memory-port) value "$@"; memory_port="$2"; shift ;;
     --list) printf '%s\n' "$all_agents" | tr ',' '\n'; exit 0 ;;
     --help|-h)
       echo "Install all agents and tools: bash install.sh --yes"
-      echo "Initialize a repository: bash install.sh --project PATH --project-only --yes"
-      echo "Frameworks and generated documents are locally ignored. Opt into tracking with --shared-frameworks."
-      echo "Options: --all, --review, --agents NAME,NAME, --dry-run, --integration copilot|claude,"
+      echo "Options: --all, --review, --agents NAME,NAME, --dry-run,"
       echo "--no-dependencies, --no-system-packages, --no-skills, --no-readside,"
-      echo "--no-memory, --no-startup, --memory-port PORT, --no-bmad, --no-speckit,"
+      echo "--no-memory, --no-startup, --memory-port PORT,"
       echo "--no-playwright, --no-hyperframes, --no-demo"
       exit 0 ;;
     *) fail "Unknown option: $1. Use --help." ;;
@@ -121,31 +110,23 @@ done
 [[ "$memory_port" =~ ^[0-9]{1,5}$ ]] || fail "Invalid memory port."
 memory_port=$((10#$memory_port))
 [ "$memory_port" -ge 1 ] && [ "$memory_port" -le 65535 ] || fail "Invalid memory port."
-[[ "$integration" == copilot || "$integration" == claude ]] || fail "Integration must be copilot or claude."
-[ "$project_only" -eq 0 ] || [ -n "$project" ] || fail "--project-only requires --project."
-[ "$shared_frameworks" -eq 0 ] || [ -n "$project" ] || fail "--shared-frameworks requires --project."
-[ -z "$project" ] || [ "$dependencies" -eq 1 ] || fail "--project cannot be combined with --no-dependencies."
 # The interactive-presentation agent's flow depends on these tools, so selecting it overrides their opt-outs.
 if [ "$dependencies" -eq 0 ] && [ "$explicit_agents" -eq 0 ] && [[ ",$agents," == *,interactive-presentation,* ]]; then
   agents="$(printf '%s' ",$agents," | sed 's/,interactive-presentation,/,/; s/^,//; s/,$//')"
   echo "interactive-presentation skipped: it requires dependencies and --no-dependencies is set."
 fi
 experience=0
-[ "$project_only" -eq 1 ] || [[ ",$agents," != *,interactive-presentation,* ]] || experience=1
+[[ ",$agents," != *,interactive-presentation,* ]] || experience=1
 [ "$experience" -eq 0 ] || [ "$dependencies" -eq 1 ] || fail "interactive-presentation requires its dependencies. Remove --no-dependencies or deselect the agent."
 [ "$experience" -eq 0 ] || playwright=1
-[ -z "$project" ] || [ "$bmad" -eq 1 ] || [ "$speckit" -eq 1 ] || fail "--project needs BMAD or Spec-Kit."
 
 echo "Agents: $agents"
 [ "$experience" -eq 0 ] || echo "interactive-presentation: installs Playwright CLI, the skills CLI, its design skills and the pinned experience toolkit regardless of opt-outs."
 echo "Promptlings skills: all bundled skills, published with the agents."
-echo "Tools: memory=$memory bmad=$bmad speckit=$speckit playwright=$playwright hyperframes=$hyperframes demo=$demo"
+echo "Tools: memory=$memory playwright=$playwright hyperframes=$hyperframes demo=$demo"
 echo "Default: native prerequisites, uv applications, global npm applications and published global skills."
 echo "Basic Memory: native user-login startup=$startup, loopback port=$memory_port."
-framework_policy="local, ignored including generated documents"
-[ "$shared_frameworks" -eq 0 ] || framework_policy="shared, eligible for tracking"
-echo "Repository: ${project:-none}. Framework policy: $framework_policy."
-echo "Project-only=$project_only. Dependencies=$dependencies. System packages=$system_packages. Global skills=$skills."
+echo "Dependencies=$dependencies. System packages=$system_packages. Global skills=$skills."
 echo "Package installation can request elevation. No private runtimes, global Git exclusions, staging or commits."
 [ "$dry_run" -eq 0 ] || { echo "Dry run. Nothing was downloaded or written."; exit 0; }
 if [ "$yes" -eq 0 ]; then
@@ -164,7 +145,7 @@ fetch() {
   fi
 }
 os="$(uname -s)"
-if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ] && [ "$system_packages" -eq 1 ]; then
+if [ "$dependencies" -eq 1 ] && [ "$system_packages" -eq 1 ]; then
   case "$os" in
     Darwin)
       if ! command -v brew >/dev/null 2>&1; then
@@ -230,21 +211,7 @@ for candidate in python3.12 python3 python; do
   fi
 done
 
-# Repository initialization is the installed promptlings-repo-init skill, staged here with its bundled workflow.
-project_init() {
-  local init="$temporary/repo-init/scripts/init.sh" arguments=()
-  if [ ! -f "$init" ]; then
-    mkdir -p "$temporary/repo-init/scripts" "$temporary/repo-init/workflows"
-    fetch skills/promptlings-repo-init/scripts/init.sh "$init"
-    fetch skills/promptlings-repo-init/workflows/promptlings-delivery.yml "$temporary/repo-init/workflows/promptlings-delivery.yml"
-  fi
-  [ "$bmad" -eq 0 ] || arguments+=(--method bmad)
-  [ "$speckit" -eq 0 ] || arguments+=(--method speckit)
-  [ "$shared_frameworks" -eq 0 ] || arguments+=(--shared-frameworks)
-  bash "$init" --project "$project" --integration "$integration" "${arguments[@]}" "$@"
-}
-if [ -n "$project" ]; then project_init --check-only; fi
-if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
+if [ "$dependencies" -eq 1 ]; then
   for command in uv node npm git gh; do command -v "$command" >/dev/null || fail "Missing prerequisite: $command."; done
   [ -n "$python" ] || fail "Python 3.11+ is required. Install it normally or rerun without --no-system-packages."
   node -e 'const [a,b]=process.versions.node.split(".").map(Number);if(a<22||(a===22&&b<20))throw Error("Node.js 22.20+ required")'
@@ -252,7 +219,6 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
   gh --version
   packages=()
   [ "$skills" -eq 0 ] && [ "$experience" -eq 0 ] || packages+=("$SKILLS_PACKAGE")
-  [ "$bmad" -eq 0 ] || packages+=("$BMAD_PACKAGE")
   [ "$playwright" -eq 0 ] || packages+=("$PLAYWRIGHT_PACKAGE")
   [ "$hyperframes" -eq 0 ] || packages+=("$HYPERFRAMES_PACKAGE")
   [ "$demo" -eq 0 ] || packages+=("$DIFF2HTML_PACKAGE")
@@ -275,12 +241,9 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
     echo "Experience toolkit: $npm_root"
   fi
   if [ "$memory" -eq 1 ]; then uv tool install --force --python 3.12 "$MEMORY_PACKAGE"; fi
-  if [ "$speckit" -eq 1 ]; then uv tool install --force --python 3.12 "$SPECKIT_PACKAGE"; fi
   uv tool update-shell
   export PATH="$(uv tool dir --bin):$PATH"
   if [ "$memory" -eq 1 ]; then basic-memory --version; fi
-  if [ "$speckit" -eq 1 ]; then specify version; fi
-  if [ "$bmad" -eq 1 ]; then bmad-method --version; fi
   if [ "$skills" -eq 1 ] || [ "$experience" -eq 1 ]; then
     export DISABLE_TELEMETRY=1
     sources=()
@@ -337,76 +300,74 @@ if [ "$dependencies" -eq 1 ] && [ "$project_only" -eq 0 ]; then
   fi
 fi
 
-if [ -n "$project" ]; then project_init; fi
-if [ "$project_only" -eq 0 ]; then
-  command -v npx >/dev/null 2>&1 || fail "Node.js npx is required to publish agents and register MCP servers."
-  memory_command=""
-  if [ "$memory" -eq 1 ] && [ "$dependencies" -eq 1 ]; then
-    memory_command="$(command -v basic-memory)" || fail "basic-memory is not on PATH after installation."
+command -v npx >/dev/null 2>&1 || fail "Node.js npx is required to publish agents and register MCP servers."
+memory_command=""
+if [ "$memory" -eq 1 ] && [ "$dependencies" -eq 1 ]; then
+  memory_command="$(command -v basic-memory)" || fail "basic-memory is not on PATH after installation."
+fi
+if [ -n "$memory_command" ] && [ "$startup" -eq 1 ]; then
+  # A previous run of this service would hold the memory port.
+  case "$os" in
+    Darwin)
+      label="gui/$(id -u)/com.promptlings.basic-memory"
+      if launchctl print "$label" >/dev/null 2>&1; then launchctl bootout "$label"; fi
+      ;;
+    Linux)
+      if command -v systemctl >/dev/null 2>&1 && systemctl --user cat promptlings-memory.service >/dev/null 2>&1; then
+        systemctl --user stop promptlings-memory.service
+      fi
+      ;;
+  esac
+  if (exec 3<>"/dev/tcp/127.0.0.1/$memory_port") 2>/dev/null; then
+    fail "Memory port $memory_port is in use. Stop that listener or pass another port."
   fi
-  if [ -n "$memory_command" ] && [ "$startup" -eq 1 ]; then
-    # A previous run of this service would hold the memory port.
-    case "$os" in
-      Darwin)
-        label="gui/$(id -u)/com.promptlings.basic-memory"
-        if launchctl print "$label" >/dev/null 2>&1; then launchctl bootout "$label"; fi
-        ;;
-      Linux)
-        if command -v systemctl >/dev/null 2>&1 && systemctl --user cat promptlings-memory.service >/dev/null 2>&1; then
-          systemctl --user stop promptlings-memory.service
-        fi
-        ;;
-    esac
-    if (exec 3<>"/dev/tcp/127.0.0.1/$memory_port") 2>/dev/null; then
-      fail "Memory port $memory_port is in use. Stop that listener or pass another port."
-    fi
+fi
+rulesync_source="$temporary/rulesync"
+mkdir -p "$rulesync_source/subagents"
+for name in "${names[@]}"; do
+  path="$(agent_path "$name")"
+  fetch "$path" "$temporary/agent.md"
+  [ "$(head -n 1 "$temporary/agent.md" | tr -d '\r')" = --- ] || fail "Agent has no frontmatter: $path"
+  # rulesync skips sources without targets.
+  { printf -- '---\ntargets: ["*"]\n'; tail -n +2 "$temporary/agent.md" | tr -d '\r'; } > "$rulesync_source/subagents/$name.md"
+done
+memory_rule=0
+if [[ ",$agents," == *,memory-manager,* ]] && [ "$readside" -eq 1 ] && [ "$memory" -eq 1 ]; then
+  memory_rule=1
+  fetch agents/context/memory-manager-read-side.md "$temporary/read-side.md"
+  tr -d '\r' < "$temporary/read-side.md" > "$temporary/read-side.lf"
+  [ "$(head -n 1 "$temporary/read-side.lf")" = "<!-- memory-manager-read-side-start -->" ] &&
+    [ "$(grep -v '^[[:space:]]*$' "$temporary/read-side.lf" | tail -n 1 | sed 's/[[:space:]]*$//')" = "<!-- memory-manager-read-side-end -->" ] ||
+    fail "Invalid downloaded memory read-side rule."
+  mkdir -p "$rulesync_source/rules"
+  { printf -- '---\ntargets: ["*"]\nglobs: ["**/*"]\n---\n'; cat "$temporary/read-side.lf"; } > "$rulesync_source/rules/promptlings-memory.md"
+fi
+skill_sources=("${skill_files[@]}")
+if [[ ",$agents," == *,memory-manager,* ]] && [ "$memory" -eq 1 ]; then skill_sources+=(skills/promptlings-memory-capture/SKILL.md); fi
+for path in "${skill_sources[@]}"; do
+  mkdir -p "$(dirname "$rulesync_source/$path")"
+  if [ "$(basename "$path")" != SKILL.md ]; then fetch "$path" "$rulesync_source/$path"; continue; fi
+  fetch "$path" "$temporary/skill.md"
+  [ "$(head -n 1 "$temporary/skill.md" | tr -d '\r')" = --- ] || fail "Skill has no frontmatter: $path"
+  { printf -- '---\ntargets: ["*"]\n'; tail -n +2 "$temporary/skill.md" | tr -d '\r'; } > "$rulesync_source/$path"
+done
+(cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t '*' -f subagents,skills)
+if [ "$memory_rule" -eq 1 ]; then
+  # Only targets with a dedicated global rule file. Others share a root file rulesync would replace.
+  (cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t "$RULESYNC_RULE_TARGETS" -f rules)
+fi
+if [ -n "$memory_command" ]; then
+  if [ "$startup" -eq 1 ]; then
+    server=("http://127.0.0.1:$memory_port/mcp")
+    transport=http
+  else
+    server=("$memory_command" --args mcp)
+    transport=stdio
   fi
-  rulesync_source="$temporary/rulesync"
-  mkdir -p "$rulesync_source/subagents"
-  for name in "${names[@]}"; do
-    path="$(agent_path "$name")"
-    fetch "$path" "$temporary/agent.md"
-    [ "$(head -n 1 "$temporary/agent.md" | tr -d '\r')" = --- ] || fail "Agent has no frontmatter: $path"
-    # rulesync skips sources without targets.
-    { printf -- '---\ntargets: ["*"]\n'; tail -n +2 "$temporary/agent.md" | tr -d '\r'; } > "$rulesync_source/subagents/$name.md"
-  done
-  memory_rule=0
-  if [[ ",$agents," == *,memory-manager,* ]] && [ "$readside" -eq 1 ] && [ "$memory" -eq 1 ]; then
-    memory_rule=1
-    fetch agents/context/memory-manager-read-side.md "$temporary/read-side.md"
-    tr -d '\r' < "$temporary/read-side.md" > "$temporary/read-side.lf"
-    [ "$(head -n 1 "$temporary/read-side.lf")" = "<!-- memory-manager-read-side-start -->" ] &&
-      [ "$(grep -v '^[[:space:]]*$' "$temporary/read-side.lf" | tail -n 1 | sed 's/[[:space:]]*$//')" = "<!-- memory-manager-read-side-end -->" ] ||
-      fail "Invalid downloaded memory read-side rule."
-    mkdir -p "$rulesync_source/rules"
-    { printf -- '---\ntargets: ["*"]\nglobs: ["**/*"]\n---\n'; cat "$temporary/read-side.lf"; } > "$rulesync_source/rules/promptlings-memory.md"
-  fi
-  skill_sources=("${skill_files[@]}")
-  if [[ ",$agents," == *,memory-manager,* ]] && [ "$memory" -eq 1 ]; then skill_sources+=(skills/promptlings-memory-capture/SKILL.md); fi
-  for path in "${skill_sources[@]}"; do
-    mkdir -p "$(dirname "$rulesync_source/$path")"
-    if [ "$(basename "$path")" != SKILL.md ]; then fetch "$path" "$rulesync_source/$path"; continue; fi
-    fetch "$path" "$temporary/skill.md"
-    [ "$(head -n 1 "$temporary/skill.md" | tr -d '\r')" = --- ] || fail "Skill has no frontmatter: $path"
-    { printf -- '---\ntargets: ["*"]\n'; tail -n +2 "$temporary/skill.md" | tr -d '\r'; } > "$rulesync_source/$path"
-  done
-  (cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t '*' -f subagents,skills)
-  if [ "$memory_rule" -eq 1 ]; then
-    # Only targets with a dedicated global rule file. Others share a root file rulesync would replace.
-    (cd "$rulesync_source" && npx --yes "$RULESYNC_PACKAGE" generate -g --input-roots . -t "$RULESYNC_RULE_TARGETS" -f rules)
-  fi
-  if [ -n "$memory_command" ]; then
-    if [ "$startup" -eq 1 ]; then
-      server=("http://127.0.0.1:$memory_port/mcp")
-      transport=http
-    else
-      server=("$memory_command" --args mcp)
-      transport=stdio
-    fi
-    # add-mcp aborts if any detected client lacks the transport. Stdio-only clients reach the HTTP server through mcp-remote.
-    add_mcp="$temporary/add-mcp"
-    npm install --prefix "$add_mcp" --no-save --no-fund --no-audit "$ADD_MCP_PACKAGE"
-    cat >"$temporary/detect-mcp-clients.mjs" <<'EOF'
+  # add-mcp aborts if any detected client lacks the transport. Stdio-only clients reach the HTTP server through mcp-remote.
+  add_mcp="$temporary/add-mcp"
+  npm install --prefix "$add_mcp" --no-save --no-fund --no-audit "$ADD_MCP_PACKAGE"
+  cat >"$temporary/detect-mcp-clients.mjs" <<'EOF'
 const [library, transport] = process.argv.slice(2);
 const { pathToFileURL } = await import("node:url");
 const { agents, detectGlobalAgents } = await import(pathToFileURL(library).href);
@@ -417,32 +378,32 @@ for (const agent of await detectGlobalAgents()) {
   else console.error(`Skipping ${agents[agent].displayName}: no ${transport} MCP support.`);
 }
 EOF
-    clients="$(node "$temporary/detect-mcp-clients.mjs" "$add_mcp/node_modules/add-mcp/dist/lib.js" "$transport")"
-    add_mcp_cli="$add_mcp/node_modules/add-mcp/dist/index.js"
-    direct=()
-    bridge=()
-    while read -r mode client; do
-      case "$mode" in
-        direct) direct+=(-a "$client") ;;
-        bridge) bridge+=(-a "$client") ;;
-      esac
-    done <<<"$clients"
-    if [ "${#direct[@]}" -gt 0 ]; then
-      node "$add_mcp_cli" "${server[@]}" -g -y -n basic-memory "${direct[@]}"
-    fi
-    if [ "${#bridge[@]}" -gt 0 ]; then
-      node "$add_mcp_cli" "$MCP_REMOTE_PACKAGE" --args "http://127.0.0.1:$memory_port/mcp" -g -y -n basic-memory "${bridge[@]}"
-    fi
-    if [ -z "$clients" ]; then
-      printf 'Warning: no supported MCP client was detected. basic-memory was not registered.\n' >&2
-    fi
+  clients="$(node "$temporary/detect-mcp-clients.mjs" "$add_mcp/node_modules/add-mcp/dist/lib.js" "$transport")"
+  add_mcp_cli="$add_mcp/node_modules/add-mcp/dist/index.js"
+  direct=()
+  bridge=()
+  while read -r mode client; do
+    case "$mode" in
+      direct) direct+=(-a "$client") ;;
+      bridge) bridge+=(-a "$client") ;;
+    esac
+  done <<<"$clients"
+  if [ "${#direct[@]}" -gt 0 ]; then
+    node "$add_mcp_cli" "${server[@]}" -g -y -n basic-memory "${direct[@]}"
   fi
-  if [ -n "$memory_command" ] && [ "$startup" -eq 1 ]; then
-    case "$os" in
-      Darwin)
-        plist="$HOME/Library/LaunchAgents/com.promptlings.basic-memory.plist"
-        mkdir -p "$HOME/Library/LaunchAgents" "$HOME/.basic-memory"
-        cat > "$plist" <<EOF
+  if [ "${#bridge[@]}" -gt 0 ]; then
+    node "$add_mcp_cli" "$MCP_REMOTE_PACKAGE" --args "http://127.0.0.1:$memory_port/mcp" -g -y -n basic-memory "${bridge[@]}"
+  fi
+  if [ -z "$clients" ]; then
+    printf 'Warning: no supported MCP client was detected. basic-memory was not registered.\n' >&2
+  fi
+fi
+if [ -n "$memory_command" ] && [ "$startup" -eq 1 ]; then
+  case "$os" in
+    Darwin)
+      plist="$HOME/Library/LaunchAgents/com.promptlings.basic-memory.plist"
+      mkdir -p "$HOME/Library/LaunchAgents" "$HOME/.basic-memory"
+      cat > "$plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -462,31 +423,30 @@ EOF
 </dict>
 </plist>
 EOF
-        launchctl bootstrap "gui/$(id -u)" "$plist"
-        ;;
-      Linux)
-        unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/promptlings-memory.service"
-        mkdir -p "$(dirname "$unit")"
-        printf '[Unit]\nDescription=Promptlings Basic Memory MCP\n[Service]\nExecStart="%s" mcp --transport streamable-http --host 127.0.0.1 --port %s\nNice=0\nCPUSchedulingPolicy=other\nIOSchedulingClass=best-effort\nIOSchedulingPriority=4\nRestart=on-failure\n[Install]\nWantedBy=default.target\n' \
-          "$memory_command" "$memory_port" > "$unit"
-        systemctl --user daemon-reload
-        systemctl --user enable promptlings-memory.service
-        systemctl --user restart promptlings-memory.service
-        systemctl --user is-active --quiet promptlings-memory.service
-        ;;
-      *) fail "Native Windows login startup is configured by install.ps1." ;;
-    esac
-    request='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"promptlings-installer","version":"1"}}}'
-    ready=0
-    # A cold start after reinstalling can take several minutes.
-    for _ in $(seq 600); do
-      if curl -fsS --max-time 2 -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
-        -d "$request" "http://127.0.0.1:$memory_port/mcp" 2>/dev/null | grep -Eiq '"name": ?"basic[ _-]?memory"'; then
-        ready=1; break
-      fi
-      sleep 1
-    done
-    [ "$ready" -eq 1 ] || fail "Basic Memory did not become ready at 127.0.0.1:$memory_port. Inspect its native startup service."
-  fi
+      launchctl bootstrap "gui/$(id -u)" "$plist"
+      ;;
+    Linux)
+      unit="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/promptlings-memory.service"
+      mkdir -p "$(dirname "$unit")"
+      printf '[Unit]\nDescription=Promptlings Basic Memory MCP\n[Service]\nExecStart="%s" mcp --transport streamable-http --host 127.0.0.1 --port %s\nNice=0\nCPUSchedulingPolicy=other\nIOSchedulingClass=best-effort\nIOSchedulingPriority=4\nRestart=on-failure\n[Install]\nWantedBy=default.target\n' \
+        "$memory_command" "$memory_port" > "$unit"
+      systemctl --user daemon-reload
+      systemctl --user enable promptlings-memory.service
+      systemctl --user restart promptlings-memory.service
+      systemctl --user is-active --quiet promptlings-memory.service
+      ;;
+    *) fail "Native Windows login startup is configured by install.ps1." ;;
+  esac
+  request='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"promptlings-installer","version":"1"}}}'
+  ready=0
+  # A cold start after reinstalling can take several minutes.
+  for _ in $(seq 600); do
+    if curl -fsS --max-time 2 -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+      -d "$request" "http://127.0.0.1:$memory_port/mcp" 2>/dev/null | grep -Eiq '"name": ?"basic[ _-]?memory"'; then
+      ready=1; break
+    fi
+    sleep 1
+  done
+  [ "$ready" -eq 1 ] || fail "Basic Memory did not become ready at 127.0.0.1:$memory_port. Inspect its native startup service."
 fi
 echo "Installed selected components. Restart your terminal and assistant. Repository changes remain unstaged."
