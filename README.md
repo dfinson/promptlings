@@ -15,9 +15,9 @@ assistant, including GitHub Copilot CLI and Claude Code.
 
 ## Walkthrough
 
-[![Promptlings cover: Put your attention where it matters](docs/walkthrough-cover.png)](https://github.com/user-attachments/assets/2df720bb-465f-48d3-bb33-d0b6987f715b)
+[![Promptlings cover: Put your attention where it matters](docs/walkthrough-cover.png)](https://github.com/dfinson/promptlings/pull/78#issuecomment-6643524259)
 
-[Watch the walkthrough (14:44).](https://github.com/user-attachments/assets/2df720bb-465f-48d3-bb33-d0b6987f715b)
+[Watch the walkthrough (14:44).](https://github.com/dfinson/promptlings/pull/78#issuecomment-6643524259)
 
 ## Choose an agent
 
