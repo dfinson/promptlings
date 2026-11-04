@@ -65,7 +65,7 @@ On Claude Code 2.1.220, `claude plugin list` can report `Status: disabled` immed
 
 ## What this plugin does not ship
 
-The promptlings repository contains seven agents and seventeen skills. This plugin still contains the two review agents only. Sparring Partner, Artifact Inspector, Memory Manager, Technical Demo, Interactive Presentation, and the skills stay installable through the repository installers or by hand.
+The promptlings repository contains eight agents and seventeen skills. This plugin still contains the two review agents only. Sparring Partner, Artifact Inspector, Memory Manager, Technical Demo, Interactive Presentation, Lane Master, and the skills stay installable through the repository installers or by hand.
 
 For `review-ensemble`, use the repository installer's `--review` or `-Review` selection, which publishes the-nitcracker, PR Walkthrough, Sparring Partner, and every bundled Promptlings skill. The default roster uses Sparring Partner and its four review methods, not the host's built-in rubber-duck. This plugin alone does not supply that roster or its skills. See the [workflow instructions](../../README.md#review-ensemble).
 

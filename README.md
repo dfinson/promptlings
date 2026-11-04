@@ -23,6 +23,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces a technical explainer or hands-on demo, from story and script approval through recording, narration, and review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
+| [Lane Master](agents/orchestration/lane-master.agent.md) | Runs spec-backed delivery for a feature too large for one session: a spec and lane graph you approve, one session per lane, and mechanical gates on every handoff. Never writes product code. |
 
 [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a
 maintainer and CI helper for inspecting agent and skill definitions.
@@ -81,7 +82,8 @@ agent to use one without switching personas.
 
 ### Lane delivery
 
-For a feature too large for one coding session, ask your current agent:
+For a feature too large for one coding session, select Lane Master and describe
+the feature, or ask your current agent:
 
 ```text
 Use lane-delivery to build this feature.

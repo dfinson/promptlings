@@ -40,6 +40,7 @@ $agentPaths = [ordered]@{
     "artifact-inspector" = "agents/maintenance/artifact-inspector.agent.md"
     "technical-demo" = "agents/media/technical-demo.agent.md"
     "interactive-presentation" = "agents/media/interactive-presentation.agent.md"
+    "lane-master" = "agents/orchestration/lane-master.agent.md"
 }
 $skillFiles = @(
     "skills/artifact-inspection/SKILL.md"
