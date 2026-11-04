@@ -37,7 +37,7 @@ prerequisites. Use descriptive keys, not numbered lane labels.)
 Key: `report-amounts`
 Spec basis: [Task explanation](<slug>.md#meaningful-task-name)
 Functionality: The bounded functionality this task delivers.
-Write set: Exact approved paths or deliberately approved patterns.
+Write set: Exact approved paths.
 Contracts changed: Exact signatures, schemas, endpoints, or config keys.
 Contracts used: Exact contracts this task consumes.
 Depends on: Descriptive task keys, or none.
@@ -49,7 +49,8 @@ Risky: `yes` or `no`
 ## Concurrency risks
 
 For each flagged concurrent pair, give the task names and keys, coupling
-evidence, `edge` or `accept` decision, and recovery with estimated cost.
+evidence, `edge` or `accept` decision, and concrete coordination or recovery.
+Include a cost estimate only when supported, otherwise leave it unknown.
 An edge must appear in both task dependencies and the graph.
 If no pairs are flagged, state that briefly.
 ```
@@ -60,7 +61,9 @@ If no pairs are flagged, state that briefly.
   statement with a Spec basis linking to its required behavior in the human
   specification. Method is one backticked command or `human`. Owner is a
   descriptive task key or `integration`. Critical is `yes` or `no`, and every
-  `yes` has an upstream test task that lists it.
+  `yes` identifies tests committed and shown failing before implementation.
+  A separate test task is needed only for genuinely independent ownership.
+  On the single-lane path the owner is `integration`, with no lane handoff.
 - Every task has a meaningful name, its own section, and a unique descriptive
   key. Every non-test task owns at least one criterion. Its Criteria owned
   field lists exactly the criteria whose Owner is that key. A test task lists
@@ -68,11 +71,14 @@ If no pairs are flagged, state that briefly.
 - Every Depends on target exists, graph edges match those fields, and the
   graph has no cycle.
 - Preserve exact write sets. A directory glob that admits future files is
-  not equivalent to an explicit file list.
+  not equivalent to an explicit file list. Expand deliberately approved
+  patterns to the exact paths reviewed for each handoff before running the gate.
 - Each concurrent pair with a shared declared contract, overlapping write
   sets, a shared lockfile or migrations directory, or a coupling-check hit
-  needs a Concurrency risks entry. An `edge` adds the dependency. An `accept`
-  includes recovery and estimated cost.
+  needs a Concurrency risks entry. An `edge` requires evidence of an unavailable
+  producer output or genuine ordering invariant. File overlap and an existing
+  generic consumer contract alone do not establish that prerequisite. An
+  `accept` includes concrete coordination and recovery, without an invented estimate.
 - Neither narrative prose nor a test command settles an open behavior
   decision. Keep affected work conditional until the human decides and the
   two files agree.

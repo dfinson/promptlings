@@ -1,85 +1,153 @@
 ---
 name: spec-delivery
-description: Deliver a multi-part change through a human-readable specification and a separately approved execution plan, one meaningfully named session per task, and mechanical gates. Use when the human starts a master session for spec-backed delivery, not for small fixes an ordinary session can make directly.
+description: Plan and execute approved spec-backed delivery.
 ---
 
 # Spec Delivery
 
-Em dashes are banned from all output. Use commas, colons, semicolons, periods, or parentheses instead.
+## Plan and authority
 
-A master session owns the human specification, agent execution plan and integration. Lane sessions own documented functionality. The human starts the master session, approves both artifacts and accepts the result. The master checks the approval and execution-plan rules at G0, and the human's approval confirms them. Every other pass or fail decision comes from a command the master runs or from CI, never from a session's own report.
+Inspect actual source, consumers and tests before deciding. Load design-writing
+and the human specification template. Explain the current situation, proposed
+mechanisms, rationale, resulting user experience, exact constraints and
+important interfaces and failure behavior. Give each task a meaningful name
+and its own section with ownership, boundaries, supported prerequisites and
+observable acceptance. Use no tables unless necessary information has no
+other presentation. Preserve technical substance and revise the whole artifact
+after feedback. Keep unknown owners, behavior and estimates unresolved.
 
-## Master rules
+Writing permission authorizes only writing. An execution companion needs an
+actual delivery need and explicit user authorization. If authorized, map it
+to the human explanation and approve both at one revision. Obtain human
+approval of exact scope, criterion methods, ownership, write sets and critical
+or risky markings before implementation. Record approval immutably, never
+force-move its tag. Material changes pause affected work for reapproval.
+Use a delivery branch separate from main. Implementation approval never
+substitutes for human acceptance or main-merge authorization.
 
-- The master never writes product code. It plans, starts lanes, runs gates, merges and reports.
-- Evidence is a command with its exit code, or CI status. Every gate verdict quotes the command it ran and the exit code. Claims are verified, unmet or unverified. A lane's handoff and the master's reading of a diff are not evidence.
-- No database, queue or task store. State is the human specification, execution plan, lane branches, lane PRs and `git log`.
+## Ownership and dependencies
 
-## 1. Spec and graph (G0)
+Use one coherent lane unless independent ownership repays delegation. Implement
+and repair directly on this path, without lane sessions, briefs or handoff
+gates. Commit critical changed-behavior tests and demonstrate their intended
+failure before implementation, then make the same assertions pass.
 
-For writing-only work, apply the human narrative and reader-task checks below,
-then return that specification. Task decomposition, coupling records, executable
-criteria and all delivery gates apply only after operational planning is authorized.
+For multiple lanes the master never edits product code or tests. Give every
+criterion one named owner, including integration E2E and human judgments.
+Require an acyclic graph and exact approved write sets, not widened globs.
+Add an edge when a consumer needs an unavailable producer contract or a real
+ordering invariant requires it. Existing generic contracts, logical data flow,
+shared files and distinct schema regions are not themselves prerequisites.
+Inspect concurrent pairs and record concrete coordination or recovery for
+hotspots. Serialize only when safe concurrent editing cannot be established.
 
-1. Investigate the code. Draft the human explanation in `specs/<slug>.md` from the [human specification template](references/spec-template.md), using `design-writing` and `reasoning-first-writing` when available. A writing or revision request produces that artifact only. Do not create a companion brief to move clutter elsewhere. If executable delivery is requested, explain why the gates need exact operational metadata and obtain explicit authorization for `specs/<slug>-lanes.md` before creating it from the [execution plan template](references/execution-plan-template.md). Without that authorization, finish the human specification but do not start lanes. The narrative owns behavior, scope, rationale, named lane responsibilities and dependencies, and observable acceptance. The authorized execution plan records exact commands, write sets, criterion IDs, contracts and graph keys consistent with that specification. Preserve essential technical reasoning in the narrative and resolve disagreement between the two files before approval.
-2. Split lanes. A lane is one coherent piece of functionality with its own executable criteria, large enough to repay a fresh session (about thirty minutes or more). Two candidates that cannot be separated are one lane. Give every task a meaningful name, its own section in both artifacts, and a descriptive execution key, not a numbered lane code. A task depends on another when it uses a contract the other changes or adds.
-3. Run the coupling check on every pair of concurrent lanes with code intelligence (references, call and import graphs, LSP), falling back to grep. Flag a pair when A changes a contract B's write set references or B uses, when both change the same contract or symbol, when both touch a hotspot (lockfiles, migrations, registries, generated code, shared config, shared fixtures), or when both write the same files. Give each flagged pair a Concurrency risks entry in the execution plan: `edge` (add the dependency) or `accept` with the recovery and its estimated cost. Use `mermaid-architecture-diagrams` for the task graph there.
-4. Check the [human approval checks](references/spec-template.md#approval-checks) and, when authorized, the [execution plan rules](references/execution-plan-template.md#execution-plan-rules). Fix every violation and trace each operational criterion to its human-readable behavior.
-5. Perform a reader-task pass on the whole human specification without opening links or consulting the execution plan. Explain the concrete current problem, actual proposed changes, why their mechanisms address it, what each named lane owns and waits on, how the tasks connect, resulting user behavior, observable acceptance and open decisions. If those answers require decoding IDs, reading commands, or supplying conversation knowledge, revise the artifact. A fresh reader can help, but word counts, heading checks, or an agent's self-description cannot substitute for comprehension.
-6. Present the narrative for the human's decision. Stop there for a writing-only request. Before starting delivery, the authorized execution plan must also be available for exact scope and gates. The human settles open choices, marks risky tasks and critical criteria, and approves both files. For each critical criterion, add a meaningfully named upstream test task that writes its failing tests outside the implementing task's write set, give it its own section in both files, then recheck both artifacts. The implementing task owns the criterion. The test task lists it as `tests: AC-<n>` and owns none. The test task never merges on its own: after it passes G1, cut the implementing lane from the test-lane branch, run the implementing lane's G1 with `<base>` the test-lane head, and merge the implementing lane, which brings both.
-7. Commit both files on the integration branch and tag their approved commit `spec/<slug>/approved`. Every later change goes in the human specification's Changelog. A change to behavior, scope, rationale, any criterion or its method, a risky or critical marking, or a graph amendment that adds an edge, merges lanes or widens a write set needs re-approval of both files: record the old tag's SHA in the Changelog, move the tag with `git tag -f` (and `git push -f` it if pushed), and re-brief running lanes whose excerpts changed. A writing correction that leaves these contracts unchanged can proceed without waiting for unrelated skill maintenance.
+Start each ready lane in its own named child session and isolated branch or
+worktree, based on integration containing its prerequisites. Start independent
+ready lanes concurrently where supported. Supply verbatim approved behavior,
+scope, interfaces, criterion commands, exclusions and approval SHA. Use the
+lane brief template without adding PR instructions unless a PR was requested.
+Children stop for scope changes. If isolated execution is unavailable, stop.
 
-## 2. Lanes
+## Executable gates
 
-Start one meaningfully named session per task whose dependencies are all merged, for example `Preserve zero-valued report amounts`, on branch `<slug>/<task-key>` cut from the integration branch at that point. Send the [lane brief](references/lane-brief-template.md) filled with verbatim excerpts of the approved human specification and execution plan. Lanes with no dependency path between them run concurrently.
+Treat reports as claims. Review the actual lane diff for scope, undeclared
+contracts and weakened or deleted assertions. Route scope changes back for
+approval, not into a rewritten spec. Identify a changed-behavior test command
+that fails without this lane. Existing regression tests may still pass on base.
+A direct-call requirement needs a test of that call, not response tests that
+already pass through a different caller.
 
-Host notes, using whichever the host supports:
+For every multi-lane merge, use the bundled `scripts/gate.py` merge operation,
+not a separate bare Git merge. Pass the lane worktree, its recorded base, exact
+approved paths, changed test files, introduced contracts, changed-behavior
+command as JSON argv, an authorized external scratch directory and ALL
+criteria owned by currently merged lanes including the incoming lane.
+Run `--help` for the exact CLI. The helper checks committed state, scope,
+markers, pass-on-head, intended fail-on-base, then merges and immediately runs
+the merged criteria. Read its full evidence. It does not assess semantics,
+approval or completeness of the supplied check list.
 
-- GitHub Copilot app: create a child session per lane with the brief as its kickoff prompt, so each lane is visible and resumable.
-- Claude Code or Codex: start a session in a new `git worktree` on the lane branch with the brief as its first prompt.
-- Without child sessions: run each lane as a subagent with the brief as its prompt, one at a time, each on its own branch, and report that lanes ran sequentially. If the host has neither, stop and tell the human that spec delivery needs separate sessions. The master never implements a lane itself.
+Never mark a failed inspection as an empty successful result. A helper failure
+blocks that lane's merge and dependent launch. A post-merge criterion failure
+blocks all further merges until repair. Preserve the failing revision,
+diagnose implementation, environment, conflict and missing prerequisite
+separately, and route repair to the owner. Change the graph only when evidence
+requires it and obtain reapproval for material amendments. Stop after two
+failed repair rounds for a material approach decision. After conflicts the
+owner reconciles against current integration and repeats the gate.
 
-## 3. Lane gate (G1)
+At the final head run every automated criterion, including the actual specified
+E2E journey. Unit, mock and partial integration checks never replace E2E.
+Review the integrated diff against the spec with sparring-partner, escalating
+human-marked risky work to review-ensemble where available. Missing required
+review and human judgments remain unverified. Disposition findings and rerun
+final criteria after repairs.
 
-On every handoff, in the lane's worktree, with `<base>` the integration branch unless stated otherwise. Each check fails the gate:
+Present final SHA, criterion-by-criterion verified/unmet/unverified status,
+commands and exits or CI links, approval-to-final spec diff and review
+dispositions. Check source-of-truth consistency, including any operational
+companion. Stop for human acceptance before main merge. No automatic PR.
+Em dashes are banned from all output.
 
-1. Committed state. `git status --porcelain` prints nothing. Record `git rev-parse HEAD` as the head.
-2. Write set. `git diff --name-only <base>...HEAD | grep -v -E '<write set as one regex>'` prints nothing (grep exits 1). Both planning files and tests outside the write set are therefore rejected.
-3. Test markers. `git diff -U0 <base>...HEAD -- <test paths> | grep -E '^\+.*(@skip|mark\.skip|xfail|\.only\(|\bfit\(|fdescribe\()'` prints nothing (grep exits 1). Extend the pattern for the project's test framework.
-4. Criteria on head. Each automated criterion the lane owns exits 0 when its execution-plan Method command runs at the repository root.
-5. Tests fail on base. For each criterion named by a new test, check that the test fails without the lane's code:
+## Source-fidelity check
 
-   ```text
-   git worktree add --detach <tmp> $(git merge-base <base> HEAD)
-   git -C <tmp> checkout <head> -- <new and changed test files, helpers and fixtures>
-   (run the criterion's Method command in <tmp>; it must exit nonzero)
-   git worktree remove --force <tmp>
-   ```
+Before returning a specification, trace each claimed behavior, exact value,
+interface, owner and prerequisite to inspected source or explicit input.
+Distinguish a proposed assignment from established ownership. A plausible
+association is not evidence that a task owns a migration or another shared
+artifact. Keep unassigned artifacts and unresolved semantics in Decisions,
+with affected work conditional. Do not invent a migration merely because a
+task concerns stored data. Recheck the whole artifact after moving unsupported
+claims, preserving its mechanisms, named responsibilities and acceptance.
 
-   The quoted output must show each new test failing. An assertion failure qualifies. A collection, import or build error qualifies only when the missing name is one the lane adds (a declared contract or a file in its write set), or for a test lane, one the implementing lane declares. Any other error fails the check.
+## Dependency evidence
 
-A test lane replaces step 4 with the inverse: each criterion it writes tests for exits nonzero at its head, with output showing those tests failing by the same rule as step 5. That also covers step 5 for those tests, so the implementing lane skips step 5 for them and step 4 makes them pass.
+For each hard edge, name the currently unavailable producer contract and its
+consumer, or the source-supported ordering invariant. Show why the downstream
+work cannot use the current base. Shared symbols and a proposed future
+validation phase do not establish that fact. Do not invent extra wiring or
+an interface change to manufacture a prerequisite. When semantics remain
+unresolved, leave their implementation dependencies conditional rather than
+deriving a chain from a guessed design.
 
-Send failures back to the lane with the exact command and output. After two failed rounds on one lane, stop and ask the human to amend the spec, re-split the lane or change approach.
+## Execution fidelity
 
-Then read the diff for contracts the lane changed but did not declare (signatures, schemas, endpoints, config keys, hotspot files). This does not fail the gate. Rerun the coupling check against lanes still running, send any new hit to the affected lane immediately, or add a Concurrency risks entry to the execution plan and report it to the human.
+Before coding, distinguish approved behavior changes from incidental validation
+or interface changes. Preserve existing accepted inputs and return contracts
+unless the human explicitly authorizes a change. A new type check can reject
+previously accepted input even when the main E2E passes. Record discovered
+validation gaps as decisions, not permission to implement them. Never
+self-approve a new requirement by adding it to a spec and tagging that spec.
+Apply the source-fidelity check to the final implementation as well as writing.
 
-## 4. Merge (G2)
+## Saved-artifact check
 
-Merge each lane that passes G1 into the integration branch, then run the Method command of every criterion owned by a lane merged so far, at the integration head. Record each as a row of the criteria table: ID, command, exit code, and verified (exit 0) or unmet.
+After writing or revising a specification, read the entire saved file with a
+file-reading tool. A pre-write read or the write tool's input is not this check.
+Compare current and proposed behavior, ownership and prerequisites with the
+source. Correct contradictions in the file, then repeat the saved-file read
+before returning it.
 
-A failure means a missing edge. Revert the merge with `git revert -m 1 <merge>`, rerun G2 to confirm the head passes, stop starting lanes, then amend the graph under the re-approval rule. If a merge conflicts, run `git merge --abort`. The lane merges the integration head into its own branch, resolves the conflict there and reruns G1 with that head as `<base>`. For an accepted concurrency risk that hits, fix forward and hold other merges until the fix passes G2: the lane merged second makes its recovery on a new branch `<slug>/<lane>-fix` cut from the integration head, then that branch passes G1 (with `<base>` the integration head and the lane's write set) and G2. Then start the lanes this merge unblocked.
+## Evidence-bound handoff
 
-## 5. Acceptance and review (G3)
+Before returning a handoff, reconcile every execution claim across the entire
+response against the actual commands and results. A failed final criterion is
+unmet. If a test stops at an assertion, later assertions are unverified, not
+passed. Do not call another path verified from source inspection, passing
+units or a different path's result. Keep inspection, executed behavior and
+human judgment distinct. Remove contradictory success claims from the whole
+handoff, not only its status list.
 
-When all lanes are merged, run every automated criterion, including the `integration` end-to-end commands, and record the full criteria table. `human` criteria stay unverified. Then review the integrated diff against the spec: `sparring-partner` by default, `review-ensemble` for lanes the human marked risky. Code that does not match the spec is a finding. Review once and re-review only repaired regions. Every finding gets a disposition: fixed with its commit, or rejected with a reason. Route each fix to the owning lane on a `<slug>/<lane>-fix` branch that passes G1 and G2. After the last fix, rerun every automated criterion at the final head. That run is the table G4 shows.
+## Dependent actions
 
-## 6. Human acceptance (G4)
+Parallelize only independent operations. Wait for successful staging before
+committing, and for both a successful test-only commit and the intended failing
+run before product edits. A failed prerequisite blocks dependent actions.
+Test-only Git history created after editing code does not establish this
+chronology.
 
-Open the integration PR to the main branch with:
+## Known behavior
 
-- The G3 criteria table, with CI links where they exist. `human` criteria stay unverified until the human runs them.
-- `git diff spec/<slug>/approved -- specs/<slug>.md specs/<slug>-lanes.md`, so no post-approval change to either artifact passes silently.
-- Every review finding and its disposition, and links to the lane PRs.
-
-The human accepts or directs the next step. Do not merge without that acceptance.
+Preserve source-established behavior outside approved changes. Do not turn
+known behavior into an open decision or propose recovery that violates a stated
+invariant. Keep handoffs focused on approved criteria and actual deviations.

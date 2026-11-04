@@ -8,7 +8,7 @@ the lane reads the words the human approved at the same commit.
 You own <meaningful task name> of <slug>. Implement only this task.
 
 Human specification: specs/<slug>.md, approved at <sha>.
-Execution plan: specs/<slug>-lanes.md, approved at the same <sha>.
+Execution plan, only if authorized: specs/<slug>-lanes.md, approved at the same <sha>.
 Task key: <descriptive-task-key>.
 Branch: <slug>/<task-key>, cut from <integration branch> at <sha>.
 
@@ -17,13 +17,13 @@ Branch: <slug>/<task-key>, cut from <integration branch> at <sha>.
 
 ## Your functionality
 <verbatim named task section from the human specification>
-<verbatim execution-plan functionality, contracts changed, contracts used>
+<verbatim approved functionality, contracts changed, contracts used>
 
 ## Your acceptance criteria
-<verbatim execution-plan rows of the criteria this task owns>
+<verbatim approved criteria and exact commands this task owns>
 
 ## Contract
-<verbatim execution-plan contracts this task changes or uses, plus the human
+<verbatim approved contracts this task changes or uses, plus the human
 explanation of their behavior and any decision that constrains them>
 
 ## Write set
@@ -35,17 +35,19 @@ explanation of their behavior and any decision that constrains them>
 ## Rules
 - Write only inside the write set. If you need to cross it, stop and send the
   master a graph amendment request with the reason. Never edit either planning file.
-- Name every new test after the criterion it verifies, for example
-  `test_ac_1_exports_header_row`. It must fail without your implementation.
+- Link tests to their criterion. Changed-behavior checks must fail without
+  your implementation for the intended reason. Existing regression checks
+  may pass on base. For critical behavior, commit tests and demonstrate their
+  intended failure before implementation, then preserve their assertions.
 - Never modify or delete an existing test outside the write set. Never add skip,
   xfail or focus markers.
 - Subagents are allowed for transient work inside this lane.
-- Commit with messages prefixed `<task-key>:`. Open a PR into the integration branch
-  linking the spec section.
+- Commit with messages prefixed `<task-key>:`. Open a PR only when the user
+  requested one, using the requested target and linking the spec section.
 - Before handing off, commit everything, confirm
   `git diff --name-only <integration branch>...HEAD` stays inside your write
   set, and run each of your criterion commands.
-- Hand off with: those command outputs, touched files, deviations from the spec, and
+- Hand off with: base and head SHAs, those command outputs, touched files, deviations from the spec, and
   open questions. Your report is not evidence. The master reruns the checks.
 
 Em dashes are banned from all output. Use commas, colons, semicolons, periods,
