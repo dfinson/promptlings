@@ -35,8 +35,8 @@ class MemoryStartupTests(unittest.TestCase):
 
     def render_service(self, directory, platform, custom_config=False):
         source = (ROOT / "install.sh").read_text(encoding="utf-8")
-        block = source.rsplit('  if [ -n "$memory_command" ] && [ "$startup" -eq 1 ]; then\n', 1)[1]
-        block = block.split("    request=", 1)[0]
+        block = source.rsplit('\nif [ -n "$memory_command" ] && [ "$startup" -eq 1 ]; then\n', 1)[1]
+        block = block.split("  request=", 1)[0]
         bash = shutil.which("bash")
         if sys.platform == "win32":
             git_bash = Path(os.environ["ProgramFiles"]) / "Git" / "bin" / "bash.exe"
