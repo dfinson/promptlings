@@ -13,6 +13,12 @@ Agents are Markdown files that define a role and its working rules. Skills
 provide methods an agent can load for a particular task. They run in your
 assistant, including GitHub Copilot CLI and Claude Code.
 
+## Walkthrough
+
+![Promptlings cover: Put your attention where it matters](docs/walkthrough-cover.png)
+
+A 14-minute walkthrough of Promptlings.
+
 ## Choose an agent
 
 | Agent | What it does |
