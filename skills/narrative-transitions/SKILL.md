@@ -33,7 +33,7 @@ The medium decides how much the words must do. Decide separately at each boundar
 
 A code walkthrough inside a demo or video is a change of medium, so its boundaries need their own care.
 
-- **Into code:** start from the behavior or claim just shown and name where it lives, for example "That rejection happens in the installer's name check." Show the file and function before the detail, and let the visible navigation carry the move: the pointer travelling through the file tree, the file opening and the view scrolling to the code.
+- **Into code:** start from the behavior or claim just shown and name where it lives, for example "That rejection happens in the installer's name check." Establish the file and function before the detail using the director's selected surface. In real editor footage, meaningful visible navigation can carry the move. In source-derived presentation, retain a file/function label and reveal the relevant excerpt. Neither route requires unrelated file-tree travel.
 - **Within code:** keep one focal line or block at a time and narrate it while it is highlighted. Name each new file or function as the view changes to it, and pause briefly after the change.
 - **Out of code:** carry the mechanism back to its consequence, either the behavior it produces next or the next question it raises, rather than leaving the viewer in the editor. A recap of the code just shown is not a link.
 
