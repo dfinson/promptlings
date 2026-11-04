@@ -77,9 +77,15 @@ the feature, or ask your current agent:
 Use spec-delivery to build this feature.
 ```
 
-The [spec-delivery](skills/spec-delivery/SKILL.md) skill writes a spec with
-testable acceptance criteria and a lane graph for your approval. It then runs
-each lane as its own session and checks every handoff with git and test
+The [spec-delivery](skills/spec-delivery/SKILL.md) skill writes a human-readable
+specification explaining the problem, concrete proposal and rationale, with a
+meaningfully named section for each lane, its responsibility, dependencies and
+observable acceptance. It uses no tables unless there is no
+other way to present necessary information. Writing-only requests produce that
+specification alone. Before executable delivery, it asks permission for an
+agent execution plan holding exact criteria, commands, file scope and
+dependencies. You approve both files at the same commit before tasks start.
+It then runs each task as its own session and checks every handoff with git and test
 commands: a write-set check, a fail-on-base test check, merged acceptance runs,
 and a final review before you accept. Coupling risks between concurrent lanes
 are recorded and accepted explicitly rather than hidden.

@@ -72,6 +72,7 @@ test("agents and skills are discovered from the package", () => {
   assert.ok(withMemory.includes("promptlings-memory-capture/SKILL.md"));
   assert.ok(!withoutMemory.some((path) => path.startsWith("promptlings-memory-capture/")));
   assert.ok(withoutMemory.includes("spec-delivery/references/spec-template.md"));
+  assert.ok(withoutMemory.includes("spec-delivery/references/execution-plan-template.md"));
   assert.ok(!withMemory.some((path) => /__pycache__|\.pyc$/.test(path)));
 });
 
