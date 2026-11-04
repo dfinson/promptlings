@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
-import { dpkgInstalled, listedNames, mergeSkillLocks, npmMissing, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
+import { dpkgInstalled, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
 import { deps, installMemory } from "../lib/memory.js";
 import { packageBin, quoteForCmd, which } from "../lib/run.js";
@@ -172,6 +172,23 @@ test("skill locks merge and keep the first install time", () => {
   assert.equal(merged.skills.b.installedAt, "t2");
   assert.deepEqual(merged.dismissed, { x: true });
   assert.deepEqual(mergeSkillLocks(null, [{ version: 3, skills: { c: { installedAt: "t" } } }]).skills, { c: { installedAt: "t" } });
+});
+
+test("pinned skill sources already in the lock are skipped", () => {
+  const source = "https://github.com/acme/kit/tree/abc123/skills";
+  const single = "https://github.com/acme/kit/tree/abc123/skills/one";
+  const entry = (skillPath, ref = "abc123") => ({ source: "acme/kit", sourceType: "github", sourceUrl: "https://github.com/acme/kit.git", ref, skillPath });
+  const lock = { version: 3, skills: { one: entry("skills/one/SKILL.md"), two: entry("skills/two/SKILL.md") } };
+  const all = () => true;
+  assert.equal(skillSourceInstalled(lock, source, all), true);
+  assert.equal(skillSourceInstalled(lock, single, all), true);
+  assert.equal(skillSourceInstalled(lock, source, (name) => name !== "two"), false);
+  assert.equal(skillSourceInstalled({ skills: { one: entry("skills/one/SKILL.md", "old") } }, source, all), false);
+  assert.equal(skillSourceInstalled({ skills: { one: entry("other/one/SKILL.md") } }, source, all), false);
+  assert.equal(skillSourceInstalled({ skills: { one: { ...entry("skills/one/SKILL.md"), sourceType: "local" } } }, source, all), false);
+  assert.equal(skillSourceInstalled(null, source, all), false);
+  assert.deepEqual(pendingSkillSources([source, "https://github.com/acme/other/tree/abc123/skills"], lock, all),
+    ["https://github.com/acme/other/tree/abc123/skills"]);
 });
 
 test("external skills install concurrently with ordered output and a merged lock", async (t) => {
