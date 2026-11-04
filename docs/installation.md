@@ -2,14 +2,21 @@
 
 ## Choose what to install
 
-The default installation includes all eight agents, bundled Promptlings skills,
-and the supporting toolchain. Agent selection and dependency selection are
-separate: `--review` selects two agents but still installs the default tools.
-Use `--no-dependencies` to publish agents and bundled skills using an existing
-Node.js installation.
+Run `npx promptlings` as shown in the [README](../README.md#install). Node.js
+22.20 or later is the only prerequisite. The default installation includes all
+eight agents, bundled Promptlings skills, and the supporting toolchain.
 
-Download and run the installer as shown in the [README](../README.md#install).
-It prints its plan and asks for approval. Add `--yes` or `-Yes` for an
+| Command | Effect |
+| --- | --- |
+| `npx promptlings` | Same as `install`: tools, then agents and skills, then Basic Memory |
+| `npx promptlings publish` | Agents and bundled skills only. Needs nothing beyond Node.js |
+| `npx promptlings memory` | Basic Memory, its skills, MCP registration, and login startup |
+| `npx promptlings tools` | System packages, applications, and external skills |
+
+Agent selection and component selection are separate: `--review` selects three
+agents but `install` still installs the default tools.
+
+The installer prints its plan and asks for approval. Add `--yes` for an
 approved noninteractive run. Help, listing, and dry-run perform no downloads
 or writes.
 
@@ -21,26 +28,26 @@ or writes.
 | macOS | Homebrew, installed through its official installer if missing |
 | Ubuntu 24.04+ or Debian 12+, x86_64 | APT |
 
-Run the scripts as your normal user. Native package installation can request
-elevation. The Linux browser recipe installs Google's Chrome package and its
-system libraries through APT, so that recipe requires x86_64. Linux also uses
-NodeSource's Node.js 24 setup and Astral's uv installer.
+Run the installer as your normal user. Native package installation can request
+elevation, and global npm applications use `sudo` only when the global npm
+prefix is not writable. The Linux browser recipe installs Google's Chrome
+package and its system libraries through APT, so that recipe requires x86_64.
+Linux also uses Astral's uv installer.
 
-On Windows, `powershell -ExecutionPolicy Bypass -File .\install.ps1` permits the
-downloaded script for that invocation without changing the machine's execution
-policy. Invoke npm tools through their `.cmd` entrypoints in Windows PowerShell,
-such as `npx.cmd`, `playwright-cli.cmd`, and `hyperframes.cmd`.
+In Windows PowerShell, invoke npm tools through their `.cmd` entrypoints, such
+as `npx.cmd`, `playwright-cli.cmd`, and `hyperframes.cmd`, when script
+execution is restricted.
 
 ### Default components
 
 | Component | What the installer provides |
 | --- | --- |
-| Python, Node.js, uv, Git, and GitHub CLI | Native packages and command checks, requiring Python 3.11+ and Node.js 22.20+ |
+| Python, uv, Git, and GitHub CLI | Native packages and command checks, requiring Python 3.11+ |
 | Basic Memory | uv tool, published memory skills, MCP registration, and user-login startup |
 | Playwright | Global npm application, published skill, Chrome browser, and a CLI browser check |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
 | Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
-| Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the skills CLI, the frontend-design and HyperFrames skills, and the pinned experience toolkit (esbuild, Shiki, Magic Move, Flubber, Rough.js, D3, dagre, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs. With `--no-dependencies` / `-NoDependencies`, the default selection leaves the agent out, and naming it with `--agents` / `-Agents` fails. |
+| Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the frontend-design and HyperFrames skills, and the pinned experience toolkit (esbuild, Shiki, Magic Move, Flubber, Rough.js, D3, dagre, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs. Under `npx promptlings publish`, the default selection leaves the agent out, and naming it with `--agents` fails |
 
 Document rendering uses Microsoft Word or LibreOffice. LibreOffice is installed
 only when neither is found. On Windows, its program directory is added to the
@@ -48,42 +55,33 @@ user PATH. Poppler supplies PDF rendering.
 
 Python applications use standard uv tool locations. Node applications use the
 configured global npm location. Application versions and upstream skill
-revisions are pinned at the top of both installers.
+revisions are pinned in [`lib/pins.js`](../lib/pins.js). The publishers are
+pinned package dependencies.
 
 ### Installer options
 
-| Bash / PowerShell | Effect |
+| Option | Effect |
 | --- | --- |
-| `--all` / `-All` | Select all eight agents, the default |
-| `--review` / `-Review` | Select the three ensemble agents: the-nitcracker, PR Walkthrough, and Sparring Partner |
-| `--agents a,b` / `-Agents "a,b"` | Select agents by name |
-| `--no-dependencies` / `-NoDependencies` | Publish agents and bundled skills without installing tools, external skills, MCP, or startup. Requires Node.js |
-| `--no-system-packages` / `-NoSystemPackages` | Use existing Python, Node, Git, gh, FFmpeg, and uv, but still install selected applications and skills |
-| `--no-memory` / `-NoMemory` | Skip Basic Memory, its skills, MCP, startup, and read-side instruction |
-| `--no-startup` / `-NoStartup` | Register client-launched stdio MCP instead of login startup |
-| `--memory-port 8123` / `-MemoryPort 8123` | Use a different Basic Memory port |
-| `--no-playwright` / `-NoPlaywright` | Skip Playwright CLI, its browser check, and skill. Linux Chrome is still required by HyperFrames |
-| `--no-hyperframes` / `-NoHyperframes` | Skip HyperFrames, media binaries, and skills |
-| `--no-demo` / `-NoDemo` | Skip VS Code, Demo Time, vscode-playwright, LibreOffice, Poppler, and diff2html |
-| `--no-skills` / `-NoSkills` | Skip external published skills, not bundled Promptlings skills |
-| `--no-readside` / `-NoReadSide` | Skip the global memory read-side rule |
-| `--list` / `-List` | List agent names and exit |
-| `--dry-run` / `-DryRun` | Print the plan without downloading or writing |
-| `--yes` / `-Yes` | Approve the printed installation plan without a prompt |
-| `--help` / `-Help` | Show usage |
-
-For example, to install the default review ensemble:
-
-```powershell
-.\install.ps1 -Review -NoDependencies -NoReadSide
-```
-
-```bash
-bash install.sh --review --no-dependencies --no-readside
-```
+| `--all` | Select all eight agents, the default |
+| `--review` | Select the three ensemble agents: the-nitcracker, PR Walkthrough, and Sparring Partner |
+| `--agents a,b` | Select agents by name |
+| `--no-system-packages` | Use existing Python, Git, gh, FFmpeg, and uv, but still install selected applications and skills |
+| `--no-memory` | Skip Basic Memory, its skills, MCP, startup, and read-side instruction |
+| `--no-startup` | Register client-launched stdio MCP instead of login startup |
+| `--memory-port 8123` | Use a different Basic Memory port |
+| `--no-playwright` | Skip Playwright CLI, its browser check, and skill. Linux Chrome is still required by HyperFrames |
+| `--no-hyperframes` | Skip HyperFrames, media binaries, and skills |
+| `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, LibreOffice, Poppler, and diff2html |
+| `--no-skills` | Skip external published skills, not bundled Promptlings skills |
+| `--no-readside` | Skip the global memory read-side rule |
+| `--list` | List agent names and exit |
+| `--dry-run` | Print the plan without downloading or writing |
+| `--yes`, `-y` | Approve the printed installation plan without a prompt |
+| `--version`, `--help` | Show the version or usage |
 
 Bundled skills are published with any agent selection, including their scripts
-and references. The memory capture companion is included when Memory Manager
+and references. New agents and skills in the package are discovered
+automatically. The memory capture companion is included when Memory Manager
 is selected and memory is enabled. Sparring Partner's four review methods
 (`technical-investigation`, `design-analysis`, `test-analysis`, and
 `evidence-verification`) are included. The default ensemble does not require
@@ -93,14 +91,39 @@ Opt-outs skip installation. They do not uninstall tools, stop existing services,
 or remove earlier registrations. Failed commands stop installation, and earlier
 successful package installations remain available for retry.
 
-## Where files go
+### Install from source
 
-The installers use pinned cross-harness tools through `npx`:
+`npx promptlings` resolves through your configured npm registry, including
+corporate mirrors of the public registry. When the package is not yet available
+there, run it directly from GitHub. Both source routes need Git, and behind a
+proxy both Git (`http.proxy`) and npm (`proxy`, `https-proxy`) must be set:
+
+```bash
+npx github:dfinson/promptlings
+```
+
+Or from a clone, which also works for local changes:
+
+```bash
+git clone https://github.com/dfinson/promptlings
+cd promptlings
+npm install
+node bin/promptlings.js
+```
+
+The published package ships `npm-shrinkwrap.json`, so `npx promptlings` installs
+the exact dependency versions that CI tested. A source install uses the same
+lockfile through `npm install`.
+
+Both forms take the same commands and options.
+
+## Where files go
 
 | Content | Publisher | Targets |
 | --- | --- | --- |
-| Skills | [`skills`](https://github.com/vercel-labs/skills) | Every harness it supports |
 | Agents | [`rulesync`](https://github.com/dyoshikawa/rulesync) subagents | Every harness with global subagent support |
+| Bundled skills | `rulesync` skills | Every harness with global skill support |
+| External skills | [`skills`](https://github.com/vercel-labs/skills) | Every harness it supports |
 | Memory read-side rule | `rulesync` rules | Harnesses with dedicated global rule files |
 | Basic Memory MCP | [`add-mcp`](https://github.com/neon-solutions/add-mcp) | Detected harnesses |
 
@@ -149,13 +172,12 @@ not change the client-launched stdio mode selected by `--no-startup`.
 
 `add-mcp` replaces only the `basic-memory` entry in detected harness
 configurations. An unrelated listener on the selected port stops installation.
-Use `--memory-port` or `-MemoryPort` to choose another port.
+Use `--memory-port` to choose another port.
 
 With Memory Manager selected and memory enabled, the installer also publishes a
 read-side rule that tells future sessions to retrieve relevant context and save
 decisions and outcomes. **This applies to future sessions across repositories.**
-Use `--no-readside` or `-NoReadSide` to omit it, including in a
-`--no-dependencies` installation.
+Use `--no-readside` to omit it, including with the `publish` command.
 
 The rule lives in a dedicated `promptlings-memory` file per supported harness,
 such as `~/.copilot/instructions/promptlings-memory.instructions.md` or
@@ -205,6 +227,6 @@ The plugin contains only the two review agents:
 /plugin install promptlings-code-review
 ```
 
-Use the repository installer or manual installation for the other agents and
+Use `npx promptlings` or manual installation for the other agents and
 skills, including `review-ensemble`. See the [plugin guide](../plugins/promptlings-code-review/README.md)
 for scoped agent names and runtime behavior.

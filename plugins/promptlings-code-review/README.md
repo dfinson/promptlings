@@ -57,7 +57,7 @@ The plugin is a convenience. The agents are still just markdown files:
 cp agents/code-review/the-nitcracker.agent.md ~/.claude/agents/
 ```
 
-The same files work in GitHub Copilot CLI under `~/.copilot/agents/`. The repository installers handle both tools. Nothing here needs a runtime.
+The same files work in GitHub Copilot CLI under `~/.copilot/agents/`. `npx promptlings publish` handles both tools. Nothing here needs a runtime.
 
 ## A note on the install status display
 
@@ -65,9 +65,9 @@ On Claude Code 2.1.220, `claude plugin list` can report `Status: disabled` immed
 
 ## What this plugin does not ship
 
-The promptlings repository contains eight agents and seventeen skills. This plugin still contains the two review agents only. Sparring Partner, Artifact Inspector, Memory Manager, Technical Demo, Interactive Presentation, Spec Master, and the skills stay installable through the repository installers or by hand.
+The promptlings repository contains eight agents and seventeen skills. This plugin still contains the two review agents only. Sparring Partner, Artifact Inspector, Memory Manager, Technical Demo, Interactive Presentation, Spec Master, and the skills stay installable through `npx promptlings` or by hand.
 
-For `review-ensemble`, use the repository installer's `--review` or `-Review` selection, which publishes the-nitcracker, PR Walkthrough, Sparring Partner, and every bundled Promptlings skill. The default roster uses Sparring Partner and its four review methods, not the host's built-in rubber-duck. This plugin alone does not supply that roster or its skills. See the [workflow instructions](../../README.md#review-ensemble).
+For `review-ensemble`, use `npx promptlings publish --review`, which publishes the-nitcracker, PR Walkthrough, Sparring Partner, and every bundled Promptlings skill. The default roster uses Sparring Partner and its four review methods, not the host's built-in rubber-duck. This plugin alone does not supply that roster or its skills. See the [workflow instructions](../../README.md#review-ensemble).
 
 ## What the agents do at runtime
 

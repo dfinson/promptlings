@@ -1,0 +1,35 @@
+{
+  "name": "promptlings",
+  "version": "0.1.0-alpha.1",
+  "description": "Install the promptlings agents, skills, Basic Memory and supporting toolchain on any OS.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dfinson/promptlings.git"
+  },
+  "homepage": "https://github.com/dfinson/promptlings#readme",
+  "type": "module",
+  "bin": {
+    "promptlings": "bin/promptlings.js"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "agents/",
+    "skills/",
+    "npm-shrinkwrap.json",
+    "!**/__pycache__",
+    "!**/*.pyc"
+  ],
+  "engines": {
+    "node": ">=22.20.0"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "add-mcp": "2.6.0",
+    "rulesync": "42.0.0",
+    "skills": "1.7.4"
+  }
+}
