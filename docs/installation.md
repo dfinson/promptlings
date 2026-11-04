@@ -113,6 +113,10 @@ npm install
 node bin/promptlings.js
 ```
 
+The published package ships `npm-shrinkwrap.json`, so `npx promptlings` installs
+the exact dependency versions that CI tested. A source install uses the same
+lockfile through `npm install`.
+
 Both forms take the same commands and options.
 
 ## Where files go

@@ -16,7 +16,10 @@
     "bin/",
     "lib/",
     "agents/",
-    "skills/"
+    "skills/",
+    "npm-shrinkwrap.json",
+    "!**/__pycache__",
+    "!**/*.pyc"
   ],
   "engines": {
     "node": ">=22.20.0"

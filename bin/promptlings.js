@@ -27,7 +27,7 @@ function printPlan(options) {
   if (steps.memory) {
     console.log(`Basic Memory: login startup=${on(options.startup)}, loopback port=${options.memoryPort}, skills=${on(options.skills)}.`);
   }
-  console.log("No repository files are changed.");
+  console.log("Writes only to user-level locations (your home directory and global agent configuration). No repository files are changed.");
 }
 
 async function approved(options) {

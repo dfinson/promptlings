@@ -7,7 +7,8 @@ import test from "node:test";
 import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
 import { parseArgs, phases, reviewAgents } from "../lib/options.js";
 import { pins, versionOf } from "../lib/pins.js";
-import { packageBin } from "../lib/run.js";
+import { deps, installMemory } from "../lib/memory.js";
+import { packageBin, quoteForCmd, which } from "../lib/run.js";
 import { launchAgentPlist, systemdUnit, windowsTaskSettings } from "../lib/services.js";
 
 const cli = join(packageRoot, "bin", "promptlings.js");
@@ -98,8 +99,52 @@ test("options select agents and phases", () => {
   assert.throws(() => parseArgs(["--review", "--all"], all), /only one/);
   assert.throws(() => parseArgs(["--agents", "nope"], all), /Unknown agent/);
   assert.throws(() => parseArgs(["--memory-port", "70000"], all), /port/);
-  assert.throws(() => parseArgs(["--project", "x"], all), /Unknown option/);
-  assert.throws(() => parseArgs(["memory", "--no-memory"], all), /cannot be combined/);
+  assert.throws(() => parseArgs(["--project", "x"], all), /--project: Repository installs were removed/);
+  assert.throws(() => parseArgs(["memory", "--no-memory"], all), /--no-memory does not apply to the memory command/);
+  assert.throws(() => parseArgs(["publish", "--no-bmad"], all), /--no-bmad does not apply to the publish command/);
+  assert.throws(() => parseArgs(["--agents", "-x"], all), /requires a value/);
+});
+
+test("memory installs, starts, waits, then registers clients", async (t) => {
+  const log = [];
+  const saved = { ...deps };
+  t.after(() => Object.assign(deps, saved));
+  Object.assign(deps, {
+    which: (name) => (name === "basic-memory" ? "/bin/basic-memory" : `/bin/${name}`),
+    run: (command) => log.push(`run ${command}`),
+    stopPreviousServer: () => log.push("stop"),
+    uvToolInstall: () => log.push("install"),
+    uvToolPath: () => {},
+    skillsAdd: () => log.push("skills"),
+    portOpen: async () => false,
+    startService: () => log.push("start"),
+    waitUntilReady: async () => log.push("ready"),
+    register: async () => log.push("register"),
+  });
+  await installMemory({ skills: false, startup: true, memoryPort: 8123 }, {});
+  assert.deepEqual(log, ["stop", "install", "run basic-memory", "start", "ready", "register"]);
+
+  log.length = 0;
+  deps.waitUntilReady = async () => { throw new Error("not ready"); };
+  await assert.rejects(installMemory({ skills: false, startup: true, memoryPort: 8123 }, {}), /not ready/);
+  assert.ok(!log.includes("register"));
+});
+
+test("cmd quoting rejects unsafe characters and quotes spaces", () => {
+  assert.equal(quoteForCmd("plain-arg"), "plain-arg");
+  assert.equal(quoteForCmd("has space"), '"has space"');
+  assert.throws(() => quoteForCmd('a"b'));
+  assert.throws(() => quoteForCmd("%PATH%"));
+});
+
+test("which honors PATHEXT on Windows", { skip: process.platform !== "win32" }, (t) => {
+  const directory = temporary(t);
+  writeFileSync(join(directory, "fake-tool.CMD"), "@echo off\n");
+  const saved = { PATH: process.env.PATH, PATHEXT: process.env.PATHEXT };
+  t.after(() => Object.assign(process.env, saved));
+  process.env.PATH = directory;
+  process.env.PATHEXT = ".COM;.EXE;.CMD";
+  assert.equal(which("fake-tool")?.toLowerCase(), join(directory, "fake-tool.CMD").toLowerCase());
 });
 
 test("CLI lists agents and prints a dry-run plan", () => {
