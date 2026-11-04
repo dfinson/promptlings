@@ -15,7 +15,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 
 ## Walkthrough
 
-https://github.com/user-attachments/assets/2df720bb-465f-48d3-bb33-d0b6987f715b
+<https://github.com/user-attachments/assets/2df720bb-465f-48d3-bb33-d0b6987f715b>
 
 ## Choose an agent
 
