@@ -4,7 +4,7 @@
 
 Run `npx promptlings` as shown in the [README](../README.md#install). Node.js
 22.20 or later is the only prerequisite. The default installation includes all
-nine agents, bundled Promptlings skills, and the supporting toolchain.
+eight agents, bundled Promptlings skills, and the supporting toolchain.
 
 | Command | Effect |
 | --- | --- |
@@ -44,8 +44,6 @@ execution is restricted.
 | --- | --- |
 | Python, uv, Git, and GitHub CLI | Native packages and command checks, requiring Python 3.11+ |
 | Basic Memory | uv tool, published memory skills, MCP registration, and user-login startup |
-| BMAD | Global npm application, with project-local skills added during repository initialization |
-| Spec-Kit | uv tool, repository initialization, and the Promptlings delivery workflow |
 | Playwright | Global npm application, published skill, Chrome browser, and a CLI browser check |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
 | Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
@@ -64,19 +62,17 @@ pinned package dependencies.
 
 | Option | Effect |
 | --- | --- |
-| `--all` | Select all nine agents, the default |
+| `--all` | Select all eight agents, the default |
 | `--review` | Select the three ensemble agents: the-nitcracker, PR Walkthrough, and Sparring Partner |
 | `--agents a,b` | Select agents by name |
 | `--no-system-packages` | Use existing Python, Git, gh, FFmpeg, and uv, but still install selected applications and skills |
-| `--no-bmad` | Skip BMAD |
-| `--no-speckit` | Skip Spec-Kit |
 | `--no-memory` | Skip Basic Memory, its skills, MCP, startup, and read-side instruction |
 | `--no-startup` | Register client-launched stdio MCP instead of login startup |
 | `--memory-port 8123` | Use a different Basic Memory port |
 | `--no-playwright` | Skip Playwright CLI, its browser check, and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` | Skip HyperFrames, media binaries, and skills |
 | `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, LibreOffice, Poppler, and diff2html |
-| `--no-skills` | Skip external published skills, not bundled Promptlings skills or repository-local framework integrations |
+| `--no-skills` | Skip external published skills, not bundled Promptlings skills |
 | `--no-readside` | Skip the global memory read-side rule |
 | `--list` | List agent names and exit |
 | `--dry-run` | Print the plan without downloading or writing |
@@ -197,28 +193,6 @@ Session capture needs the relevant conversation or an accessible source.
 Automatic end-of-session capture requires a supported, configured, verified
 host hook.
 
-## Initialize a delivery repository
-
-Machine installation does not initialize arbitrary repositories. Each clone or
-linked worktree needs initialization before BMAD or Spec-Kit runs there. The
-bound coach does this automatically through the installed `promptlings-repo-init`
-skill. You can also run its script from the published skill directory, for
-example `~/.copilot/skills/promptlings-repo-init`:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File <skill-directory>\scripts\init.ps1 -Project C:\repos\my-project -Method bmad,speckit
-```
-
-```bash
-bash <skill-directory>/scripts/init.sh --project "$HOME/repos/my-project" --method bmad --method speckit
-```
-
-Framework setup and generated planning documents are locally ignored by default
-through Git's `info/exclude`. Add `--shared-frameworks` or `-SharedFrameworks`
-for a team that wants to commit them. Initialization never stages or commits files.
-
-See [framework setup and repository ownership](bmad-setup.md) for details.
-Framework upgrades use their official update operations, not a global CLI update.
 Provider accounts, secrets, licensed assets, and narration voice choices remain
 separate production inputs.
 

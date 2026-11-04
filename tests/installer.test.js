@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
 import { verifyExperience } from "../lib/tools.js";
-import { pins, versionOf } from "../lib/pins.js";
+import { pins } from "../lib/pins.js";
 import { deps, installMemory } from "../lib/memory.js";
 import { packageBin, quoteForCmd, which } from "../lib/run.js";
 import { launchAgentPlist, systemdUnit, windowsTaskSettings } from "../lib/services.js";
@@ -64,23 +64,14 @@ test("Linux user service keeps normal scheduling", (t) => {
   }
 });
 
-test("repository initialization pins match the installer", () => {
-  const shell = readFileSync(join(packageRoot, "skills", "promptlings-repo-init", "scripts", "init.sh"), "utf8");
-  const powershell = readFileSync(join(packageRoot, "skills", "promptlings-repo-init", "scripts", "init.ps1"), "utf8");
-  assert.equal(shell.match(/^BMAD_VERSION=(\S+)/m)?.[1], versionOf(pins.bmad));
-  assert.equal(shell.match(/^SPECKIT_VERSION=(\S+)/m)?.[1], versionOf(pins.speckit));
-  assert.equal(powershell.match(/^\$bmadVersion = "([^"]+)"/m)?.[1], versionOf(pins.bmad));
-  assert.equal(powershell.match(/^\$speckitVersion = "([^"]+)"/m)?.[1], versionOf(pins.speckit));
-});
-
 test("agents and skills are discovered from the package", () => {
   const agents = discoverAgents();
-  for (const name of [...reviewAgents, "memory-manager"]) assert.ok(agents.has(name), name);
+  for (const name of [...reviewAgents, "memory-manager", "lane-master"]) assert.ok(agents.has(name), name);
   const withMemory = skillFiles({ includeMemory: true });
   const withoutMemory = skillFiles({ includeMemory: false });
   assert.ok(withMemory.includes("promptlings-memory-capture/SKILL.md"));
   assert.ok(!withoutMemory.some((path) => path.startsWith("promptlings-memory-capture/")));
-  assert.ok(withoutMemory.includes("promptlings-repo-init/workflows/promptlings-delivery.yml"));
+  assert.ok(withoutMemory.includes("lane-delivery/references/spec-template.md"));
   assert.ok(!withMemory.some((path) => /__pycache__|\.pyc$/.test(path)));
 });
 
@@ -102,7 +93,8 @@ test("options select agents and phases", () => {
   assert.throws(() => parseArgs(["--memory-port", "70000"], all), /port/);
   assert.throws(() => parseArgs(["--project", "x"], all), /--project: Repository installs were removed/);
   assert.throws(() => parseArgs(["memory", "--no-memory"], all), /--no-memory does not apply to the memory command/);
-  assert.throws(() => parseArgs(["publish", "--no-bmad"], all), /--no-bmad does not apply to the publish command/);
+  assert.throws(() => parseArgs(["publish", "--no-demo"], all), /--no-demo does not apply to the publish command/);
+  assert.throws(() => parseArgs(["--no-bmad"], all), /--no-bmad: BMAD was removed/);
   assert.throws(() => parseArgs(["--agents", "-x"], all), /requires a value/);
 });
 

@@ -15,7 +15,7 @@ function printPlan(options) {
   const on = (value) => (value ? "yes" : "no");
   console.log(`Promptlings ${manifest.version}: ${options.command}`);
   if (steps.tools) {
-    console.log(`Tools: system packages=${on(options.systemPackages)} bmad=${on(options.bmad)} speckit=${on(options.speckit)} ` +
+    console.log(`Tools: system packages=${on(options.systemPackages)} ` +
       `playwright=${on(options.playwright)} hyperframes=${on(options.hyperframes)} demo=${on(options.demo)} external skills=${on(options.skills)}`);
     console.log("Package installation can request elevation.");
   }
