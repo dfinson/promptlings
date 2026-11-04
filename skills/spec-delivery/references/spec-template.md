@@ -15,11 +15,11 @@ The problem, who it affects and the intended outcome.
 
 Observable behavior, then one row per acceptance criterion.
 
-| ID | Criterion | Method | Owner |
-| --- | --- | --- | --- |
-| AC-1 | One observable statement. | `exact command that exits 0 when it holds` | L1 |
-| AC-2 | One observable statement. | `exact end-to-end command` | integration |
-| AC-3 | One observable statement a person must judge. | `human` | integration |
+| ID | Criterion | Method | Owner | Critical |
+| --- | --- | --- | --- | --- |
+| AC-1 | One observable statement. | `exact command that exits 0 when it holds` | L1 | yes |
+| AC-2 | One observable statement. | `exact end-to-end command` | integration | no |
+| AC-3 | One observable statement a person must judge. | `human` | integration | no |
 
 ## How
 
@@ -47,7 +47,7 @@ One row per pair of concurrent lanes with detected coupling.
 
 | Lanes | Coupling evidence | Decision | Recovery |
 | --- | --- | --- | --- |
-| L3, L4 | Both add a migration under `db/migrations/`. | accept | Lane merged second renumbers its migration, reruns G1 and G2. About ten minutes. |
+| L3, L4 | Both add a migration under `db/migrations/`. | accept | Lane merged second renumbers its migration on a fix branch, which passes G1 and G2. About ten minutes. |
 | L5, L6 | L5 changes `parse()` and L6 adds a caller. | edge: L6 depends on L5 | none |
 
 ## Out of scope
@@ -62,9 +62,11 @@ Graph amendments after approval, each with date and reason.
 ## Spec rules
 
 - Criterion IDs are `AC-<n>` and unique. Method is one backticked command or
-  `human`. Owner is a lane id or `integration`.
-- Every lane owns at least one criterion, and its Criteria owned cell lists
-  exactly the criteria whose Owner is that lane.
+  `human`. Owner is a lane id or `integration`. Critical is `yes` or `no`, and
+  every `yes` has a test lane that lists it.
+- Every lane except a test lane owns at least one criterion, and its Criteria
+  owned cell lists exactly the criteria whose Owner is that lane. A test lane
+  lists `tests: AC-<n>` for each critical criterion it writes tests for.
 - Every `Depends on` target exists and the graph has no cycle.
 - Each pair of concurrent lanes (no dependency path between them) that shares a
   declared contract, has overlapping write sets, writes the same lockfile or

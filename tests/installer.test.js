@@ -66,12 +66,12 @@ test("Linux user service keeps normal scheduling", (t) => {
 
 test("agents and skills are discovered from the package", () => {
   const agents = discoverAgents();
-  for (const name of [...reviewAgents, "memory-manager", "lane-master"]) assert.ok(agents.has(name), name);
+  for (const name of [...reviewAgents, "memory-manager", "spec-master"]) assert.ok(agents.has(name), name);
   const withMemory = skillFiles({ includeMemory: true });
   const withoutMemory = skillFiles({ includeMemory: false });
   assert.ok(withMemory.includes("promptlings-memory-capture/SKILL.md"));
   assert.ok(!withoutMemory.some((path) => path.startsWith("promptlings-memory-capture/")));
-  assert.ok(withoutMemory.includes("lane-delivery/references/spec-template.md"));
+  assert.ok(withoutMemory.includes("spec-delivery/references/spec-template.md"));
   assert.ok(!withMemory.some((path) => /__pycache__|\.pyc$/.test(path)));
 });
 
