@@ -72,6 +72,7 @@ test("agents and skills are discovered from the package", () => {
   assert.ok(withMemory.includes("promptlings-memory-capture/SKILL.md"));
   assert.ok(!withoutMemory.some((path) => path.startsWith("promptlings-memory-capture/")));
   assert.ok(withoutMemory.includes("spec-delivery/references/spec-template.md"));
+  assert.ok(withoutMemory.includes("intent-alignment/SKILL.md"));
   for (const path of ["ab-testing/SKILL.md", "comparative-evaluation/SKILL.md",
     "comparative-evaluation/references/protocol-template.md", "comparative-evaluation/references/sources.md"]) {
     assert.ok(withoutMemory.includes(path), path);
@@ -307,6 +308,15 @@ test("rulesync publishes staged agents and skills into an isolated home", (t) =>
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.ok(existsSync(join(home, ".claude", "agents", "sparring-partner.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "review-ensemble", "SKILL.md")));
+  const alignment = join(home, ".claude", "skills", "intent-alignment", "SKILL.md");
+  const instructionBody = (path) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+    .replace(/^---\n[\s\S]*?\n---\n/, "").trimStart();
+  assert.match(readFileSync(alignment, "utf8"), /^name: intent-alignment\r?$/m);
+  assert.equal(instructionBody(alignment), instructionBody(join(packageRoot, "skills", "intent-alignment", "SKILL.md")));
+  assert.equal(instructionBody(join(home, ".claude", "skills", "review-ensemble", "SKILL.md")),
+    instructionBody(join(packageRoot, "skills", "review-ensemble", "SKILL.md")));
+  assert.equal(instructionBody(join(home, ".claude", "agents", "sparring-partner.md")),
+    instructionBody(join(packageRoot, "agents", "reasoning", "sparring-partner.agent.md")));
   assert.ok(existsSync(join(home, ".claude", "agents", "experiment-director.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "ab-testing", "SKILL.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "comparative-evaluation", "references", "protocol-template.md")));

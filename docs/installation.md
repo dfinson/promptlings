@@ -82,10 +82,14 @@ pinned package dependencies.
 Bundled skills are published with any agent selection, including their scripts
 and references. New agents and skills in the package are discovered
 automatically. The memory capture companion is included when Memory Manager
-is selected and memory is enabled. Sparring Partner's four review methods
+is selected and memory is enabled. Sparring Partner's four core review methods
 (`technical-investigation`, `design-analysis`, `test-analysis`, and
 `evidence-verification`) are included. The default ensemble does not require
-the host's built-in rubber-duck.
+the host's built-in rubber-duck. The shared `intent-alignment` skill is also
+included and required in every ensemble. Standalone reviews select it when
+requested or needed for purpose or scope reconciliation. Ensemble readiness
+checks all required methods before dispatch; installing the skill does not
+add another reviewer.
 
 Experiment Director and its `ab-testing` routing and `comparative-evaluation`
 method skills are discovered through the same publication path. To select only
