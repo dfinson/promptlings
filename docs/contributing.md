@@ -38,6 +38,11 @@ For review-agent changes, run the three [review regression cases](../tests/revie
 and assess actual output against the expected behavior. Keep the Claude plugin
 copies synchronized using its [documented adaptations](../plugins/promptlings-code-review/README.md#relationship-to-the-source-files).
 
+For evaluation-instruction changes, use the bounded
+[evaluation regression cases](../tests/evaluation-regressions.md). Keep expected
+answers out of target inputs, record the actual loaded revisions, and separate
+routing and judgment checks from native delegation or E2E acceptance.
+
 ## Design provenance
 
 The reasoning and inspection prompts and review-ensemble procedure are original
