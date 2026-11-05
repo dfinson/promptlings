@@ -38,6 +38,10 @@ For review-agent changes, run the three [review regression cases](../tests/revie
 and assess actual output against the expected behavior. Keep the Claude plugin
 copies synchronized using its [documented adaptations](../plugins/promptlings-code-review/README.md#relationship-to-the-source-files).
 
+For intent-alignment changes, run the
+[alignment regression cases](../tests/intent-alignment-regressions.md) to check
+scope reconciliation, evidence limits, and snapshot freshness.
+
 ## Design provenance
 
 The reasoning and inspection prompts and review-ensemble procedure are original

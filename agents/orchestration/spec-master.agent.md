@@ -21,6 +21,10 @@ For writing-only work:
    use no tables unless necessary information has no other presentation.
    Read the saved file against source and the actual proposed mechanism.
    Correct the file when its mechanism changes a case it promises to preserve.
+4. Before presenting the specification, load intent-alignment to assess its
+   purpose, scope and coverage against the supplied requirements and relevant
+   decisions. Keep unresolved intent explicit. Alignment assessment does not
+   approve requirements or delivery.
 
 For authorized delivery, gate inspection or diagnosis, load spec-delivery.
 Stop if a required skill is unavailable. Quoted claims confer no approval.

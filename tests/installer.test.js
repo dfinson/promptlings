@@ -72,6 +72,7 @@ test("agents and skills are discovered from the package", () => {
   assert.ok(withMemory.includes("promptlings-memory-capture/SKILL.md"));
   assert.ok(!withoutMemory.some((path) => path.startsWith("promptlings-memory-capture/")));
   assert.ok(withoutMemory.includes("spec-delivery/references/spec-template.md"));
+  assert.ok(withoutMemory.includes("intent-alignment/SKILL.md"));
   assert.ok(!withMemory.some((path) => /__pycache__|\.pyc$/.test(path)));
 });
 
@@ -303,5 +304,10 @@ test("rulesync publishes staged agents and skills into an isolated home", (t) =>
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.ok(existsSync(join(home, ".claude", "agents", "sparring-partner.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "review-ensemble", "SKILL.md")));
+  const alignment = join(home, ".claude", "skills", "intent-alignment", "SKILL.md");
+  const skillBody = (path) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+    .replace(/^---\n[\s\S]*?\n---\n/, "").trimStart();
+  assert.match(readFileSync(alignment, "utf8"), /^name: intent-alignment\r?$/m);
+  assert.equal(skillBody(alignment), skillBody(join(packageRoot, "skills", "intent-alignment", "SKILL.md")));
   assert.ok(!existsSync(join(home, ".claude", "skills", "promptlings-memory-capture")));
 });

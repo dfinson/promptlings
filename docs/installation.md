@@ -85,7 +85,9 @@ automatically. The memory capture companion is included when Memory Manager
 is selected and memory is enabled. Sparring Partner's four review methods
 (`technical-investigation`, `design-analysis`, `test-analysis`, and
 `evidence-verification`) are included. The default ensemble does not require
-the host's built-in rubber-duck.
+the host's built-in rubber-duck. The shared `intent-alignment` skill is also
+included for standalone alignment checks and reviews that need purpose or
+scope reconciliation.
 
 Opt-outs skip installation. They do not uninstall tools, stop existing services,
 or remove earlier registrations. Failed commands stop installation, and earlier

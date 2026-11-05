@@ -23,7 +23,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | --- | --- |
 | [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | Reviews a PR with inline findings and a narrative explaining the change, its design choices, and its assumptions. |
 | [PR Walkthrough](agents/code-review/pr-walkthrough.agent.md) | Maps a PR's architecture and important decisions before you review the diff. Read-only, with output in conversation. |
-| [Sparring Partner](agents/reasoning/sparring-partner.agent.md) | Reviews PRs and changes for correctness, design consequences, and regression protection. Also works through designs, debugging hypotheses, plans, and testing questions with you. |
+| [Sparring Partner](agents/reasoning/sparring-partner.agent.md) | Reviews PRs and changes for correctness, design consequences, and regression protection. Also checks intent and scope alignment or works through designs, debugging hypotheses, plans, and testing questions with you. |
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces technical videos, including explainers and recorded demonstrations, from story and script approval through production and final review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
@@ -71,6 +71,24 @@ Make a demo explaining this change to a new contributor.
 The [skills directory](skills/) also contains methods for investigation, test
 analysis, writing, narration, and design documents. You can ask your current
 agent to use one without switching personas.
+
+### Intent alignment
+
+Ask your current agent or Sparring Partner:
+
+```text
+Use intent-alignment to check this plan against the PBI, parent feature, and linked decisions.
+Use intent-alignment to check this branch against the spec and intended outcome.
+```
+
+The [intent-alignment](skills/intent-alignment/SKILL.md) skill checks whether the
+work addresses the right problem within agreed scope. It follows relevant,
+accessible context, traces requirements to work and material changes back to
+their justification, and distinguishes demonstrated mismatches from unresolved
+intent or missing evidence. It assesses plans and implementations without
+editing them or approving delivery. A supplied snapshot works without a tracker
+connection. Spec Master uses it before presenting a specification, and
+spec-delivery uses it before approval and at final integration.
 
 ### Spec delivery
 

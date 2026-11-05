@@ -13,6 +13,11 @@ task sections, concrete mechanisms, observable acceptance and justified edges.
 Read the saved artifact against source. Known behavior is not a human decision.
 Distinguish the requested case from other cases grouped by the old condition.
 
+Before seeking approval, load intent-alignment to assess the proposed
+specification and plan against the intended outcome, scope and relevant
+requirements or decisions. Route corrections through the existing writing
+authority. An alignment result does not replace human approval.
+
 Writing permission is not implementation approval. Obtain human approval of
 behavior, exact paths, owners, criterion commands and critical markings at an
 immutable revision before implementation. Preserve that approval source.
@@ -77,7 +82,10 @@ merges until repair.
 A failed test alone does not establish a dependency.
 
 At final integration execute every automated criterion, including the actual
-required E2E journey. Repeat after repairs. Use sparring-partner for integrated
+required E2E journey. Repeat after repairs. Load intent-alignment to compare the
+integrated behavior and evidence with the approved baseline and intended
+outcome. Keep unresolved intent and unverified behavior explicit without
+inventing additional acceptance criteria. Use sparring-partner for integrated
 review and review-ensemble for human-marked risky work when available.
 Missing review and human judgments remain
 unverified. A stopped test did not execute its later assertions.
