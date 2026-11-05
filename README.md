@@ -23,11 +23,12 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | --- | --- |
 | [the-nitcracker](agents/code-review/the-nitcracker.agent.md) | Reviews a PR with inline findings and a narrative explaining the change, its design choices, and its assumptions. |
 | [PR Walkthrough](agents/code-review/pr-walkthrough.agent.md) | Maps a PR's architecture and important decisions before you review the diff. Read-only, with output in conversation. |
-| [Sparring Partner](agents/reasoning/sparring-partner.agent.md) | Reviews PRs and changes for correctness, design consequences, and regression protection. Also works through designs, debugging hypotheses, plans, and testing questions with you. |
+| [Sparring Partner](agents/reasoning/sparring-partner.agent.md) | Reviews PRs and changes for correctness, design consequences, and regression protection. Also checks intent and scope alignment or works through designs, debugging hypotheses, plans, and testing questions with you. |
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces technical videos, including explainers and recorded demonstrations, from story and script approval through production and final review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
-| [Spec Master](agents/orchestration/spec-master.agent.md) | Runs spec-backed delivery for a feature too large for one session: a spec and lane graph you approve, one session per lane, and mechanical gates on every handoff. Never writes product code. |
+| [Spec Master](agents/orchestration/spec-master.agent.md) | Coordinates approved delivery through concurrent lanes, scoped PRs and revision-bound handoff checks. Keeps working specs outside product history unless authorized. |
+| [Experiment Director](agents/orchestration/experiment-director.agent.md) | Designs and conducts controlled comparisons of prompts, skills, agents and workflows, separating measured outcomes from preferences, cost and uncertainty. |
 
 [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a
 maintainer and CI helper for inspecting agent and skill definitions.
@@ -72,6 +73,54 @@ The [skills directory](skills/) also contains methods for investigation, test
 analysis, writing, narration, and design documents. You can ask your current
 agent to use one without switching personas.
 
+### Intent alignment
+
+Ask your current agent or Sparring Partner:
+
+```text
+Use intent-alignment to check this plan against the PBI, parent feature, and linked decisions.
+Use intent-alignment to check this branch against the spec and intended outcome.
+```
+
+The [intent-alignment](skills/intent-alignment/SKILL.md) skill checks whether the
+work addresses the right problem within agreed scope. It follows relevant,
+accessible context, traces requirements to work and material changes back to
+their justification, and distinguishes demonstrated mismatches from unresolved
+intent or missing evidence. It assesses plans and implementations without
+editing them or approving delivery. A supplied snapshot works without a tracker
+connection. Spec Master uses it before presenting a specification, and
+spec-delivery uses it before approval and at final integration.
+
+### A/B testing
+
+Ask your current agent to delegate a comparison:
+
+```text
+Use ab-testing to compare these two skill revisions on representative tasks.
+Design the protocol first, without running trials yet.
+```
+
+The [ab-testing](skills/ab-testing/SKILL.md) routing skill decides whether an
+experiment is warranted, prepares the brief and invokes Experiment Director
+through the host's actual registry. It uses a subagent for a bounded comparison
+or a child session for persistent work or an isolated checkout, when supported.
+A protocol-only request delegates design without launching trials or judges.
+
+Experiment Director uses
+[comparative-evaluation](skills/comparative-evaluation/SKILL.md) to qualify tasks
+and graders, freeze the comparison, coordinate independent trials and report
+effects, hard failures, resource usage and uncertainty. Artifact quality,
+native skill activation and real end-to-end outcomes are separate profiles.
+An inconclusive result is valid, and passing one profile does not certify the
+others.
+
+The package supplies instructions and a protocol template, not a new runner.
+Use an existing compatible executor, such as Harbor for isolated coding tasks
+or an SDK runner for artifacts. No evaluation service, model account or new
+runner is installed automatically. Running trials needs execution authority
+and resolved resource and stopping constraints. Results do not authorize
+repair, installation or promotion.
+
 ### Spec delivery
 
 For a feature too large for one coding session, select Spec Master and describe
@@ -82,11 +131,18 @@ Use spec-delivery to build this feature.
 ```
 
 The [spec-delivery](skills/spec-delivery/SKILL.md) skill writes a spec with
-testable acceptance criteria and a lane graph for your approval. It then runs
-each lane as its own session and checks every handoff with git and test
-commands: a write-set check, a fail-on-base test check, merged acceptance runs,
-and a final review before you accept. Coupling risks between concurrent lanes
-are recorded and accepted explicitly rather than hidden.
+testable acceptance criteria and a lane graph for your approval. Working specs,
+plans and evidence stay in session artifacts or your chosen external system.
+Approval identifies their immutable versions or content hashes. Committing
+them to the product repository requires separate authorization.
+
+It launches independent lanes concurrently and uses PRs as the default review
+and integration boundary. Genuine consumers can stack on passing producer PRs
+without waiting for a merge. Each handoff checks both the lane's own changes and
+the full diff against its actual PR target, plus fail-on-base tests and relevant
+acceptance checks. Combined validation can use a disposable checkout, not a
+local branch that accumulates every lane. Publication and merging respect your
+authorization, and final acceptance stays with you.
 
 ### Review ensemble
 
@@ -105,13 +161,20 @@ Sparring Partner is the portable successor to the built-in rubber-duck role.
 For PR and change reviews it loads `technical-investigation`, `design-analysis`,
 `test-analysis`, and `evidence-verification` to trace behavior, examine design
 consequences, assess regression protection, and verify candidate findings.
-These methods form an adaptive flow, not four separate reports. The invoking
-agent still independently verifies and synthesizes the ensemble's results.
+In the default ensemble, Sparring Partner also applies the full
+`intent-alignment` method, establishing the evidenced outcome and source
+authority before judging implementation conformance. These methods form one
+adaptive review, not separate reports. The invoking agent independently
+verifies the alignment claims and synthesizes the ensemble's results.
 
 You can also select Sparring Partner directly for a standalone PR, branch diff,
 or local change review. For other reasoning questions it selects only the
 relevant methods. The historical ensemble with built-in rubber-duck remains
 available when explicitly requested, rather than as an automatic fallback.
+Standalone reviews select alignment when requested or needed to reconcile
+purpose or scope. Every ensemble composition needs an assigned alignment
+reviewer and access to the method; otherwise it stops before dispatch.
+Alignment does not add a fourth default reviewer or grant approval authority.
 
 Review returns analysis. To have verified issues repaired too, ask for that:
 

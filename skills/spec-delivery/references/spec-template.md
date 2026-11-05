@@ -1,6 +1,10 @@
 # Human specification template
 
-Write `specs/<slug>.md` for the person deciding what to build and why.
+Write the specification in session artifacts or the user's chosen external
+system for the person deciding what to build and why. Use a tracked repository
+path only when the user explicitly authorizes it. Content approval is separate
+from permission to commit the artifact. Preserve an accessible approved
+snapshot with its immutable version or exact-byte SHA-256 and approval reference.
 Aim for one or two pages without discarding the explanation to meet a size
 target. The reader must understand the plan without the conversation, source
 tickets, or execution plan.
@@ -40,6 +44,10 @@ business values and constraints. Distinguish observed failures from proposals.
 ## How
 
 Explain the overall approach and how the named delivery lanes work together.
+Maximize safe concurrency and explain genuine prerequisites. PRs are the
+default review and integration boundary. Keep implementation dependencies
+distinct from PR merge order, using a stack when a consumer can build on a
+passing unmerged producer.
 
 ### <Meaningful delivery lane name>
 
@@ -76,7 +84,8 @@ State material exclusions and why the proposal does not include them.
 
 ## Changelog
 
-Record post-approval changes with their dates, reasons, and prior approval SHA.
+Record post-approval changes with their dates, reasons, and prior approved
+artifact version or content hash.
 Do not invent amendment history for a new draft.
 ```
 
@@ -96,7 +105,8 @@ this. Revise the whole artifact when the explanation fails.
 
 If the human authorizes an execution plan to start delivery, it owns exact
 operational metadata and maps every criterion and task back to this explanation.
-Resolve contradictions and approve both files at the same commit before lanes
-start. Use the [execution-plan rules](execution-plan-template.md#execution-plan-rules)
+Resolve contradictions and approve the identified versions of both artifacts
+before the affected lanes start, without requiring a product Git commit.
+Use the [execution-plan rules](execution-plan-template.md#execution-plan-rules)
 for criteria, write sets, dependency checks, and gates. A readability edit cannot
 silently change required behavior or widen an operational contract.

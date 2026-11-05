@@ -1,4 +1,4 @@
-"""Revision-bound local delivery checks. Semantic review and approval stay human-owned."""
+"""Revision-bound PR handoff and test-first checks. Approval and merges need separate authority."""
 
 import argparse
 from datetime import datetime, timezone
@@ -146,6 +146,9 @@ def handoff(options, evidence):
     head = git(root, evidence, "rev-parse", "HEAD")
     if git(root, evidence, "status", "--porcelain"):
         raise GateFailure("Lane has uncommitted or untracked files")
+    expected_head = git(root, evidence, "rev-parse", "--verify", "--end-of-options", f"{options.head}^{{commit}}")
+    if head != expected_head:
+        raise GateFailure("Lane HEAD differs from the proposed PR head")
     base = git(root, evidence, "rev-parse", "--verify", "--end-of-options", f"{options.base}^{{commit}}")
     if git(root, evidence, "merge-base", base, head) != base:
         raise GateFailure("Recorded base must be an ancestor of the lane head")
@@ -155,6 +158,15 @@ def handoff(options, evidence):
     allowed = {normalized(path) for path in options.path}
     if changed - allowed:
         raise GateFailure(f"Paths outside approved scope: {sorted(changed - allowed)}")
+    target = git(root, evidence, "rev-parse", "--verify", "--end-of-options", f"{options.target}^{{commit}}")
+    review_base = git(root, evidence, "merge-base", target, head)
+    review_paths = set(execute(
+        root, ["git", "diff", "--name-only", "--no-renames", "-z", review_base, head], evidence,
+    ).stdout.split("\0")) - {""}
+    if not review_paths:
+        raise GateFailure("Proposed PR diff is empty")
+    if review_paths - allowed:
+        raise GateFailure(f"PR diff has paths outside approved scope: {sorted(review_paths - allowed)}")
     tests = {normalized(path) for path in options.test_file}
     if not tests or not tests <= changed or not tests <= allowed:
         raise GateFailure("Select changed, approved test files for fail-on-base")
@@ -162,6 +174,8 @@ def handoff(options, evidence):
     checks = check_commands(options.check)
     for check in checks:
         execute(root, check, evidence)
+    if git(root, evidence, "rev-parse", "HEAD") != head or git(root, evidence, "status", "--porcelain"):
+        raise GateFailure("Handoff checks changed the lane revision or worktree")
     scratch = Path(options.scratch).resolve()
     scratch.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix="spec-gate-", dir=scratch))
@@ -183,7 +197,12 @@ def handoff(options, evidence):
             git(root, evidence, "worktree", "remove", "--force", str(temporary))
         else:
             temporary.rmdir()
-    return {"base": base, "head": head, "paths": sorted(changed)}
+    if git(root, evidence, "rev-parse", "HEAD") != head or git(root, evidence, "status", "--porcelain"):
+        raise GateFailure("Handoff checks changed the lane revision or worktree")
+    return {
+        "base": base, "head": head, "paths": sorted(changed),
+        "target": target, "review_base": review_base, "review_paths": sorted(review_paths),
+    }
 
 
 def finish(report, options):
@@ -207,16 +226,16 @@ def finish(report, options):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["handoff", "merge", "apply"])
+    parser.add_argument("action", choices=["handoff", "apply"])
     parser.add_argument("--lane", help="Lane worktree")
-    parser.add_argument("--base", help="Approved lane base revision")
+    parser.add_argument("--base", help="Recorded product base revision, separate from artifact approval")
+    parser.add_argument("--target", help="For handoff: current proposed PR target revision")
+    parser.add_argument("--head", help="For handoff: proposed PR head revision, must match lane HEAD")
     parser.add_argument("--path", action="append", help="One exact approved path, repeat as needed")
     parser.add_argument("--test-file", action="append")
     parser.add_argument("--introduced", action="append", default=[], help="Spec-declared missing contract allowed on base")
     parser.add_argument("--check", action="append", help="Changed-behavior command as a JSON argv array")
     parser.add_argument("--scratch", help="Authorized disposable artifact directory")
-    parser.add_argument("--integration", help="Integration worktree, required for merge")
-    parser.add_argument("--integration-check", action="append", default=[], help="All currently merged criteria, including this lane, as JSON argv arrays")
     parser.add_argument("--proposal", help="For apply: JSON mapping approved product paths to contents, stored under scratch")
     parser.add_argument("--message", help="For apply: critical-test commit message")
     parser.add_argument("--request", help="For apply: one scratch JSON object with base, paths, tests, checks, files, message; optional lane and introduced")
@@ -253,22 +272,9 @@ def main(argv=None):
             report.update(apply_after_red(options, evidence))
             report["status"] = "verified"
             return finish(report, options)
-        if options.action == "merge":
-            if not options.integration or not options.integration_check:
-                raise GateFailure("Merge needs integration worktree and every merged criterion")
-            integration = Path(options.integration).resolve()
-            if git(integration, evidence, "branch", "--show-current") in {"main", "master"}:
-                raise GateFailure("Integration must be a delivery branch, not main/master")
-            if git(integration, evidence, "status", "--porcelain"):
-                raise GateFailure("Integration has uncommitted or untracked files")
-            checks = check_commands(options.integration_check)
+        if not options.target or not options.head:
+            raise GateFailure("Handoff needs the proposed PR target and head revisions")
         report.update(handoff(options, evidence))
-        if options.action == "merge":
-            # A single invocation binds handoff, merge and regression checks.
-            git(integration, evidence, "merge", "--no-ff", "--no-edit", report["head"])
-            report["integration_head"] = git(integration, evidence, "rev-parse", "HEAD")
-            for check in checks:
-                execute(integration, check, evidence)
         report["status"] = "verified"
     except (GateFailure, ValueError, OSError, subprocess.SubprocessError) as error:
         report["status"] = "unmet"
