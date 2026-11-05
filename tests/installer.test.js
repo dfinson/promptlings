@@ -66,12 +66,16 @@ test("Linux user service keeps normal scheduling", (t) => {
 
 test("agents and skills are discovered from the package", () => {
   const agents = discoverAgents();
-  for (const name of [...reviewAgents, "memory-manager", "spec-master"]) assert.ok(agents.has(name), name);
+  for (const name of [...reviewAgents, "memory-manager", "spec-master", "experiment-director"]) assert.ok(agents.has(name), name);
   const withMemory = skillFiles({ includeMemory: true });
   const withoutMemory = skillFiles({ includeMemory: false });
   assert.ok(withMemory.includes("promptlings-memory-capture/SKILL.md"));
   assert.ok(!withoutMemory.some((path) => path.startsWith("promptlings-memory-capture/")));
   assert.ok(withoutMemory.includes("spec-delivery/references/spec-template.md"));
+  for (const path of ["ab-testing/SKILL.md", "comparative-evaluation/SKILL.md",
+    "comparative-evaluation/references/protocol-template.md", "comparative-evaluation/references/sources.md"]) {
+    assert.ok(withoutMemory.includes(path), path);
+  }
   assert.ok(!withMemory.some((path) => /__pycache__|\.pyc$/.test(path)));
 });
 
@@ -294,7 +298,7 @@ test("pinned publishers resolve to runnable entry points", async () => {
 test("rulesync publishes staged agents and skills into an isolated home", (t) => {
   const home = temporary(t);
   const source = join(home, "stage");
-  stageRulesync(source, { agents: reviewAgents, includeMemory: false, readSide: false });
+  stageRulesync(source, { agents: [...reviewAgents, "experiment-director"], includeMemory: false, readSide: false });
   const env = { ...process.env, HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: join(home, ".config"),
     APPDATA: join(home, "AppData", "Roaming"), LOCALAPPDATA: join(home, "AppData", "Local") };
   const result = spawnSync(process.execPath,
@@ -303,5 +307,9 @@ test("rulesync publishes staged agents and skills into an isolated home", (t) =>
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.ok(existsSync(join(home, ".claude", "agents", "sparring-partner.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "review-ensemble", "SKILL.md")));
+  assert.ok(existsSync(join(home, ".claude", "agents", "experiment-director.md")));
+  assert.ok(existsSync(join(home, ".claude", "skills", "ab-testing", "SKILL.md")));
+  assert.ok(existsSync(join(home, ".claude", "skills", "comparative-evaluation", "references", "protocol-template.md")));
+  assert.ok(existsSync(join(home, ".claude", "skills", "comparative-evaluation", "references", "sources.md")));
   assert.ok(!existsSync(join(home, ".claude", "skills", "promptlings-memory-capture")));
 });

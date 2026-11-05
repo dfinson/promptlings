@@ -28,6 +28,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces technical videos, including explainers and recorded demonstrations, from story and script approval through production and final review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
 | [Spec Master](agents/orchestration/spec-master.agent.md) | Coordinates approved delivery through concurrent lanes, scoped PRs and revision-bound handoff checks. Keeps working specs outside product history unless authorized. |
+| [Experiment Director](agents/orchestration/experiment-director.agent.md) | Designs and conducts controlled comparisons of prompts, skills, agents and workflows, separating measured outcomes from preferences, cost and uncertainty. |
 
 [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a
 maintainer and CI helper for inspecting agent and skill definitions.
@@ -71,6 +72,36 @@ Make a demo explaining this change to a new contributor.
 The [skills directory](skills/) also contains methods for investigation, test
 analysis, writing, narration, and design documents. You can ask your current
 agent to use one without switching personas.
+
+### A/B testing
+
+Ask your current agent to delegate a comparison:
+
+```text
+Use ab-testing to compare these two skill revisions on representative tasks.
+Design the protocol first, without running trials yet.
+```
+
+The [ab-testing](skills/ab-testing/SKILL.md) routing skill decides whether an
+experiment is warranted, prepares the brief and invokes Experiment Director
+through the host's actual registry. It uses a subagent for a bounded comparison
+or a child session for persistent work or an isolated checkout, when supported.
+A protocol-only request delegates design without launching trials or judges.
+
+Experiment Director uses
+[comparative-evaluation](skills/comparative-evaluation/SKILL.md) to qualify tasks
+and graders, freeze the comparison, coordinate independent trials and report
+effects, hard failures, resource usage and uncertainty. Artifact quality,
+native skill activation and real end-to-end outcomes are separate profiles.
+An inconclusive result is valid, and passing one profile does not certify the
+others.
+
+The package supplies instructions and a protocol template, not a new runner.
+Use an existing compatible executor, such as Harbor for isolated coding tasks
+or an SDK runner for artifacts. No evaluation service, model account or new
+runner is installed automatically. Running trials needs execution authority
+and resolved resource and stopping constraints. Results do not authorize
+repair, installation or promotion.
 
 ### Spec delivery
 
