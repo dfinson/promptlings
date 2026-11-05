@@ -25,6 +25,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: python skills/artifact-inspection/scripts/check_artifacts.py --root .
+      - run: python -B -m unittest discover -s tests -p test_spec_delivery.py
 
   installer:
     name: Installer (${{ matrix.os }})
