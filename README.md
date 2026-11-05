@@ -27,7 +27,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces technical videos, including explainers and recorded demonstrations, from story and script approval through production and final review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
-| [Spec Master](agents/orchestration/spec-master.agent.md) | Runs spec-backed delivery for a feature too large for one session: a spec and lane graph you approve, one session per lane, and mechanical gates on every handoff. Never writes product code. |
+| [Spec Master](agents/orchestration/spec-master.agent.md) | Coordinates approved delivery through concurrent lanes, scoped PRs and revision-bound handoff checks. Keeps working specs outside product history unless authorized. |
 
 [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a
 maintainer and CI helper for inspecting agent and skill definitions.
@@ -82,11 +82,18 @@ Use spec-delivery to build this feature.
 ```
 
 The [spec-delivery](skills/spec-delivery/SKILL.md) skill writes a spec with
-testable acceptance criteria and a lane graph for your approval. It then runs
-each lane as its own session and checks every handoff with git and test
-commands: a write-set check, a fail-on-base test check, merged acceptance runs,
-and a final review before you accept. Coupling risks between concurrent lanes
-are recorded and accepted explicitly rather than hidden.
+testable acceptance criteria and a lane graph for your approval. Working specs,
+plans and evidence stay in session artifacts or your chosen external system.
+Approval identifies their immutable versions or content hashes. Committing
+them to the product repository requires separate authorization.
+
+It launches independent lanes concurrently and uses PRs as the default review
+and integration boundary. Genuine consumers can stack on passing producer PRs
+without waiting for a merge. Each handoff checks both the lane's own changes and
+the full diff against its actual PR target, plus fail-on-base tests and relevant
+acceptance checks. Combined validation can use a disposable checkout, not a
+local branch that accumulates every lane. Publication and merging respect your
+authorization, and final acceptance stays with you.
 
 ### Review ensemble
 

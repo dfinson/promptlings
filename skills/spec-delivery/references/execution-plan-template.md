@@ -2,10 +2,12 @@
 
 Use only after the user authorizes this operational artifact for executable
 delivery. Do not create it during an ordinary writing or revision request.
-Write `specs/<slug>-lanes.md` alongside the human specification. This is the
+Keep it in session artifacts or the user's chosen external system. A tracked
+repository path needs explicit authorization. This is the
 agent-facing source for exact criteria, commands, write sets, contracts,
 dependencies, and coupling decisions. It does not replace the human explanation.
-Both files need approval at the same commit.
+Record both artifacts' locators and immutable versions or exact-byte SHA-256
+hashes with the human approval reference, separately from product base SHAs.
 
 Use meaningful task names and stable descriptive keys such as `report-amounts`,
 not numbered lane codes. Every task has its own section in both artifacts.
@@ -17,7 +19,8 @@ Do not hide a new requirement or an undecided behavior in this file.
 ```markdown
 # <Title>: execution plan
 
-Human specification: [<Title>](<slug>.md)
+Human specification: <accessible locator and approved version or content hash>
+Approval reference: <human decision identifying the approved artifact versions>
 
 ## Acceptance criteria
 
@@ -41,6 +44,9 @@ Write set: Exact approved paths.
 Contracts changed: Exact signatures, schemas, endpoints, or config keys.
 Contracts used: Exact contracts this task consumes.
 Depends on: Descriptive task keys, or none.
+Review branch: Intended lane branch.
+PR target: Intended delivery branch, or producer branch for a genuine stack.
+Product base: Exact starting Git SHA, separate from artifact approval.
 Criteria owned: Exact criterion IDs, or `tests: AC-<n>` for a test task.
 Risky: `yes` or `no`
 
@@ -63,7 +69,7 @@ If no pairs are flagged, state that briefly.
   descriptive task key or `integration`. Critical is `yes` or `no`, and every
   `yes` identifies tests committed and shown failing before implementation.
   Its owner uses the bundled `gate.py apply` operation, not a later
-  reconstruction of test-only history. Record the human approval SHA
+  reconstruction of test-only history. Record the artifact approval identity
   separately from each lane's starting base and supply runnable helper and
   authorized scratch locations in its brief.
   A separate test task is needed only for genuinely independent ownership.
@@ -74,6 +80,13 @@ If no pairs are flagged, state that briefly.
   `tests: AC-<n>` for each critical criterion it writes tests for.
 - Every Depends on target exists, graph edges match those fields, and the
   graph has no cycle.
+- Maximize safe concurrency. Launch every ready independent lane before
+  waiting. A consumer may stack on an unmerged producer's passing contract
+  rather than wait for its PR merge. Coordinate shared-file edits instead of
+  treating overlap as an automatic whole-lane dependency.
+- PRs are the default integration boundary. Keep each lane's full review diff
+  scoped to its intended target. Combined validation may use a disposable
+  checkout, never an accumulating local branch fed back into lane PRs.
 - Preserve exact write sets. A directory glob that admits future files is
   not equivalent to an explicit file list. Expand deliberately approved
   patterns to the exact paths reviewed for each handoff before running the gate.
