@@ -34,7 +34,7 @@ through [Artifact Inspector](../agents/maintenance/artifact-inspector.agent.md)
 or the [artifact-inspection skill](../skills/artifact-inspection/SKILL.md),
 providing the original requirements and baseline.
 
-For review-agent changes, run the three [review regression cases](../tests/review-regressions.md)
+For review-agent changes, run the relevant [review regression cases](../tests/review-regressions.md)
 and assess actual output against the expected behavior. Keep the Claude plugin
 copies synchronized using its [documented adaptations](../plugins/promptlings-code-review/README.md#relationship-to-the-source-files).
 

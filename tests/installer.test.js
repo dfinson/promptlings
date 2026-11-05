@@ -305,9 +305,13 @@ test("rulesync publishes staged agents and skills into an isolated home", (t) =>
   assert.ok(existsSync(join(home, ".claude", "agents", "sparring-partner.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "review-ensemble", "SKILL.md")));
   const alignment = join(home, ".claude", "skills", "intent-alignment", "SKILL.md");
-  const skillBody = (path) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
+  const instructionBody = (path) => readFileSync(path, "utf8").replace(/\r\n/g, "\n")
     .replace(/^---\n[\s\S]*?\n---\n/, "").trimStart();
   assert.match(readFileSync(alignment, "utf8"), /^name: intent-alignment\r?$/m);
-  assert.equal(skillBody(alignment), skillBody(join(packageRoot, "skills", "intent-alignment", "SKILL.md")));
+  assert.equal(instructionBody(alignment), instructionBody(join(packageRoot, "skills", "intent-alignment", "SKILL.md")));
+  assert.equal(instructionBody(join(home, ".claude", "skills", "review-ensemble", "SKILL.md")),
+    instructionBody(join(packageRoot, "skills", "review-ensemble", "SKILL.md")));
+  assert.equal(instructionBody(join(home, ".claude", "agents", "sparring-partner.md")),
+    instructionBody(join(packageRoot, "agents", "reasoning", "sparring-partner.agent.md")));
   assert.ok(!existsSync(join(home, ".claude", "skills", "promptlings-memory-capture")));
 });
