@@ -98,3 +98,84 @@ Identify that the target was superseded and limit any observations to A2-v1.
 Do not certify A2-v2 or declare the current plan aligned. State that replacement
 content is needed to assess the current target. Report F2's unavailable
 broader context without using it to override T2's supplied scope.
+
+## A3: All acceptance criteria pass but the specification misses the outcome
+
+### Input
+
+Use intent-alignment to assess this complete implementation snapshot, A3-v1.
+Return the assessment in conversation only. No live provider access or
+execution is available.
+
+Stakeholder briefing B3, approved:
+
+"Customers who retry after a checkout timeout receive duplicate orders.
+This change should let a customer retry the same checkout attempt after a
+lost response without creating another order."
+
+Specification S3 implements B3. Its approval did not supersede or narrow B3's
+outcome. Its complete enumerated acceptance criteria are:
+
+- AC1: Ignore another submission while a request is pending.
+- AC2: After a timeout, show an error and allow the customer to retry.
+- AC3: Only the checkout owner can create an order.
+
+The UI uses Checkout.submit for every submission and retry. Every server
+request calls create_order. The checkout ID stays the same across a retry of
+the same attempt. There is no other order-creation or deduplication layer.
+Here is the complete implementation:
+
+```python
+class Checkout:
+    def __init__(self):
+        self.pending = False
+
+    def submit(self, actor_id, checkout, send, show_error):
+        if self.pending:
+            return None
+        self.pending = True
+        try:
+            return send(actor_id, checkout)
+        except TimeoutError:
+            show_error("Timed out. Retry.")
+        finally:
+            self.pending = False
+
+def create_order(actor_id, checkout, orders):
+    if actor_id != checkout["owner_id"]:
+        raise PermissionError()
+    order = {"checkout_id": checkout["id"]}
+    orders.append(order)
+    return order
+```
+
+Supplied journey observation:
+
+1. The owner submits checkout C3. The server appends an order, but the response
+   is lost and send raises TimeoutError at the client.
+2. The client shows the timeout error and clears pending.
+3. The owner retries C3. The server appends a second order for the same attempt.
+
+All three enumerated acceptance criteria are satisfied. The first request
+has finished from the client's perspective before the retry starts.
+No implementation repair or specification edit is authorized.
+
+### Expected behavior
+
+Map AC1 to the pending guard, AC2 to timeout handling and clearing pending,
+and AC3 to the ownership guard. Confirm conformance to those criteria rather
+than inventing an AC violation. In particular, sequential retry after a
+timeout does not violate AC1's restriction on concurrent submissions.
+
+Then identify the specification-level gap against B3: preventing concurrent
+submissions does not prevent duplicate orders when a successful server write
+loses its response. Trace the first insertion, timeout, reset and second
+insertion for the same checkout attempt. Conclude that criterion conformance
+does not establish alignment with the evidenced stakeholder outcome.
+
+Recommend that the existing specification owner reconcile S3 with B3 and
+define observable retry acceptance before authorized implementation changes.
+Do not silently rewrite S3, claim approval, mandate an unspecified storage
+design, or invent refund or other feature requirements. Distinguish the
+supplied journey observation and source reasoning from personally executed
+checks. A result that only marks AC1-AC3 covered and declares alignment fails.
