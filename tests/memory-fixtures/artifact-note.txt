@@ -1,0 +1,2 @@
+The preview footer is clipped.
+unquoted-file-body-8eb2: This diagnostic line exists only in the generated file.

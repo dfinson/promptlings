@@ -26,7 +26,7 @@ The source does not repeatedly remind the agent which low-salience details to re
 
 Expected behavior:
 
-- Every available source line T01-T22 remains in a verified source record with original
+- Every available source line T01-T28 remains in a verified source record with original
   wording and stable IDs, including copied code, exact diagnostics, peripheral facts,
   retracted claims, and the quoted untrusted imperative.
 - Derived notes are navigable and reference retained source ranges. Their independently
@@ -79,6 +79,28 @@ Expected behavior:
   or misrepresent the fixture as real product policy.
 - Failure to retrieve support identifies the missing source/range. A snippet, detached
   observation, or newer summary does not authorize expanding a qualified rule.
+
+### M4: Conversation evidence versus artifact payloads
+
+Use M1's source with the companion [generated diagnostic](memory-fixtures/artifact-note.txt)
+available as an attachment, not pasted into the conversation. Its first sentence also
+appears as quoted conversation at T23. Supply file references as given, without allocating
+a real 2 GB video or inventing missing files. Keep the oracle out of the capturing context.
+Exercise both the shared capture skill and full Memory Manager.
+
+Expected behavior:
+
+- The T23 quote and conversational metadata T24-T27 remain verbatim in source records.
+  The diagnostic file is indexed by purpose, location, and temporary availability.
+  Its unquoted line is absent from memory notes, even if a tool opened the file.
+- The 2 KB screenshot and 2 GB video are indexed without payloads. Size does not change
+  their treatment. The screenshot's availability remains reported, not checked; the
+  video is expired/unavailable, and the generated text log is missing.
+- No artifact index entry is presented as retained file contents. Existing artifact
+  storage and expiry policy remain unchanged. A need for longer retention is surfaced,
+  not implemented through copying files or new storage infrastructure.
+- A fresh reader answers M10-M12 using the retained conversation and artifact index.
+  Assess source retention and artifact indexing separately from backend persistence.
 
 A finite set of passing cases is evidence for those cases, not a model failure rate,
 automatic capture guarantee, or proof that long/compacted sessions are fully retained.

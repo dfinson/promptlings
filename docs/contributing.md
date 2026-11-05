@@ -42,6 +42,9 @@ For memory-contract changes, use the [memory fidelity cases](../tests/memory-reg
 Check both routine capture and full Memory Manager behavior. Source coverage,
 standalone claim fidelity, repeated summaries, and actual backend retrieval are
 separate results from static contract and publication checks.
+Also check that quoted evidence is retained while attachments and generated files
+are indexed without their payloads, regardless of size, with honest temporary or
+missing availability under the existing artifact policy.
 
 ## Design provenance
 
