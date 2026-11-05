@@ -42,6 +42,11 @@ For intent-alignment changes, run the
 [alignment regression cases](../tests/intent-alignment-regressions.md) to check
 scope reconciliation, evidence limits, and snapshot freshness.
 
+For evaluation-instruction changes, use the bounded
+[evaluation regression cases](../tests/evaluation-regressions.md). Keep expected
+answers out of target inputs, record the actual loaded revisions, and separate
+routing and judgment checks from native delegation or E2E acceptance.
+
 ## Design provenance
 
 The reasoning and inspection prompts and review-ensemble procedure are original

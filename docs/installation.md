@@ -4,7 +4,7 @@
 
 Run `npx promptlings` as shown in the [README](../README.md#install). Node.js
 22.20 or later is the only prerequisite. The default installation includes all
-eight agents, bundled Promptlings skills, and the supporting toolchain.
+nine agents, bundled Promptlings skills, and the supporting toolchain.
 
 | Command | Effect |
 | --- | --- |
@@ -62,7 +62,7 @@ pinned package dependencies.
 
 | Option | Effect |
 | --- | --- |
-| `--all` | Select all eight agents, the default |
+| `--all` | Select all nine agents, the default |
 | `--review` | Select the three ensemble agents: the-nitcracker, PR Walkthrough, and Sparring Partner |
 | `--agents a,b` | Select agents by name |
 | `--no-system-packages` | Use existing Python, Git, gh, FFmpeg, and uv, but still install selected applications and skills |
@@ -90,6 +90,16 @@ included and required in every ensemble. Standalone reviews select it when
 requested or needed for purpose or scope reconciliation. Ensemble readiness
 checks all required methods before dispatch; installing the skill does not
 add another reviewer.
+
+Experiment Director and its `ab-testing` routing and `comparative-evaluation`
+method skills are discovered through the same publication path. To select only
+that agent, use `npx promptlings publish --agents experiment-director --no-readside`.
+This publishes instructions, including the method's protocol template and
+research references. It does not install Harbor, Inspect, Promptfoo, a model
+account or an evaluation service. Verify the chosen executor separately.
+Selective agent installs still publish bundled skills, so a caller using
+`ab-testing` must check that Experiment Director is actually available before
+delegating.
 
 Opt-outs skip installation. They do not uninstall tools, stop existing services,
 or remove earlier registrations. Failed commands stop installation, and earlier
@@ -221,6 +231,13 @@ references:
 Each directory contains `SKILL.md`. The agent definitions identify their
 companions. Both `design-writing` and `reasoning-first-narration` also require
 `reasoning-first-writing`. Restart your assistant after copying.
+
+For A/B testing, copy `experiment-director.agent.md` and the complete
+`ab-testing` and `comparative-evaluation` skill directories. The latter includes
+its `references` directory. The routing skill needs the host's registered
+director identity and a separate subagent or child-session capability to
+delegate. Manual installation alone does not establish native activation or
+end-to-end evaluation behavior.
 
 ## Claude Code plugin
 
