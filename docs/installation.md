@@ -194,6 +194,16 @@ Session capture needs the relevant conversation or an accessible source.
 Automatic end-of-session capture requires a supported, configured, verified
 host hook.
 
+Captures retain the available, authorized, non-sensitive conversation and supplied
+evidence in Basic Memory source records. Selective checkpoints and topical notes
+link to stable source ranges, preserving conditions, exceptions, correction history,
+and evidence status. Source records are verified before their derived notes are
+published, so a later failure leaves the evidence available for retry. Incremental
+saves reuse verified ranges. Missing or compacted content and redactions are recorded
+explicitly. This does not authorize copying unrelated files or private instructions.
+On recall, consequential claims are checked against the relevant retained source
+and its qualifications rather than treating a search snippet as the complete rule.
+
 Provider accounts, secrets, licensed assets, and narration voice choices remain
 separate production inputs.
 

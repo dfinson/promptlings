@@ -38,6 +38,11 @@ For review-agent changes, run the three [review regression cases](../tests/revie
 and assess actual output against the expected behavior. Keep the Claude plugin
 copies synchronized using its [documented adaptations](../plugins/promptlings-code-review/README.md#relationship-to-the-source-files).
 
+For memory-contract changes, use the [memory fidelity cases](../tests/memory-regressions.md).
+Check both routine capture and full Memory Manager behavior. Source coverage,
+standalone claim fidelity, repeated summaries, and actual backend retrieval are
+separate results from static contract and publication checks.
+
 ## Design provenance
 
 The reasoning and inspection prompts and review-ensemble procedure are original
