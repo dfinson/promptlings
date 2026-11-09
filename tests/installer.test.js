@@ -2,15 +2,15 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import test from "node:test";
 import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
 import { dpkgInstalled, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
 import { deps, installMemory } from "../lib/memory.js";
-import { packageBin, quoteForCmd, which } from "../lib/run.js";
-import { launchAgentPlist, systemdUnit, windowsTaskSettings } from "../lib/services.js";
+import { capture, packageBin, quoteForCmd, runBuffered, which } from "../lib/run.js";
+import { launchAgentPlist, systemdUnit, windowsServerScript, windowsStopScript, windowsTaskName, windowsTaskScript, windowsTaskSettings } from "../lib/services.js";
 
 const cli = join(packageRoot, "bin", "promptlings.js");
 const temporary = (t) => {
@@ -20,13 +20,113 @@ const temporary = (t) => {
 };
 const promptlings = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: "utf8" });
 
-test("Windows task keeps Normal priority without an execution limit", { skip: process.platform !== "win32" }, () => {
+test("Windows task keeps Normal priority and bounded failure recovery without an execution limit", { skip: process.platform !== "win32" }, () => {
   const script = `$ErrorActionPreference = 'Stop'; $settings = ${windowsTaskSettings}; ` +
     "if ($settings.Priority -ne 4) { throw 'Expected task priority 4' }; " +
     "if ($settings.MultipleInstances -ne 'IgnoreNew') { throw 'Expected IgnoreNew' }; " +
+    "if ($settings.RestartCount -ne 3) { throw 'Expected three retries' }; " +
+    "if ($settings.RestartInterval -ne 'PT1M') { throw 'Expected one minute between retries' }; " +
     "if ($settings.ExecutionTimeLimit -ne 'PT0S') { throw 'Expected no execution limit' }";
-  const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { encoding: "utf8" });
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { encoding: "utf8", windowsHide: true });
   assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test("Windows registration replaces the same task and launches the exit-reporting wrapper", () => {
+  const pythonw = "C:\\Memory tools\\O'Brien\\Scripts\\pythonw.exe";
+  const script = windowsTaskScript(pythonw, 8123);
+  assert.ok(script.includes("-Execute 'C:\\Memory tools\\O''Brien\\Scripts\\pythonw.exe'"));
+  assert.doesNotMatch(script, /-Execute.*(?:powershell|cmd|conhost)\.exe/i);
+  assert.match(script, /-LogonType Interactive -RunLevel Limited/);
+  assert.ok(script.includes(`Register-ScheduledTask -TaskName '${windowsTaskName}'`));
+  assert.match(script, /-Principal \$principal -Force/);
+  assert.ok(script.includes(`Start-ScheduledTask -TaskName '${windowsTaskName}'`));
+  const encoded = script.match(/b64decode\(''([A-Za-z0-9+/=]+)''\)/)[1];
+  assert.equal(Buffer.from(encoded, "base64").toString("utf8"), windowsServerScript(pythonw, 8123));
+  assert.match(windowsServerScript(pythonw, 8123), /creationflags=subprocess\.CREATE_NO_WINDOW/);
+});
+
+test("Windows task stop captures descendants before stopping and does not launch a console", () => {
+  const script = windowsStopScript("C:\\Tools\\basic-memory.exe", "C:\\Tools\\basic-memory");
+  assert.ok(script.indexOf("$owned +=") < script.indexOf("Stop-ScheduledTask"));
+  assert.match(script, /\$current\.CreationDate -eq \$original\.CreationDate/);
+  assert.match(script, /Stop-Process -Id \$current\.ProcessId -Force/);
+  assert.doesNotMatch(script, /cmd\.exe|taskkill|Start-Process/i);
+});
+
+test("Windows service resolves pythonw from the installed uv environment", { skip: process.platform !== "win32" }, (t) => {
+  t.mock.method(deps, "capture", (command, args) => {
+    assert.equal(command, "uv");
+    assert.deepEqual(args, ["tool", "dir"]);
+    return "C:\\Tools\\uv";
+  });
+  let script;
+  t.mock.method(deps, "powershell", (value) => { script = value; });
+  deps.startService("C:\\Tools\\basic-memory.exe", 8123);
+  assert.equal(script, windowsTaskScript("C:\\Tools\\uv\\basic-memory\\Scripts\\pythonw.exe", 8123));
+});
+
+const pythonw = process.env.PROMPTLINGS_TEST_PYTHONW || which("pythonw");
+test("Windows command helpers suppress child consoles at process creation", {
+  skip: process.platform !== "win32",
+}, async () => {
+  assert.ok(pythonw, "Windows tests require pythonw on PATH or PROMPTLINGS_TEST_PYTHONW.");
+  const python = join(dirname(pythonw), "python.exe");
+  const args = ["-c", "import ctypes;print(ctypes.windll.kernel32.GetConsoleWindow())"];
+  assert.equal(capture(python, args, { quiet: true }), "0");
+  const buffered = await runBuffered(python, args);
+  assert.equal(buffered.status, 0, buffered.output);
+  assert.equal(buffered.output.trim(), "0");
+});
+
+test("Windows server wrapper retries failures within its bound and never allocates a console", {
+  skip: process.platform !== "win32",
+}, (t) => {
+  assert.ok(pythonw, "Windows tests require pythonw on PATH or PROMPTLINGS_TEST_PYTHONW.");
+  for (const [failures, attempts, code, missing] of [[0, 1, 0, false], [1, 2, 0, false], [9, 4, 37, false], [9, 4, 1, true]]) {
+    const directory = temporary(t);
+    const metadata = join(directory, "basic_memory-0.0.dist-info");
+    mkdirSync(metadata);
+    writeFileSync(join(metadata, "METADATA"), "Metadata-Version: 2.1\nName: basic-memory\nVersion: 0.0\n");
+    writeFileSync(join(metadata, "entry_points.txt"), "[console_scripts]\nbasic-memory = fixture:main\n");
+    writeFileSync(join(directory, "fixture.py"), `import ctypes, os, sys
+from pathlib import Path
+def main():
+    assert ctypes.windll.kernel32.GetConsoleWindow() == 0
+    assert sys.argv[1:] == ["mcp", "--transport", "streamable-http", "--host", "127.0.0.1", "--port", "8123"]
+    count = Path.home() / "attempts.txt"
+    attempt = int(count.read_text()) + 1 if count.exists() else 1
+    count.write_text(str(attempt))
+    print("fixture stdout")
+    print("fixture stderr", file=sys.stderr)
+    return 37 if attempt <= int(os.environ["FAILURES"]) else 0
+`);
+    const env = { ...process.env, USERPROFILE: directory, PYTHONPATH: directory, FAILURES: String(failures) };
+    // Keep unit tests fast while asserting the production delay. The scheduled acceptance uses the real clock.
+    const clock = `import ctypes, time
+from pathlib import Path
+assert ctypes.windll.kernel32.GetConsoleWindow() == 0
+def delay(seconds):
+    assert seconds == 60
+    with (Path.home() / "delays.txt").open("a") as output:
+        output.write("60\\n")
+time.sleep = delay
+`;
+    const child = missing ? join(directory, "missing-pythonw.exe") : pythonw;
+    const result = spawnSync(pythonw, ["-c", clock + windowsServerScript(child, 8123)],
+      { cwd: directory, env, encoding: "utf8", windowsHide: true });
+    assert.equal(result.status, code, result.stdout + result.stderr);
+    const log = readFileSync(join(directory, ".basic-memory", "mcp.log"), "utf8");
+    assert.equal(log.match(/Starting Basic Memory on 127\.0\.0\.1:8123/g).length, attempts);
+    assert.ok(log.includes(`Basic Memory exited with code ${code}`));
+    assert.equal(log.includes("restart budget exhausted"), code !== 0);
+    if (!missing) {
+      assert.equal(Number(readFileSync(join(directory, "attempts.txt"), "utf8")), attempts);
+      assert.match(log, /fixture stdout/);
+      assert.match(log, /fixture stderr/);
+    } else assert.match(log, /FileNotFoundError/);
+    const delays = join(directory, "delays.txt");
+    assert.equal(existsSync(delays) ? readFileSync(delays, "utf8").trim().split(/\r?\n/).length : 0, attempts - 1);
+  }
 });
 
 test("macOS launch agent runs the HTTP server interactively", (t) => {
@@ -249,6 +349,10 @@ test("memory installs, starts, waits, then registers clients", async (t) => {
     waitUntilReady: async () => log.push("ready"),
     register: async () => log.push("register"),
   });
+  await installMemory({ skills: false, startup: true, memoryPort: 8123 }, {});
+  assert.deepEqual(log, ["stop", "install", "run basic-memory", "start", "ready", "register"]);
+
+  log.length = 0;
   await installMemory({ skills: false, startup: true, memoryPort: 8123 }, {});
   assert.deepEqual(log, ["stop", "install", "run basic-memory", "start", "ready", "register"]);
 
