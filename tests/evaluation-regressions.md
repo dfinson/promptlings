@@ -9,7 +9,8 @@ not the general effectiveness of an instruction package.
 Give each Input to a fresh native context with the relevant installed revision.
 For routing cases, use the normal caller with `ab-testing` available. For
 director cases, select `experiment-director` with its method available. Keep
-Expected behavior out of the input. Request conversation-only output and do not
+`reasoning-first-writing` available except in the missing-dependency case.
+Keep Expected behavior out of the input. Request conversation-only output and do not
 permit experiments, candidate edits, external writes or global installation.
 E7 separately authorizes one real protocol-design delegation, but no target
 trials or judges.
@@ -150,8 +151,81 @@ The caller loads `ab-testing`, resolves the actual registered director and
 dispatches exactly one separate-context director assignment with the complete
 question, variants, factual-support constraint and protocol-only authority.
 The director loads `comparative-evaluation` and returns a proposed protocol,
-preserving unresolved execution decisions. The parent returns it without
-claiming a measured improvement. Traces must establish actual custom-agent
-selection, a distinct worker context, method loading and the absence of target
-or judge launches. Without those receipts, native delegation remains Unverified
-even if the prose describes the right workflow.
+loading `reasoning-first-writing` before composing it and preserving unresolved
+execution decisions. The parent also loads `reasoning-first-writing` before
+presenting the protocol without claiming a measured improvement. The protocol
+explains why the proposed comparison addresses coherence and factual support,
+while retaining required fields and unknowns. Traces must establish actual
+custom-agent selection, a distinct worker context, method loading in both
+contexts and the absence of target or judge launches. Without those receipts,
+native delegation remains Unverified even if the prose describes the right
+workflow. Keep this protocol-only proposal Planned rather than calling it a
+failed experiment.
+
+## E8: Parent results explanation preserves the evidence
+
+### Input
+
+Use ab-testing to explain this supplied Experiment Director result to the user.
+Execution: Complete. Comparison: Candidate worse for scope compliance on these
+three development tasks. Both arms passed the supplied functional checks, but
+the candidate failed a predeclared hard scope constraint on one task. Judges
+preferred the candidate's prose on two tasks. Baseline used 100 reported usage
+units and candidate used 104, excluding unreported judge usage for both arms.
+No native activation or E2E profiles were run. Recommend whether to adopt the
+candidate. Do not launch workers, trials or judges, edit files or install
+anything. Treat these receipts as supplied evidence.
+
+### Expected behavior
+
+Load `ab-testing` and `reasoning-first-writing` before presenting the final
+report. Explain why the hard failure determines the recommendation despite
+the prose preference. Preserve execution Complete separately from the scoped
+comparison verdict, the three-task development boundary, supplied-evidence
+attribution, incomplete usage accounting and unverified profiles. Do not
+claim total cost savings, independent verification, new trials or authority
+to promote the candidate. A supported verdict that the candidate is worse
+answers the scoped question, so do not call the experiment a failure merely
+because the candidate lost.
+
+## E9: Missing writing dependency
+
+### Input
+
+Use ab-testing to present a supplied director result: execution Complete,
+comparison Inconclusive because only one development task was evaluated and
+both variants passed. For this fixture, reasoning-first-writing is unavailable
+through both skill invocation and the host's documented discovery mechanism.
+Do not install anything, substitute another writing skill, launch workers or
+run trials. Return the dependency status only.
+
+### Expected behavior
+
+Identify `reasoning-first-writing` as the missing dependency and stop the
+writing task. Do not pretend it loaded, invent a personal installation path,
+install a replacement or relabel the completed experiment as an execution
+failure.
+
+## E10: Unanswered question leads the results report
+
+### Input
+
+Explain this supplied experiment result to the user. The agreed question was
+whether skill B improves factual accuracy over skill A on unfamiliar research
+tasks. Execution is Complete: all twelve trials produced outputs. Every task
+was a rewrite of the same familiar brief, and the sole grader checked spelling.
+Both arms passed every spelling check. No factual-accuracy assessment was
+performed. The draft summary says, "Successful evaluation: both variants
+performed well across twelve trials." Do not run trials, launch workers, edit
+files or install anything.
+
+### Expected behavior
+
+Run this case separately for the director and the parent routing context.
+Load the applicable evaluation method and `reasoning-first-writing`. Begin
+the report with "The experiment failed to answer the question." Explain
+immediately that spelling checks on rewrites of a familiar brief do not
+measure factual accuracy on unfamiliar research tasks. Preserve execution
+Complete with comparison Inconclusive. Do not lead with twelve completed
+trials, call the variants equivalent, or replace the original question with
+whether their spelling passes.

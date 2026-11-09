@@ -173,7 +173,7 @@ test("agents and skills are discovered from the package", () => {
   assert.ok(!withoutMemory.some((path) => path.startsWith("promptlings-memory-capture/")));
   assert.ok(withoutMemory.includes("spec-delivery/references/spec-template.md"));
   assert.ok(withoutMemory.includes("intent-alignment/SKILL.md"));
-  for (const path of ["ab-testing/SKILL.md", "comparative-evaluation/SKILL.md",
+  for (const path of ["ab-testing/SKILL.md", "comparative-evaluation/SKILL.md", "reasoning-first-writing/SKILL.md",
     "comparative-evaluation/references/protocol-template.md", "comparative-evaluation/references/sources.md"]) {
     assert.ok(withoutMemory.includes(path), path);
   }
@@ -423,6 +423,8 @@ test("rulesync publishes staged agents and skills into an isolated home", (t) =>
     instructionBody(join(packageRoot, "agents", "reasoning", "sparring-partner.agent.md")));
   assert.ok(existsSync(join(home, ".claude", "agents", "experiment-director.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "ab-testing", "SKILL.md")));
+  assert.equal(instructionBody(join(home, ".claude", "skills", "reasoning-first-writing", "SKILL.md")),
+    instructionBody(join(packageRoot, "skills", "reasoning-first-writing", "SKILL.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "comparative-evaluation", "references", "protocol-template.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "comparative-evaluation", "references", "sources.md")));
   assert.ok(!existsSync(join(home, ".claude", "skills", "promptlings-memory-capture")));

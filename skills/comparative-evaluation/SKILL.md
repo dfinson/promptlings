@@ -26,6 +26,21 @@ spending authority is unresolved, return the proposed finite pilot and obtain
 the missing decision. Do not invent a credit ceiling or assume unlimited
 approval. In unattended use, leave unresolved permission Blocked.
 
+## Explain proposals and results
+
+Before writing an experiment proposal, protocol or results explanation for the
+caller, invoke `reasoning-first-writing` through the host's skill mechanism.
+If invocation is unavailable, read its `SKILL.md` through the host's documented
+discovery location. If it cannot be loaded, report the missing dependency and
+stop the writing task without installing or substituting another skill.
+
+Use it to explain the decision, why the comparison can answer it, what the
+evidence shows and how that supports the recommendation. This method retains
+ownership of the protocol, required evidence, verdicts and execution authority.
+Preserve required fields, hard failures, accounting gaps and uncertainty.
+Apply the writing skill at these deliverable boundaries, not to routine
+progress updates, target instructions or judge rubrics.
+
 ## 1. Bind the question and contrast
 
 State the decision, primary outcome, practically meaningful difference, hard
@@ -157,6 +172,19 @@ Best-of-many success does not establish consistent success. Report per-task
 results as well as aggregates. A local gate pass is not a significance test.
 Fewer calls do not establish lower cost. A preference gain cannot erase a
 mandatory failure. Diagnose causes only to the extent the contrast supports.
+
+Before reporting results, check whether the evidence answers the original
+comparison question at its agreed scope. If it does not, open with:
+**The experiment failed to answer the question.** Immediately state the
+specific reason and which conclusion the evidence cannot support. Do not bury
+this outcome beneath execution statistics, partial observations or a favorable
+summary. Do not narrow the question after seeing the results to claim success.
+
+A supported finding that the candidate is worse answers the question. A
+supported equivalence finding also answers it. Neither is an experiment
+failure merely because the candidate did not win. Protocol-only work remains
+Planned, not a failed experiment. Keep execution status and comparison verdict
+accurate: all trials completing does not mean the question was answered.
 
 Return:
 
