@@ -10,7 +10,7 @@ import { dpkgInstalled, listedNames, mergeSkillLocks, npmMissing, pendingSkillSo
 import { pins } from "../lib/pins.js";
 import { deps, installMemory } from "../lib/memory.js";
 import { packageBin, quoteForCmd, which } from "../lib/run.js";
-import { launchAgentPlist, systemdUnit, windowsTaskSettings } from "../lib/services.js";
+import { launchAgentPlist, systemdUnit, windowsServerScript, windowsTaskName, windowsTaskScript, windowsTaskSettings } from "../lib/services.js";
 
 const cli = join(packageRoot, "bin", "promptlings.js");
 const temporary = (t) => {
@@ -20,13 +20,53 @@ const temporary = (t) => {
 };
 const promptlings = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: "utf8" });
 
-test("Windows task keeps Normal priority without an execution limit", { skip: process.platform !== "win32" }, () => {
+test("Windows task keeps Normal priority and bounded failure recovery without an execution limit", { skip: process.platform !== "win32" }, () => {
   const script = `$ErrorActionPreference = 'Stop'; $settings = ${windowsTaskSettings}; ` +
     "if ($settings.Priority -ne 4) { throw 'Expected task priority 4' }; " +
     "if ($settings.MultipleInstances -ne 'IgnoreNew') { throw 'Expected IgnoreNew' }; " +
+    "if ($settings.RestartCount -ne 3) { throw 'Expected three retries' }; " +
+    "if ($settings.RestartInterval -ne 'PT1M') { throw 'Expected one minute between retries' }; " +
     "if ($settings.ExecutionTimeLimit -ne 'PT0S') { throw 'Expected no execution limit' }";
-  const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { encoding: "utf8" });
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], { encoding: "utf8", windowsHide: true });
   assert.equal(result.status, 0, result.stdout + result.stderr);
+});
+
+test("Windows registration replaces the same task and launches the exit-reporting wrapper", () => {
+  const command = "C:\\Memory tools\\O'Brien\\basic-memory.exe";
+  const pythonw = "C:\\Memory tools\\O'Brien\\Scripts\\pythonw.exe";
+  const script = windowsTaskScript(command, 8123, pythonw);
+  assert.ok(script.includes("-Execute 'C:\\Memory tools\\O''Brien\\Scripts\\pythonw.exe'"));
+  assert.doesNotMatch(script, /-Execute.*(?:powershell|cmd|conhost)\.exe/i);
+  assert.match(script, /-LogonType Interactive -RunLevel Limited/);
+  assert.ok(script.includes(`Register-ScheduledTask -TaskName '${windowsTaskName}'`));
+  assert.match(script, /-Principal \$principal -Force/);
+  assert.ok(script.includes(`Start-ScheduledTask -TaskName '${windowsTaskName}'`));
+  const encoded = script.match(/b64decode\(''([A-Za-z0-9+/=]+)''\)/)[1];
+  assert.equal(Buffer.from(encoded, "base64").toString("utf8"), windowsServerScript(command, 8123));
+  assert.match(windowsServerScript(command, 8123), /creationflags=subprocess\.CREATE_NO_WINDOW/);
+});
+
+const pythonw = process.env.PROMPTLINGS_TEST_PYTHONW || which("pythonw");
+test("Windows server wrapper preserves output and propagates success, failure and launch errors", {
+  skip: process.platform !== "win32" || !pythonw,
+}, (t) => {
+  const directory = temporary(t);
+  const command = join(directory, "memory O'Brien.cmd");
+  const env = { ...process.env, USERPROFILE: directory };
+  const run = () => spawnSync(pythonw, ["-c", windowsServerScript(command, 8123)], { env, encoding: "utf8", windowsHide: true });
+  for (const code of [37, 0]) {
+    writeFileSync(command, `@echo off\r\necho stdout-${code}\r\necho stderr-${code} >&2\r\nexit /b ${code}\r\n`);
+    const result = run();
+    assert.equal(result.status, code, result.stdout + result.stderr);
+  }
+  rmSync(command);
+  const missing = run();
+  assert.equal(missing.status, 1, missing.stdout + missing.stderr);
+  const log = readFileSync(join(directory, ".basic-memory", "mcp.log"), "utf8");
+  for (const text of ["stdout-37", "stderr-37", "stdout-0", "stderr-0",
+    "Basic Memory exited with code 37", "Basic Memory exited with code 0", "Basic Memory exited with code 1",
+    "FileNotFoundError"]) assert.ok(log.includes(text), text);
+  assert.equal(log.match(/Starting Basic Memory on 127\.0\.0\.1:8123/g).length, 3);
 });
 
 test("macOS launch agent runs the HTTP server interactively", (t) => {
@@ -249,6 +289,10 @@ test("memory installs, starts, waits, then registers clients", async (t) => {
     waitUntilReady: async () => log.push("ready"),
     register: async () => log.push("register"),
   });
+  await installMemory({ skills: false, startup: true, memoryPort: 8123 }, {});
+  assert.deepEqual(log, ["stop", "install", "run basic-memory", "start", "ready", "register"]);
+
+  log.length = 0;
   await installMemory({ skills: false, startup: true, memoryPort: 8123 }, {});
   assert.deepEqual(log, ["stop", "install", "run basic-memory", "start", "ready", "register"]);
 
