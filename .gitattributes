@@ -1,1 +1,4 @@
 * text=auto eol=lf
+
+# Preserve checksummed upstream bytes, including original whitespace and line endings.
+skills/motionite/** -text -whitespace

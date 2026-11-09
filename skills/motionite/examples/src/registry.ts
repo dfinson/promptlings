@@ -1,0 +1,58 @@
+import React from 'react';
+import * as T from './tech/type';
+import * as X from './tech/transitions';
+import * as C from './tech/camera';
+import * as U from './tech/ui';
+import * as N from './tech/data';
+import * as H from './tech/drawn';
+export type Tech = {id: string; name: string; cat: string; C: React.FC};
+export const TECHS: Tech[] = [
+  {id: 'T01', name: 'Anchor + blur swap', cat: 'Type', C: T.BlurSwap},
+  {id: 'T02', name: 'Editorial ink build + highlighter', cat: 'Type', C: T.EditorialHighlighter},
+  {id: 'T03', name: 'Karaoke caption + count-up', cat: 'Type', C: T.KaraokeCaption},
+  {id: 'T04', name: 'Bracket word slam + arc blur', cat: 'Type', C: T.BracketSlam},
+  {id: 'T05', name: 'Masked baseline rise', cat: 'Type', C: T.MaskRise},
+  {id: 'T06', name: 'Type-on with human holds', cat: 'Type', C: T.TypeOn},
+  {id: 'T07', name: 'Scramble decode', cat: 'Type', C: T.ScrambleDecode},
+  {id: 'T08', name: 'Pixel title + PRESS START blink', cat: 'Type', C: T.PixelTitleBlink},
+  {id: 'T09', name: '3D text ring', cat: 'Type', C: T.TextRing},
+  {id: 'N01', name: 'Scramble counter + ghosting', cat: 'Numbers', C: N.ScrambleCounter},
+  {id: 'N02', name: 'Digit reel detent', cat: 'Numbers', C: N.DigitReel},
+  {id: 'N03', name: 'Strike + count-down to $0', cat: 'Numbers', C: N.StrikeCountdown},
+  {id: 'N04', name: 'Spring graph (same fn moves dot)', cat: 'Numbers', C: N.SpringGraph},
+  {id: 'N05', name: 'Ledger rows + red progress', cat: 'Numbers', C: N.LedgerStack},
+  {id: 'N06', name: 'Node graph edges draw', cat: 'Numbers', C: N.NodeGraph},
+  {id: 'N07', name: 'Tally counter + receipt rows', cat: 'Numbers', C: N.TallyCounter},
+  {id: 'X01', name: 'Vertical smear wipe', cat: 'Transition', C: X.SmearWipe},
+  {id: 'X02', name: 'Iris punch-through + glyph knockout', cat: 'Transition', C: X.IrisPunch},
+  {id: 'X03', name: 'Flood from button, contract', cat: 'Transition', C: X.FloodContract},
+  {id: 'X04', name: 'Scale-through cut', cat: 'Transition', C: X.ScaleThroughCut},
+  {id: 'X05', name: 'Polarity flip + rubber stamp', cat: 'Transition', C: X.PolarityStamp},
+  {id: 'X06', name: 'Strobe sting (7,5,5,2,2,5,5,5,7)', cat: 'Transition', C: X.StrobeSting},
+  {id: 'X07', name: 'Ink-blot reveal', cat: 'Transition', C: X.InkBlot},
+  {id: 'X08', name: 'Whip pan with speed blur', cat: 'Transition', C: X.WhipPan},
+  {id: 'C01', name: 'Continuous pan + time of day', cat: 'Camera', C: C.ContinuousPan},
+  {id: 'C02', name: 'Parallax truck .3/1/1.6', cat: 'Camera', C: C.ParallaxTruck},
+  {id: 'C03', name: 'Impact kick + flash', cat: 'Camera', C: C.ImpactKick},
+  {id: 'C04', name: 'Log-zoom world camera', cat: 'Camera', C: C.LogZoomWorld},
+  {id: 'C05', name: 'Push-in to door reveal', cat: 'Camera', C: C.PushInDoor},
+  {id: 'U01', name: 'Tilted 3D phone + giant number + chips', cat: 'UI', C: U.TiltedPhone},
+  {id: 'U02', name: 'Chip-flip grid on beat', cat: 'UI', C: U.ChipFlipGrid},
+  {id: 'U03', name: 'Stat tiles LV tick', cat: 'UI', C: U.StatTiles},
+  {id: 'U04', name: 'HUD bbox + shape morph', cat: 'UI', C: U.HudShapeMorph},
+  {id: 'U05', name: 'UI-state morph button→check→pill', cat: 'UI', C: U.UiStateMorph},
+  {id: 'U06', name: 'Cursor glide, hover, press', cat: 'UI', C: U.CursorPress},
+  {id: 'U07', name: 'Two-edge spring toggle', cat: 'UI', C: U.TwoEdgeToggle},
+  {id: 'U08', name: 'Orbit icons with depth', cat: 'UI', C: U.OrbitIcons},
+  {id: 'U09', name: 'Card deal → scatter + counter', cat: 'UI', C: U.CardDealScatter},
+  {id: 'U10', name: 'Card flip face swap + specular', cat: 'UI', C: U.FlipSpecular},
+  {id: 'U11', name: 'Floating cards on dark world', cat: 'UI', C: U.FloatingCards},
+  {id: 'H01', name: 'Self-draw + boil on twos + marker note', cat: 'Hand-drawn', C: H.SelfDrawBoil},
+  {id: 'H02', name: 'Paper cut-out stop-motion', cat: 'Hand-drawn', C: H.PaperStopMotion},
+  {id: 'H03', name: 'Riso halftone misregistration', cat: 'Hand-drawn', C: H.RisoHalftone},
+  {id: 'H04', name: 'Mosaic resolve', cat: 'Texture', C: H.MosaicResolve},
+  {id: 'H05', name: 'Dot-grid wave reacts to hero dot', cat: 'Texture', C: H.DotGridWave},
+  {id: 'H06', name: 'Cadence: ones / twos / 12 poses', cat: 'Texture', C: H.CadenceCompare},
+  {id: 'H07', name: 'Particle burst (rule-break)', cat: 'Texture', C: H.ParticleBurst},
+  {id: 'H08', name: 'Point sphere → wire cube', cat: 'Texture', C: H.PointSphereCube},
+];

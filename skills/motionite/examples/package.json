@@ -1,0 +1,25 @@
+{
+  "name": "motionite-examples",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Motionite by NxrLabs: technique lab (48 comps) + one example comp per NxrStyle, built with Remotion.",
+  "license": "MIT",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "reel": "remotion render src/index.ts TechniqueReel out/technique-reel.mp4",
+    "stills": "bash ../scripts/render-stills.sh",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.539",
+    "@remotion/renderer": "4.0.539",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.539"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3"
+  }
+}
