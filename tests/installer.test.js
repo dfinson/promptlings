@@ -6,7 +6,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
-import { dpkgInstalled, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
+import { dpkgInstalled, externalSkillSources, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
 import { deps, installMemory } from "../lib/memory.js";
 import { packageBin, quoteForCmd, which } from "../lib/run.js";
@@ -231,6 +231,30 @@ test("external skills install concurrently with ordered output and a merged lock
   const lock = JSON.parse(readFileSync(join(state, "skills", ".skill-lock.json"), "utf8"));
   assert.deepEqual(Object.keys(lock.skills).sort(), ["first", "second"]);
   await assert.rejects(skillsAddConcurrent(["second", "bad"], runner), /External skill installation failed: bad \(1\)/);
+});
+
+test("demo tools select pinned upstream Motionite and honor external-skill opt-outs", () => {
+  const sources = externalSkillSources({ skills: true, demo: true });
+  assert.ok(sources.includes(pins.motioniteSkills));
+  assert.match(pins.motioniteSkills, /^https:\/\/github\.com\/nxrskyaa\/motionite\/tree\/[a-f0-9]{40}$/);
+  assert.equal(externalSkillSources({ skills: false, demo: true }).includes(pins.motioniteSkills), false);
+  assert.equal(externalSkillSources({ skills: true, demo: false }).includes(pins.motioniteSkills), false);
+  const experience = externalSkillSources({ skills: true, demo: true, playwright: true, hyperframes: true, experience: true });
+  assert.equal(experience.filter((source) => source === pins.playwrightSkills).length, 1);
+});
+
+test("root-level pinned skills participate in installer reuse", () => {
+  const ref = pins.motioniteSkills.split("/").at(-1);
+  const entry = {
+    source: "nxrskyaa/motionite", sourceType: "github",
+    sourceUrl: "https://github.com/nxrskyaa/motionite.git", ref, skillPath: "SKILL.md",
+  };
+  const lock = { skills: { motionite: entry } };
+  assert.equal(skillSourceInstalled(lock, pins.motioniteSkills, () => true), true);
+  assert.equal(skillSourceInstalled(lock, `${pins.motioniteSkills}/`, () => true), true);
+  assert.equal(skillSourceInstalled(lock, pins.motioniteSkills, () => false), false);
+  assert.equal(skillSourceInstalled({ skills: { motionite: { ...entry, ref: "old" } } }, pins.motioniteSkills, () => true), false);
+  assert.equal(skillSourceInstalled({ skills: { motionite: { ...entry, skillPath: undefined } } }, pins.motioniteSkills, () => true), false);
 });
 
 test("memory installs, starts, waits, then registers clients", async (t) => {

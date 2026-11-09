@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { packageRoot, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
+import { pins } from "../lib/pins.js";
 
 const read = (file) => readFileSync(join(packageRoot, file), "utf8");
 const agent = read("agents/media/technical-demo.agent.md");
@@ -25,7 +25,7 @@ test("restored storytelling uses a treatment-first human-readable script present
 });
 
 test("route selection preserves specialist ownership and approval continuity", () => {
-  assert.match(agent, /invoke `motionite`/);
+  assert.match(agent, /invoke the installer's pinned upstream `motionite`/);
   assert.match(agent, /user explicitly selects HyperFrames, invoke `hyperframes`/);
   assert.match(agent, /For a plain recording, use `cue-synced-demo` directly/);
   assert.match(agent, /Reuse the approval across sessions and checkpoints/);
@@ -52,18 +52,13 @@ test("production support retains inputs, concurrency prerequisites, components a
   assert.match(agent, /prompt-to-delivered-draft time/);
 });
 
-test("pinned Motionite resources retain original bytes and redistribution notices", () => {
-  assert.match(read(".gitattributes"), /skills\/motionite\/\*\* -text -whitespace/);
-  const root = join(packageRoot, "skills", "motionite");
-  const manifest = JSON.parse(read("skills/motionite/UPSTREAM.json"));
-  assert.equal(manifest.revision, "7b7d4dbdc0a725b362317683711d77195336b34a");
-  for (const [file, expected] of Object.entries(manifest.files)) {
-    assert.ok(!file.includes(".."), file);
-    assert.equal(createHash("sha256").update(readFileSync(join(root, file))).digest("hex"), expected.sha256, file);
-  }
-  assert.match(read("skills/motionite/LICENSE"), /Permission is hereby granted/);
-  assert.ok(!existsSync(join(root, "examples", "public", "img")));
-  assert.match(read("skills/motionite/UPSTREAM.md"), /deliberately omitted/);
+test("Motionite belongs to the pinned upstream installer rather than the package", () => {
+  assert.equal(pins.motioniteSkills, "https://github.com/nxrskyaa/motionite/tree/7b7d4dbdc0a725b362317683711d77195336b34a");
+  assert.ok(!existsSync(join(packageRoot, "skills", "motionite")));
+  const catalog = read("skills/technical-demo-production/references/components.md");
+  assert.match(catalog, /Installed from a pinned upstream revision/);
+  assert.match(catalog, /SIL OFL/);
+  assert.match(catalog, /Installation is not permission to reuse product imagery/);
 });
 
 test("existing discovery and publication ship the complete production support", (t) => {
@@ -71,7 +66,9 @@ test("existing discovery and publication ship the complete production support", 
   t.after(() => rmSync(staging, { recursive: true, force: true }));
   stageRulesync(staging, { agents: ["technical-demo"], includeMemory: false, readSide: false });
   assert.equal(readFileSync(join(staging, "subagents", "technical-demo.md"), "utf8"), withTargets(agent, "technical-demo"));
-  const files = skillFiles({ includeMemory: false }).filter((file) => /^(motionite|technical-demo-production)\//.test(file));
+  const discovered = skillFiles({ includeMemory: false });
+  assert.ok(!discovered.some((file) => file.startsWith("motionite/")));
+  const files = discovered.filter((file) => /^(technical-demo-production|cue-synced-demo|pr-video)\//.test(file));
   assert.ok(files.includes("technical-demo-production/scripts/render-jobs.mjs"));
   for (const file of files) {
     const original = readFileSync(join(packageRoot, "skills", file));

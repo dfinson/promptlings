@@ -87,10 +87,11 @@ frames and video jobs through one browser. Writing and narration use the
 reasoning-first skills. Revisions address specific defects instead of restarting
 briefing or running fixed-count review loops.
 
-[Motionite provenance](skills/motionite/UPSTREAM.md) records the pinned upstream
-revision, licenses and omitted preview assets. Production dependencies and media
-belong in an external production workspace, not this repository. Measure complete
-draft turnaround separately from rendering time.
+The installer fetches [Motionite](https://github.com/nxrskyaa/motionite) from the
+upstream revision in [the tool pins](lib/pins.js), just like other external skills.
+Its source and assets are not vendored here. Production dependencies and media
+belong in an external production workspace. Measure complete draft turnaround
+separately from rendering time.
 
 ### Intent alignment
 
@@ -219,5 +220,4 @@ and design provenance.
 
 ## License
 
-[Apache 2.0](LICENSE). Vendored Motionite files retain their
-[upstream licenses and notices](skills/motionite/UPSTREAM.md).
+[Apache 2.0](LICENSE). External tools and skills retain their upstream licenses.
