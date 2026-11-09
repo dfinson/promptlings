@@ -95,8 +95,8 @@ Experiment Director and its `ab-testing` routing and `comparative-evaluation`
 method skills are discovered through the same publication path. To select only
 that agent, use `npx promptlings publish --agents experiment-director --no-readside`.
 This publishes instructions, including the method's protocol template and
-research references. It does not install Harbor, Inspect, Promptfoo, a model
-account or an evaluation service. Verify the chosen executor separately.
+research references, plus `reasoning-first-writing` for proposals and results
+explanations by the director and caller.
 Selective agent installs still publish bundled skills, so a caller using
 `ab-testing` must check that Experiment Director is actually available before
 delegating.
@@ -323,8 +323,9 @@ companions. Both `design-writing` and `reasoning-first-narration` also require
 `reasoning-first-writing`. Restart your assistant after copying.
 
 For A/B testing, copy `experiment-director.agent.md` and the complete
-`ab-testing` and `comparative-evaluation` skill directories. The latter includes
-its `references` directory. The routing skill needs the host's registered
+`ab-testing`, `comparative-evaluation` and `reasoning-first-writing` skill
+directories. Include the evaluation method's `references` directory.
+The routing skill needs the host's registered
 director identity and a separate subagent or child-session capability to
 delegate. Manual installation alone does not establish native activation or
 end-to-end evaluation behavior.

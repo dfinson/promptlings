@@ -71,3 +71,7 @@ Identify what compact non-sensitive evidence must survive temporary storage,
 where it is authorized to persist, and how its readback will be checked.
 Return execution status separately from the comparison verdict. List remaining
 unverified profiles and human decisions without granting promotion authority.
+For results, lead with whether the original question was answered at its
+agreed scope. If not, begin "The experiment failed to answer the question."
+and give the specific reason before supporting detail. Protocol-only proposals
+remain Planned.
