@@ -29,7 +29,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces technical videos, including explainers and recorded demonstrations, from story and script approval through production and final review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
-| [Spec Master](agents/orchestration/spec-master.agent.md) | Coordinates approved delivery through concurrent lanes, scoped PRs and revision-bound handoff checks. Keeps working specs outside product history unless authorized. |
+| [Spec Master](agents/orchestration/spec-master.agent.md) | Aligns intent through specifications humans can understand and judge, preserving precise behavior and consequential design. Coordinates separately approved delivery through concurrent lanes and scoped PRs. |
 | [Experiment Director](agents/orchestration/experiment-director.agent.md) | Designs and conducts controlled comparisons of prompts, skills, agents and workflows, separating measured outcomes from preferences, cost and uncertainty. |
 
 [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a
@@ -110,8 +110,10 @@ accessible context, traces requirements to work and material changes back to
 their justification, and distinguishes demonstrated mismatches from unresolved
 intent or missing evidence. It assesses plans and implementations without
 editing them or approving delivery. A supplied snapshot works without a tracker
-connection. Spec Master uses it before presenting a specification, and
-spec-delivery uses it before approval and at final integration.
+connection. Spec Master revisits alignment as mechanisms or scope change and
+uses the skill before presenting a specification. It checks comprehension
+separately from requirement coverage. Spec-delivery also checks alignment
+before approval and at final integration.
 
 ### A/B testing
 
@@ -152,22 +154,41 @@ runner is installed automatically. Running trials needs execution authority
 and resolved resource and stopping constraints. Results do not authorize
 repair, installation or promotion.
 
-### Spec delivery
+### Specifications and delivery
 
-For a feature too large for one coding session, select Spec Master and describe
-the feature, or ask your current agent:
+To agree on a proposal before implementing it, select Spec Master or ask your
+current agent:
 
 ```text
-Use spec-delivery to build this feature.
+Have Spec Master spec this feature before implementation.
 ```
 
-The [spec-delivery](skills/spec-delivery/SKILL.md) skill writes a spec with
-testable acceptance criteria and a lane graph for your approval. Working specs,
-plans and evidence stay in session artifacts or your chosen external system.
-Approval identifies their immutable versions or content hashes. Committing
-them to the product repository requires separate authorization.
+Spec Master explains the problem, intended experience, proposed mechanism and
+important choices before reference-level detail. Exact constraints, interfaces,
+failure cases and observable acceptance remain where they affect the decision.
+The whole specification must be understandable, not just its summary.
 
-It launches independent lanes concurrently and uses PRs as the default review
+When delegating, pass the actual request and relevant evidence. A request to
+specify a feature, even an "implementation-ready" one, does not automatically
+ask for file inventories, per-criterion commands or execution gates. Those
+belong to preparing delivery. Explicitly requested operational fields still
+need faithful presentation. A companion artifact requires your authorization.
+
+When you want delivery coordinated too:
+
+```text
+Use spec-delivery to prepare this feature for delivery and obtain approval before implementation.
+```
+
+The [spec-delivery](skills/spec-delivery/SKILL.md) skill prepares the lane graph,
+exact write sets, ownership, criterion commands and critical markings for
+revision-bound approval. Agreement on the human specification is distinct from
+implementation authorization. Working specs, plans and evidence stay in session
+artifacts or your chosen external system. Approval identifies immutable versions
+or content hashes. Committing them to the product repository requires separate
+authorization.
+
+After approval, it launches independent lanes concurrently and uses PRs as the default review
 and integration boundary. Genuine consumers can stack on passing producer PRs
 without waiting for a merge. Each handoff checks both the lane's own changes and
 the full diff against its actual PR target, plus fail-on-base tests and relevant

@@ -50,6 +50,13 @@ For intent-alignment changes, run the
 [alignment regression cases](../tests/intent-alignment-regressions.md) to check
 scope reconciliation, evidence limits, and snapshot freshness.
 
+For specification-writing changes, use the
+[specification regression cases](../tests/specification-regressions.md).
+Check actual coordinator delegation as well as Spec Master's output. Assess
+requirement preservation and reader comprehension separately, and retain an
+explicit delivery-planning case so readability changes do not erase execution
+safeguards. Static contract assertions do not establish human readability.
+
 For evaluation-instruction changes, use the bounded
 [evaluation regression cases](../tests/evaluation-regressions.md). Keep expected
 answers out of target inputs, record the actual loaded revisions, and separate
