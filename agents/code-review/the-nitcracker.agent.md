@@ -192,7 +192,9 @@ Hard rules:
 
 ### 6. Draft each comment
  
-For every inline finding and every top-level concern, draft the comment now. For design forks, the format in step 5b is the draft.
+For every inline finding and every top-level concern, draft the comment now. For design forks, the format in step 5b is the draft. For a fork or bet whose question the author should answer in the PR, also draft a proposed comment anchored where that choice lives.
+
+Load `review-comment-writing` and `reasoning-first-writing` when the host provides them and apply them to every draft. The rules below still apply when they are unavailable; where they overlap, the stricter rule wins.
  
 Comment shape:
  
@@ -214,6 +216,7 @@ Banned:
 - Stock metaphors: "doing seventeen things in a trenchcoat", "abstraction smoothie", "spaghetti with extra meatballs", "kitchen sink", "Swiss army knife". They read as filler because they are.
 - Hedging vocabulary already banned in step 4.
 - Restating the code back to the author. They wrote it; they know what it does. Skip to the part they don't know.
+- Headings, `#` markup, bold labels such as **Issue:** or **Fix:**, internal finding numbers, commit hashes, review-process words ("verified", "red-team"), disclaimers, and AI attribution in the comment body.
  
 Required:
 - Concrete mechanism stated explicitly. Not "this could cause issues", but "this means a token rotation requires a pod restart, since the client is built once at module import".
@@ -257,15 +260,17 @@ The writeup opens with:
 
 After the narrative, separated by a horizontal rule (`---`), include the structured findings:
 
-For each inline finding, in the order they appear in the diff:
+For each inline finding, in the order they appear in the diff, give the anchor and the proposed comment:
 
 ```
-**File:** path/to/file.ext line N
+**Anchor:** path/to/file.ext, RIGHT, line N (or lines M-N), inline
 ```
 
 ````markdown
 {comment body, short and sharp, no top-level heading, no signature}
 ````
+
+Inline anchors are always `RIGHT` on an added or modified line, per step 2. For a top-level concern, write `**Anchor:** top-level` and name the files in the comment's first sentence. Every line anchor must sit inside a diff hunk at the reviewed head.
 
 For design forks (as many as survive the filter, in their own block):
 
@@ -284,6 +289,8 @@ For implicit bets (as many as survive the filter, in their own block after forks
 - **{name}**: {file:line anchor}. **What:** {what the diff does}. **Why it's defensible:** {the argument}. **Alternative cost:** {what the other road costs}. **The question to answer:** {concrete question for the reviewer}.
 - **{name}**: ...
 ````
+
+When a fork or bet has a proposed comment for the author, put it directly under that bullet with its `**Anchor:**` line and comment block in the same format as inline findings.
 
 **Appendix: Triage map** (produced when the PR touches more than 10 files):
 

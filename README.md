@@ -75,6 +75,18 @@ The [skills directory](skills/) also contains methods for investigation, test
 analysis, writing, narration, and design documents. You can ask your current
 agent to use one without switching personas.
 
+### Pull request and review text
+
+PR titles, descriptions, and review comments are written for people.
+[pr-description-writing](skills/pr-description-writing/SKILL.md) applies whenever
+an agent creates or edits a pull request. It reads the repository's PR template
+and instructions first, shows user-visible changes with before/after screenshots
+or a short demo video, and writes the description in plain English.
+[review-comment-writing](skills/review-comment-writing/SKILL.md) pairs every
+review finding with a proposed comment, anchored to the diff line it concerns,
+that the author can read without the review report. Both build on
+[reasoning-first-writing](skills/reasoning-first-writing/SKILL.md).
+
 ### Technical demo
 
 Technical Demo presents an overall creative treatment first, then readable scene
@@ -207,6 +219,8 @@ Run the review ensemble on this branch against origin/main.
 The [review-ensemble](skills/review-ensemble/SKILL.md) skill runs the-nitcracker,
 PR Walkthrough, and Sparring Partner independently in parallel.
 Your current agent investigates their findings and brings the results together.
+Each verified finding comes back with a proposed comment anchored to its diff
+line and written with `review-comment-writing`, ready for you to post or edit.
 The host must support parallel subagents and provide all three identities.
 
 Sparring Partner is the portable successor to the built-in rubber-duck role.
