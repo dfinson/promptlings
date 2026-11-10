@@ -106,8 +106,8 @@ Experiment Director and its `ab-testing` routing and `comparative-evaluation`
 method skills are discovered through the same publication path. To select only
 that agent, use `npx promptlings publish --agents experiment-director --no-readside`.
 This publishes instructions, including the method's protocol template and
-research references. It does not install Harbor, Inspect, Promptfoo, a model
-account or an evaluation service. Verify the chosen executor separately.
+research references, plus `reasoning-first-writing` for proposals and results
+explanations by the director and caller.
 Selective agent installs still publish bundled skills, so a caller using
 `ab-testing` must check that Experiment Director is actually available before
 delegating.
@@ -162,7 +162,11 @@ Stdio-only clients such as Claude Desktop connect through
 
 Basic Memory binds to `127.0.0.1`, using port 8000 by default. Windows uses a
 limited, current-user Scheduled Task, macOS a LaunchAgent, and Linux a systemd
-user service. Each starts the installed command directly. Linux startup
+user service. Windows uses the installed Basic Memory environment's `pythonw.exe`
+for both the task action and the server, loading the installed `basic-memory`
+console entry point without its console-executable shim. Neither process
+allocates a console. The child also uses `CREATE_NO_WINDOW`. The other platforms
+start the command directly. Linux startup
 requires an active systemd user session. The installer checks the MCP
 initialization response before reporting success.
 
@@ -190,6 +194,74 @@ For an existing installation, rerun the installer with your usual selections to
 regenerate and restart its managed startup service. The new scheduling takes
 effect when the service starts, not when this repository is updated. This does
 not change the client-launched stdio mode selected by `--no-startup`.
+
+The Windows task retains `IgnoreNew` instance handling and an unlimited execution
+time. Native task-launch failure retries are configured for three attempts,
+one minute apart. A nonzero process exit does not reliably trigger those retries:
+on the tested Windows host, the scheduler recorded the exit code but did not
+restart the action.
+
+The existing windowless action therefore waits for each server exit and retries
+a failed server up to three times, one minute apart. A successful exit stops
+immediately. After four total attempts it logs budget exhaustion and exits with
+the final failure code. This is a finite child-exit loop, not a watchdog or
+health-polling service. The task remains Running during a retry wait.
+The native and child budgets are separate: if Windows restarts the action,
+that invocation receives its own four-attempt child budget. Neither is unlimited.
+
+The former `conhost --headless` action returned success when its child failed,
+preventing Task Scheduler from detecting that exit code. The windowless action
+appends timestamped startup and exit records, retry decisions, stdout, and stderr to
+`%USERPROFILE%\.basic-memory\mcp.log`. Basic Memory also retains its own
+`basic-memory-<pid>.log` files. An externally terminated wrapper cannot write a
+final exit record. Inspect the task's Last Run Result for that case.
+
+Once a release includes this repair, run
+`npx promptlings@latest memory --no-skills --yes` to apply it to an existing
+installation. From a source checkout with dependencies installed, use
+`node .\bin\promptlings.js memory --no-skills --yes` on Windows.
+Include your usual `--memory-port` if different. Both use the same stop, install,
+replace-task, start, and MCP readiness sequence. The stop step captures the
+managed environment's process trees before stopping the task, then terminates
+those captured processes without opening command windows. It replaces the fixed
+`Promptlings Basic Memory` task rather than adding a second task and leaves
+project data intact. Updating the package or repository alone does not update
+the registered task. No separate updater is required.
+
+For recovery, start the existing task with
+`Start-ScheduledTask -TaskName 'Promptlings Basic Memory'` instead of launching
+a detached server. Check server health with a fresh MCP initialization request.
+If that succeeds while an assistant retains an initialization error, reconnect
+that client. Multiple MCP registrations pointing at the endpoint do not by
+themselves establish a server failure or require removal.
+
+### Windows lifecycle acceptance
+
+The focused Windows wrapper test requires `pythonw.exe` rather than silently
+skipping. CI supplies Python 3.12. To exercise the installed Basic Memory
+environment locally, set `PROMPTLINGS_TEST_PYTHONW` to its
+`Scripts\pythonw.exe` and run:
+
+```powershell
+node --test --test-name-pattern='Windows|memory installs' tests\installer.test.js
+```
+
+For real scheduled-task acceptance, also set
+`PROMPTLINGS_MEMORY_ACCEPTANCE_DIR` to an absolute disposable artifact directory
+outside the repository, then run:
+
+```powershell
+node --test tests\windows-memory-lifecycle.test.js
+```
+
+This opt-in test takes several minutes. It uses an isolated interpreter,
+configuration, project directory, task name, and loopback port. Installed packages
+are reused read-only. It checks real MCP initialization, stop-and-replace,
+child termination and recovery, the real one-minute retry delays, finite
+exhaustion, and zero console handles in launcher and server processes.
+It preserves the shared task, listener and configuration, and removes its
+temporary task, processes and data in its finalizer. It never runs the shared
+installer or upgrades packages.
 
 [task-priority]: https://learn.microsoft.com/en-us/windows/win32/taskschd/tasksettings-priority
 [launchd-process-type]: https://keith.github.io/xcode-man-pages/launchd.plist.5.html#ProcessType
@@ -262,8 +334,9 @@ companions. Both `design-writing` and `reasoning-first-narration` also require
 `reasoning-first-writing`. Restart your assistant after copying.
 
 For A/B testing, copy `experiment-director.agent.md` and the complete
-`ab-testing` and `comparative-evaluation` skill directories. The latter includes
-its `references` directory. The routing skill needs the host's registered
+`ab-testing`, `comparative-evaluation` and `reasoning-first-writing` skill
+directories. Include the evaluation method's `references` directory.
+The routing skill needs the host's registered
 director identity and a separate subagent or child-session capability to
 delegate. Manual installation alone does not establish native activation or
 end-to-end evaluation behavior.

@@ -63,9 +63,30 @@ or turn an open question into a presupposed improvement.
 
 ## Consume the result
 
+Before presenting the director's proposal or final results to the user, invoke
+`reasoning-first-writing` through the host's skill mechanism. If invocation is
+unavailable, read its `SKILL.md` through the host's documented discovery
+location. If it cannot be loaded, report the missing dependency and stop the
+writing task without installing or substituting another skill.
+
+Explain the decision, the comparison's rationale, the evidence and its
+consequences for the recommendation. Preserve the director's protocol fields,
+evidence attribution, verdict scope, hard failures, accounting gaps and
+uncertainty. The writing skill governs expression, not experimental design,
+execution or grading. Apply it to these user-facing deliverables rather than
+routine progress updates.
+
 Check that the result answers the original question at the reported revision
-and scope. Preserve `Partial`, `Blocked` and `Inconclusive` results. A failed
-hard requirement cannot be traded for style or lower cost.
+and agreed scope. If the experiment's results cannot answer it, open the
+user-facing report with **The experiment failed to answer the question.**
+Immediately explain the concrete evidence gap and unsupported conclusion,
+even if the director buried them. Do not present completed trials or a
+narrower post-hoc question as success. Preserve the actual execution status
+and comparison verdict. A supported negative or equivalence result answers
+the question, and a protocol-only proposal remains Planned.
+
+Preserve `Partial`, `Blocked` and `Inconclusive` results. A failed hard
+requirement cannot be traded for style or lower cost.
 
 Keep the parent responsible for the final recommendation. Verify consequential
 claims against returned evidence with `evidence-verification` when needed.

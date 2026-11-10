@@ -134,6 +134,15 @@ native skill activation and real end-to-end outcomes are separate profiles.
 An inconclusive result is valid, and passing one profile does not certify the
 others.
 
+Both the director and the calling agent use
+[reasoning-first-writing](skills/reasoning-first-writing/SKILL.md) when
+explaining experiment proposals and results. The writing skill makes the
+reasoning readable while preserving protocol requirements, evidence, verdicts
+and uncertainty. It does not change trial execution or grading.
+When results cannot answer the original question at its agreed scope, the
+report opens with "The experiment failed to answer the question." and the
+concrete reason. Completed trials alone do not satisfy that gate.
+
 The package supplies instructions and a protocol template, not a new runner.
 Use an existing compatible executor, such as Harbor for isolated coding tasks
 or an SDK runner for artifacts. No evaluation service, model account or new
