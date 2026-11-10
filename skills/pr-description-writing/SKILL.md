@@ -1,6 +1,6 @@
 ---
 name: pr-description-writing
-description: Draft or update a pull request title and description for human reviewers, following the repository's PR template and instructions first, then showing the change with before/after screenshots or a short demo video and writing plain English. Use whenever any agent creates a pull request, edits a PR title or description, or prepares PR text for a user to publish.
+description: Draft or update a pull request title and description for human reviewers, following the repository's PR template and instructions first, then showing the change with before/after screenshots (a video only when the user or template asks) and writing plain English. Use whenever any agent creates a pull request, edits a PR title or description, or prepares PR text for a user to publish.
 ---
 
 # PR Description Writing
@@ -33,13 +33,13 @@ Every claim in the description must trace to the diff, a check that ran, or the 
 
 ## 3. Show the change
 
-Pictures and a short video come first because they let a reviewer judge the result before reading code.
+Media comes first because it lets a reviewer judge the result before reading code.
 
-- **User-visible change** (screens, rendered documents, exports, emails, CLI output): capture before/after screenshots from real builds of the base and head revisions. Use the same data, viewport, and steps for both so the only difference is the change. Pair them side by side or one after the other, each with a one-line caption saying what to look at.
-- **Interaction or flow** (a new step, a fixed sequence, an animation, a timing change): record a short demo video of the head build that covers only the changed flow, from the starting state to the visible result. Sound is optional. Use `cue-synced-demo` or the host's browser automation for capture. When the change needs a narrated explanation of the code as well, use `pr-video` and attach that video.
+- **User-visible change** (screens, rendered documents, exports, emails, CLI output, multi-step flows): capture before/after screenshots from real builds of the base and head revisions. Use the same data, viewport, and steps for both so the only difference is the change. For a flow, capture the step that changed in both builds. Pair them side by side or one after the other, each with a one-line caption saying what to look at.
 - **Behavior without a screen** (APIs, data handling, jobs, libraries): show one concrete before/after example as text, such as input and output, a request and response, or a log line, in a fenced code block.
 - **Mechanical change** (refactor, rename, dependency bump, CI): media is not needed. Say what stays identical and how that was confirmed.
 
+Make a video only when the user's instructions or the PR template ask for one. Otherwise do not record one, whatever the kind of change. When a video is requested, record the head build covering only the changed flow, from the starting state to the visible result, with `cue-synced-demo` or the host's browser automation. Use `pr-video` instead only when the request asks for a narrated explanation of the code.
 Capture rules:
 
 - Use real captures from the running software. Never use mockups, generated images, or edited screenshots to represent behavior.
