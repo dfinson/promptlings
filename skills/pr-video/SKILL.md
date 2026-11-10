@@ -12,7 +12,7 @@ This skill supplies the change-specific discovery and story practice. The `techn
 ## Read the change
 
 - Gather the PR title and description, linked issues, commits and the full diff, for example with `gh pr view` and `gh pr diff`, or `git diff base...head` for a branch. For a bare diff, use its commit messages and the surrounding code.
-- Read every changed file and the code that calls into the changed paths before choosing the story. Descriptions are indexes, not evidence.
+- Inspect the consequential changed paths and their callers before choosing the story. Read exact supporting ranges and surrounding contracts for each claim, expanding when dependencies require it. Reuse verified unchanged sources. Descriptions are indexes, not evidence.
 - When the PR Walkthrough agent is available, treat its orientation as one input alongside the diff, the PR description and observed behavior. The video's story, order and emphasis remain the director's decisions.
 - Establish who watches and what they need to decide: approve, adopt, integrate or learn.
 - Write the change's intent in one sentence and confirm it with the author or user when the PR does not state it.
@@ -37,10 +37,10 @@ Pick the specialist by what the viewer needs to see:
 
 - **Code in its editor:** a human-style walkthrough that navigates the file tree to the changed file, applies the change in place from base to head and follows definitions, captured as `cue-synced-demo` describes. Walk into surrounding code the change relies on the same way.
 - **The diff itself:** render the hunk to HTML with the installed `diff2html` CLI from [diff2html-cli](https://github.com/rtfpessoa/diff2html-cli) (MIT) and hold or compose it.
-- **Before-to-after morph:** animate the two versions with Shiki's [`@shikijs/magic-move`](https://github.com/shikijs/shiki/tree/main/packages/magic-move) (MIT) inside a `hyperframes` composition, loaded from a version-pinned CDN URL the way compositions load their other runtime libraries.
+- **Before-to-after morph:** use a code-morph component compatible with the selected composition route. In Remotion, drive its progress from the frame clock rather than CSS or wall-clock animation. On the HyperFrames route, Shiki's [`@shikijs/magic-move`](https://github.com/shikijs/shiki/tree/main/packages/magic-move) (MIT) can animate the versions using that route's deterministic timeline.
 
 Handle a missing specialist as `cue-synced-demo` describes, and never hand-roll a substitute.
 
 ## Produce and deliver
 
-Write narration with `reasoning-first-narration` and joins with `narrative-transitions`. Use `tts-setup` for synthetic speech, `cue-synced-demo` for captured footage and timing, and `hyperframes` for composed scenes. Every claim traces to a diff line, a test or observed behavior. Hand the finished video to the user for review, and offer to attach it to the pull request.
+Use the director's approved treatment and production record instead of restarting discovery or approvals during realization. Write narration with `reasoning-first-narration`, user-facing prose with `reasoning-first-writing`, and story continuity with `narrative-transitions`. Use `tts-setup` for synthetic speech and `cue-synced-demo` for captured footage and timing. Composed scenes use `motionite` and Remotion by default, or `hyperframes` when explicitly selected. Without the Technical Demo agent, apply the same route selection directly and invoke `technical-demo-production` for reuse and rendering support. Every claim traces to a diff line, a test or observed behavior. Hand the finished video to the user for review, and offer to attach it to the pull request.

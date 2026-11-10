@@ -46,6 +46,7 @@ execution is restricted.
 | Basic Memory | uv tool, published memory skills, MCP registration, and user-login startup |
 | Playwright | Global npm application, published skill, and Chrome browser |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
+| Technical Demo | Pinned upstream Motionite skill through the external-skills installer, plus bundled writing/capture companions and `technical-demo-production` with a native-resolution batch renderer. Remotion packages and selected third-party components are installed separately in the external production workspace |
 | Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
 | Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the frontend-design and HyperFrames skills, and the pinned experience toolkit (esbuild, Shiki, Magic Move, Flubber, Rough.js, D3, dagre, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs. Under `npx promptlings publish`, the default selection leaves the agent out, and naming it with `--agents` fails |
 
@@ -71,7 +72,7 @@ pinned package dependencies.
 | `--memory-port 8123` | Use a different Basic Memory port |
 | `--no-playwright` | Skip Playwright CLI, its browser, and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` | Skip HyperFrames, media binaries, and skills |
-| `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, LibreOffice, Poppler, and diff2html |
+| `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, Motionite, LibreOffice, Poppler, and diff2html |
 | `--no-skills` | Skip external published skills, not bundled Promptlings skills |
 | `--no-readside` | Skip the global memory read-side rule |
 | `--list` | List agent names and exit |
@@ -90,6 +91,16 @@ included and required in every ensemble. Standalone reviews select it when
 requested or needed for purpose or scope reconciliation. Ensemble readiness
 checks all required methods before dispatch; installing the skill does not
 add another reviewer.
+
+Technical Demo uses Motionite/Remotion by default and HyperFrames when explicitly
+selected. `install` and `tools` fetch Motionite from the revision pinned in
+[`lib/pins.js`](../lib/pins.js), with the other external demo skills. `--no-demo`
+or `--no-skills` skips it. `publish` supplies only our agent and
+[production support](../skills/technical-demo-production/SKILL.md), so it assumes
+the upstream toolchain is already installed. No Motionite checkout is bundled in
+this package. Production npm dependencies and generated media stay outside this
+repository and installed skills. The batch renderer currently requires Remotion,
+renderer and bundler 4.0.539. Runtime and asset licenses remain separate.
 
 Experiment Director and its `ab-testing` routing and `comparative-evaluation`
 method skills are discovered through the same publication path. To select only

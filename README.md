@@ -73,6 +73,26 @@ The [skills directory](skills/) also contains methods for investigation, test
 analysis, writing, narration, and design documents. You can ask your current
 agent to use one without switching personas.
 
+### Technical demo
+
+Technical Demo presents an overall creative treatment first, then readable scene
+descriptions with the exact narration. It keeps the older agent's storytelling
+and evidence standards, using Motionite/Remotion by default, HyperFrames when
+explicitly selected, and real capture for demonstrated behavior.
+
+The [production skill](skills/technical-demo-production/SKILL.md) retains approved
+inputs, selects existing components, overlaps independent preparation and reuses
+unchanged media. Its version-checked renderer batches native-resolution review
+frames and video jobs through one browser. Writing and narration use the
+reasoning-first skills. Revisions address specific defects instead of restarting
+briefing or running fixed-count review loops.
+
+The installer fetches [Motionite](https://github.com/nxrskyaa/motionite) from the
+upstream revision in [the tool pins](lib/pins.js), just like other external skills.
+Its source and assets are not vendored here. Production dependencies and media
+belong in an external production workspace. Measure complete draft turnaround
+separately from rendering time.
+
 ### Intent alignment
 
 Ask your current agent or Sparring Partner:
@@ -209,4 +229,4 @@ and design provenance.
 
 ## License
 
-[Apache 2.0](LICENSE).
+[Apache 2.0](LICENSE). External tools and skills retain their upstream licenses.
