@@ -1,80 +1,116 @@
 name: Publish
 
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      release_type:
+        description: SemVer release increment
+        type: choice
+        default: alpha
+        options: [alpha, beta, patch, minor, major]
 
 permissions:
   contents: read
 
+env:
+  RELEASE_TYPE: ${{ inputs.release_type || 'alpha' }}
+
+concurrency:
+  group: npm-release
+  cancel-in-progress: false
+
 jobs:
+  prepare:
+    name: Select release from main
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Require a manual run from main
+        run: |
+          test "$GITHUB_EVENT_NAME" = workflow_dispatch
+          test "$GITHUB_REF" = refs/heads/main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+      - run: npm ci --include=dev --no-fund --no-audit
+      - name: Select the SemVer release or resume this commit's release
+        id: release
+        run: bash .github/scripts/release.sh prepare
+
   test:
     name: Test (${{ matrix.os }})
-    if: github.event_name == 'push'
+    needs: prepare
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [windows-latest, macos-latest, ubuntu-latest]
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "22.20"
-      - run: npm ci --no-fund --no-audit
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        if: runner.os == 'Windows'
+        with:
+          python-version: "3.12"
+      - name: Stamp the package version without a source commit
+        shell: bash
+        run: npm version "$RELEASE_VERSION" --no-git-tag-version --ignore-scripts --allow-same-version
+      - run: npm ci --include=dev --no-fund --no-audit
       - run: npm test
 
   publish:
     name: Publish to npm
-    if: github.event_name == 'push'
-    needs: test
+    needs: [prepare, test]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       id-token: write
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org
-      # Trusted publishing needs npm 11.5.1 or later.
       - run: npm install --global npm@11.5.1
-      - name: Check tag matches package version
-        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
-      - run: npm ci --no-fund --no-audit
-      # Authenticates through the npm trusted publisher for this workflow (OIDC). No token is stored.
-      # Only prereleases exist so far, so each release is published as latest and plain `npx promptlings` resolves it.
-      # Trusted publishing cannot run `npm dist-tag`, so the tag is set here.
-      - name: Publish
-        run: npm publish --access public --provenance --tag latest
+      - run: npm ci --include=dev --no-fund --no-audit
+      # Trusted publishing authenticates through OIDC. No npm token is stored.
+      - name: Tag the tested commit and publish or resume the release
+        run: bash .github/scripts/release.sh publish
 
   verify:
     name: Verify published package
-    needs: publish
-    if: always() && (needs.publish.result == 'success' || github.event_name == 'workflow_dispatch')
+    needs: [prepare, publish]
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org
-      - name: Verify npm latest and download the published package
-        run: |
-          version=$(node -p 'require("./package.json").version')
-          directory="$RUNNER_TEMP/promptlings-release"
-          mkdir -p "$directory"
-          for attempt in {1..30}; do
-            npm view promptlings dist-tags --json --prefer-online > "$directory/dist-tags.json"
-            latest=$(node -p 'require(process.env.RUNNER_TEMP + "/promptlings-release/dist-tags.json").latest')
-            echo "Registry latest: $latest, expected: $version (attempt $attempt)"
-            if [ "$latest" = "$version" ]; then break; fi
-            sleep 10
-          done
-          test "$latest" = "$version"
-          npm pack "promptlings@$version" --ignore-scripts --pack-destination "$directory" --json > "$directory/pack.json"
+      - name: Verify latest and download the published npm package
+        run: bash .github/scripts/release.sh verify
       - name: Retain the published npm package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

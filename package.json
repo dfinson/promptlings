@@ -31,5 +31,8 @@
     "add-mcp": "2.6.0",
     "rulesync": "42.0.0",
     "skills": "1.7.4"
+  },
+  "devDependencies": {
+    "semver": "7.7.3"
   }
 }

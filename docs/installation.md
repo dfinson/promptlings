@@ -20,19 +20,62 @@ The installer prints its plan and asks for approval. Add `--yes` for an
 approved noninteractive run. Help, listing, and dry-run perform no downloads
 or writes.
 
-### Release verification
+### Releasing to npm
 
-The Publish workflow runs on `v*` tags, requires the tag to match the package
-version, and publishes to npm with provenance and the `latest` tag after the
-Windows, macOS, and Linux tests pass. It then reads npm's dist-tags to verify
-`latest`, downloads that exact version from npm, and retains the tarball plus
-registry and package metadata in a `promptlings-release-<RUN_ID>` workflow artifact
-for 14 days. The downloaded tarball can be used for installation when direct
-npm access is unavailable, while dependencies still use the configured registry.
-Registry propagation is retried for up to five minutes. Verification is a
-separate job, so a failed readback can be rerun without publishing again.
-A manual workflow dispatch only verifies and downloads the package version
-in the selected ref, without rerunning tests or publishing.
+Merge product changes into `main`, then select **Actions > Publish > Run workflow**
+with branch **main**, or run `gh workflow run publish.yml --ref main`.
+The default release type is `alpha`. Select `beta`, `patch`, `minor` or `major`
+in the form, or pass `-f release_type=minor` to the command.
+No explicit version, local publish command, version-bump commit, or follow-up merge
+is needed. The workflow rejects other branches and tags before running tests
+or granting the publishing job write permissions. Pushing a tag does not trigger
+publication.
+
+The Git tag records the released version and points to the exact selected main
+commit. [The Bash release script](../.github/scripts/release.sh) uses npm's pinned
+SemVer library to select a version above every existing release tag, npm version,
+and the source manifest's baseline. Invalid versions and release types fail.
+It stamps that version into `package.json` and `npm-shrinkwrap.json` only in its
+temporary checkout. The source manifest identifies the development baseline,
+not the latest published version. npm's `latest` tag identifies the installed release.
+
+| Current highest version | Selected type | Next version |
+| --- | --- | --- |
+| `0.1.0-alpha.5` | `alpha` (default) | `0.1.0-alpha.6` |
+| `0.1.0-alpha.5` | `beta` | `0.1.0-beta.0` |
+| `0.1.0-beta.2` | `beta` | `0.1.0-beta.3` |
+| `0.1.0-beta.2` | `alpha` | `0.1.1-alpha.0` |
+| `0.1.0` | `alpha` | `0.1.1-alpha.0` |
+| `0.1.0` | `patch` | `0.1.1` |
+| `0.1.0` | `minor` | `0.2.0` |
+| `0.1.0` | `major` | `1.0.0` |
+
+Stable increments follow npm's SemVer rules, including finalizing an existing
+prerelease: `minor` from `0.1.0-beta.2` produces `0.1.0`.
+Returning to an earlier prerelease channel advances the patch first so version
+precedence always increases. Every release type is published as `latest`.
+
+The workflow tests the stamped package on Windows, macOS and Linux, reserves
+its version tag, and publishes with provenance and `--tag latest` through npm
+trusted publishing. Release runs are serialized and never cancel an active
+publication. The token writes tags, not commits to protected main.
+
+A rerun or another dispatch for the same commit and release type reuses its
+reserved version. The annotated tag records the selected release type.
+If npm already has it, CI compares archive integrity and skips publishing only
+when the bytes match. It refuses conflicting packages and releases superseded
+by a newer reserved or published version. A failed publish leaves its tag
+reserved for recovery. Rerun that workflow rather than deleting or moving the tag.
+
+Registry verification is a separate job. It retries stale metadata and transient
+read failures up to 30 times, ten seconds apart. Each metadata fetch has a
+30-second request timeout and at most three transport retries within 120 seconds.
+Rerun failed jobs after a verification failure without publishing again.
+Verification reads back `latest`, downloads the exact package from npm, checks
+its archive hashes, and retains the tarball plus registry/package metadata in
+a `promptlings-release-<RUN_ID>` workflow artifact for 14 days. That downloaded
+tarball supports local installation when direct npm access is unavailable.
+Dependencies still use the configured registry.
 
 ### Supported systems
 
