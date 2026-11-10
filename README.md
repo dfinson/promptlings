@@ -81,7 +81,7 @@ PR titles, descriptions, and review comments are written for people.
 [pr-description-writing](skills/pr-description-writing/SKILL.md) applies whenever
 an agent creates or edits a pull request. It reads the repository's PR template
 and instructions first, shows user-visible changes with before/after screenshots
-or a short demo video, and writes the description in plain English.
+(a video only when the user or template asks), and writes the description in plain English.
 [review-comment-writing](skills/review-comment-writing/SKILL.md) pairs every
 review finding with a proposed comment, anchored to the diff line it concerns,
 that the author can read without the review report. Both build on
