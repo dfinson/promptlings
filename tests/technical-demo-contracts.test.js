@@ -51,6 +51,44 @@ test("route selection preserves specialist ownership and approval continuity", (
   assert.match(read("skills/cue-synced-demo/SKILL.md"), /follow the director's selected film style/);
 });
 
+test("composed films ground the storyboard in a moving reference without another approval round", () => {
+  for (const text of [
+    "Before storyboarding an authored film or composed hybrid",
+    "inspect a finished product demo as a moving sequence",
+    "reusing an available reference when suitable",
+    "one concrete directing behavior with timecodes",
+    "Apply that behavior to this film's actual evidence",
+    "Record the reference and transferable behavior in the existing production record",
+    "not an additional approval or review round",
+  ]) assert.ok(agent.includes(text), text);
+  assert.ok(agent.indexOf("Before storyboarding an authored film") < agent.indexOf("Storyboard the visual argument"));
+  assert.doesNotMatch(agent, /Reference imitation is optional when requested, not a prerequisite/);
+});
+
+test("the directing package carries evidence through framing, handoffs, holds and targeted correction", () => {
+  for (const text of [
+    "In the existing shot list",
+    "evidence object, its visible change, the decisive native-resolution region",
+    "restore context when the next action needs it",
+    "carry the recognizable evidence object",
+    "capture-to-explanation and explanation-to-capture handoffs",
+    "readable verbatim excerpt linked to its visible source region",
+    "continuous soundtrack, including intervals spanning cuts",
+    "decorative movement does not make one useful",
+  ]) assert.ok(agent.includes(text), text);
+  for (const text of [
+    "Moving-reference timecodes",
+    "non-speech inspection purpose",
+    "actual audio across the relevant capture/authored joins",
+    "highlight bounds after crop, scale and translation",
+    "borders must clear the intended text",
+    "an actionable control visible when it is used",
+    "unrelated names, stale labels and burned-in overlays",
+    "retain the observed defect and corrected output",
+    "rerun the affected interval and joins",
+  ]) assert.ok(production.includes(text), text);
+});
+
 test("production support retains inputs, concurrency prerequisites, components and native rendering", () => {
   for (const text of [
     "production record", "approval waits", "dependency lockfile", "CPU, memory and browser workers",
@@ -63,6 +101,28 @@ test("production support retains inputs, concurrency prerequisites, components a
   }
   assert.match(agent, /Save full command results once/);
   assert.match(agent, /prompt-to-delivered-draft time/);
+});
+
+test("production targets a complete moving preview through the existing execution path", () => {
+  for (const text of [
+    "complete playable timeline the first production target",
+    "existing Motionite/Remotion preview",
+    "job manifest, not a new renderer script",
+    "concrete unsupported requirement or observed error",
+    "rather than looping over individual still renders",
+    "not as a separate exhaustive review phase",
+  ]) assert.ok(agent.includes(text), text);
+  for (const text of [
+    "complete previewable composition",
+    "recorded media, authored scenes and actual soundtrack",
+    "job manifest instead of writing another rendering wrapper",
+    "per-frame FFmpeg compositing loop",
+    "unchanged-audio muxing remain valid",
+    "not another gate",
+  ]) assert.ok(production.includes(text), text);
+  assert.ok(agent.indexOf("complete playable timeline") < agent.indexOf("Render the required video after moving review"));
+  assert.match(agent, /Still inspection, format checks and audio hashes do not satisfy moving-output review/);
+  assert.match(agent, /preserve the file as a preview/);
 });
 
 test("Motionite belongs to the pinned upstream installer rather than the package", () => {
