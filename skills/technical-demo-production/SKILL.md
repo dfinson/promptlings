@@ -46,7 +46,7 @@ Use separate output locations and browser sessions for independent operations. A
 
 Build one complete previewable composition containing the recorded media, authored scenes and actual soundtrack. Use the existing Motionite/Remotion Player or Studio route for moving review before encoding. Selected native stills support that review, rather than becoming a separate prerequisite phase. Do not build an overlay-image export and per-frame FFmpeg compositing loop for ordinary footage, crops, highlights or transitions. Final media assembly and unchanged-audio muxing remain valid FFmpeg uses.
 
-Use [the batch renderer](scripts/render-jobs.mjs) for Remotion 4.0.539. It resolves packages from the production root, not this skill. Pin `remotion`, `@remotion/bundler` and `@remotion/renderer` to that exact version in the production manifest. The Motionite example already pins this Remotion version. The version guard protects the measured browser-shutdown path, which uses a version-specific browser connection.
+Use [the batch renderer](scripts/render-jobs.mjs) for Remotion 4.0.539. It resolves packages from the production root, not this skill. Pin `remotion`, `@remotion/bundler` and `@remotion/renderer` to that exact version in the production manifest. For footage, prefer `Video` from `@remotion/media`, pinned to the same version, with the error/fallback contract in the component catalog. The Motionite example already pins this Remotion version. The version guard protects the measured browser-shutdown path and bundled-FFmpeg capability probe, which use version-specific renderer internals.
 
 Use a job manifest instead of writing another rendering wrapper. If the helper cannot express a required output, record the exact missing capability or observed failure before choosing another execution path. A preference for transparent intermediate frames is not itself a requirement when the complete composition can render the intended picture.
 
@@ -56,7 +56,7 @@ Run `node "<skill directory>/scripts/render-jobs.mjs" "<production directory>/jo
 {
   "root": ".",
   "browserExecutable": "browser/chrome",
-  "concurrency": 4,
+  "hardwareAcceleration": "auto",
   "jobs": [
     {
       "entryPoint": "src/index.ts",
@@ -73,11 +73,31 @@ Run `node "<skill directory>/scripts/render-jobs.mjs" "<production directory>/jo
 }
 ```
 
-Choose concurrency for current host capacity, not this example's number. Each job requires exactly one `entryPoint` or `serveUrl` (an existing local bundle directory or HTTP(S) URL). Omit `output` for a stills-only review. Native dimensions and frame rate are mandatory checks, never scaling requests. The helper uses H.264 CRF 18, x264 veryfast and scale 1. Mastering, cue verification and encoded-output review remain required by the selected production route.
+Each job requires exactly one `entryPoint` or `serveUrl` (an existing local bundle directory or HTTP(S) URL). Omit `output` for a stills-only review. Native dimensions and frame rate are mandatory checks, never scaling requests. The helper uses H.264 and scale 1. Mastering, cue verification and encoded-output review remain required by the selected production route.
 
-Prepare the approved browser once with the production toolchain. Replace the example's `browserExecutable` with its actual path, relative to `root` or absolute. This required path prevents implicit downloads, upgrades and browser-cache lookup in the caller's repository. Keep the verified browser identity in the production record. The pinned public `openBrowser()` does not forward an `onBrowserDownload` option, so a callback alone cannot enforce this boundary.
+Prepare the approved browser once in the external production workspace. Prefer the production Remotion version's pinned Chrome Headless Shell, not an arbitrary Playwright Chrome. Remotion 4.0.539 uses Headless Shell 157.0.8080.0. Reuse it when present. If missing, acquire it through the production toolchain's browser setup at demo-production time, not during `npx promptlings` installation. Replace the example's `browserExecutable` with its actual path, relative to `root` or absolute. This required path prevents implicit downloads, upgrades and browser-cache lookup in the caller's repository. Keep the verified browser identity in the production record. The pinned public `openBrowser()` does not forward an `onBrowserDownload` option, so a callback alone cannot enforce this boundary.
 
-One invocation reuses a browser and bundles each entry point once. The result file, beside the manifest as `jobs-result.json`, retains timings, bundle paths, completed jobs and errors, including shutdown failures. Failures exit nonzero. Read that result rather than rerunning a job to collect or reformat output.
+### Runtime defaults and bounded tuning
+
+The installer does not install CUDA, GPU drivers or a render-specific GPU stack. The renderer uses the production Remotion packages' bundled FFmpeg and the machine's existing capabilities. Browser graphics, video decoding and final encoding are separate decisions.
+
+| Manifest setting | Default and override |
+| --- | --- |
+| `hardwareAcceleration` | `"auto"` runs one bounded real H.264 encode per native format. It tries VideoToolbox on macOS and NVENC on Windows/Linux, then explicitly reports and records software fallback if unavailable. `"disable"` skips probing and uses the existing CRF 18 / x264 veryfast profile. `"required"` fails if the probe fails. |
+| `videoBitrate` | Hardware-only target, default 30 Mbps at 1080p30, scaled by pixel count and fps with a 1 Mbps floor. Override with a positive integer string ending in `k`, `K` or `M`, such as `"8000k"` or `"30M"`. It is not a CRF-equivalent quality guarantee. CPU fallback retains CRF 18 instead. |
+| `concurrency` | Omit for a conservative starting count: at least one, at most four, bounded by half the available CPU parallelism and one worker per 2 GiB available to the process (`process.availableMemory()`, including OS-reported process limits). This is a starting heuristic, not a memory guarantee or measured optimum. An explicit positive integer overrides it. |
+| `gl` | Omit or use `null` to let Chrome choose. For ordinary HTML/CSS footage compositions this is Remotion 4's recommended default. Select `angle`, `angle-egl` or `swangle` only for a demonstrated WebGL/WebGPU/Three.js need or a matched performance result. |
+| `port` | Optional unprivileged port, forwarded to discovery and rendering. Choose a free port without taking over an application callback or development server. Omission retains Remotion's port selection. |
+| `stallTimeoutSeconds` | 120 seconds without frame, encoding or stage advancement cancels video rendering. Increase for a known slow operation, rather than disabling failure detection or repeatedly restarting it. |
+| Job `frameRange` | Optional inclusive `[start, end]` frames for a bounded video render. Bounds are checked against the native composition. Omit for the full film. Stills remain independently selected. |
+
+Do not use Remotion 4.0.539's `"if-possible"` as proof of working hardware. Its encoder probe checks FFmpeg's encoder list, which can include NVENC on a machine without a usable GPU or driver. This helper tests an actual frame at the job's dimensions and fps before choosing the hardware path. Detection failure is recorded, not repaired by installing system components. A hardware failure after successful probing fails the job with its evidence instead of silently rerendering the entire film.
+
+Use a representative footage-and-overlay interval to tune only when performance needs investigation. Compare the same frames, dimensions, props, media and encoding profile, changing one setting at a time where practical. Inspect moving output and joins as well as native frames. Reuse unchanged recordings, audio and bundles. Do not copy one host's worker count, graphics backend, decoder cache or GPU result as a universal optimum. Chrome shared-memory capture is platform-dependent and is not available on Windows in this pinned version. Keep experimental capture flags out of the default profile.
+
+The defaults follow [Remotion's hardware support](https://www.remotion.dev/docs/hardware-acceleration), [Remotion 4 graphics guidance](https://www.remotion.dev/docs/gl-options), [Headless Shell guidance](https://www.remotion.dev/docs/miscellaneous/chrome-headless-shell) and [shared-memory capture support](https://www.remotion.dev/docs/shared-memory-capture). Verify these contracts again when updating the version pin.
+
+One invocation reuses a browser and bundles each entry point once. Video rendering prints frame/encoding counts and an elapsed-time heartbeat every five seconds, plus start and completion. Keep this output live. Never buffer it until exit or pipe only the last lines. The result file, beside the manifest as `jobs-result.json`, retains selected browser/graphics/encoder settings, fallback reasons, last progress, timings, bundle paths, completed jobs and errors, including shutdown failures. Failures exit nonzero. Read that result rather than rerunning a job to collect or reformat output.
 
 The helper's programmatic `entryPoint` bundling does not load `remotion.config.ts`. For custom webpack aliases or other project bundling overrides, build through the configured Remotion CLI and pass that existing bundle as `serveUrl`. This also supports source-copy libraries whose imports depend on a configured alias.
 

@@ -1,22 +1,46 @@
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { availableParallelism } from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
 
 export const supportedVersion = "4.0.539";
 
+export function defaultConcurrency(cpus = availableParallelism(), memory = process.availableMemory()) {
+  return Math.max(1, Math.min(4, Math.floor(cpus / 2), Math.floor(memory / (2 * 1024 ** 3))));
+}
+
 export function resolveManifest(manifest, manifestPath) {
   const text = (value) => typeof value === "string" && value.trim().length > 0;
   if (!manifest || !Array.isArray(manifest.jobs) || !manifest.jobs.length) {
     throw new Error("jobs must be a nonempty array");
   }
-  if (!Number.isInteger(manifest.concurrency) || manifest.concurrency < 1) {
+  if (manifest.concurrency !== undefined && (!Number.isInteger(manifest.concurrency) || manifest.concurrency < 1)) {
     throw new Error("concurrency must be a positive integer");
   }
   if (manifest.root !== undefined && !text(manifest.root)) throw new Error("root must be a path");
   if (!text(manifest.browserExecutable)) {
     throw new Error("browserExecutable must identify the approved browser");
+  }
+  const hardwareAcceleration = manifest.hardwareAcceleration ?? "auto";
+  if (!["auto", "required", "disable"].includes(hardwareAcceleration)) {
+    throw new Error("hardwareAcceleration must be auto, required or disable");
+  }
+  if (manifest.videoBitrate !== undefined
+    && (typeof manifest.videoBitrate !== "string" || !/^[1-9]\d*[kKM]$/.test(manifest.videoBitrate))) {
+    throw new Error("videoBitrate must be a positive integer string ending in k, K or M");
+  }
+  const gl = manifest.gl ?? null;
+  if (![null, "angle", "egl", "swiftshader", "vulkan", "angle-egl", "swangle"].includes(gl)) {
+    throw new Error("Unsupported gl backend");
+  }
+  if (manifest.port !== undefined && (!Number.isInteger(manifest.port) || manifest.port < 1024 || manifest.port > 65535)) {
+    throw new Error("port must be an integer from 1024 to 65535");
+  }
+  const stallTimeoutSeconds = manifest.stallTimeoutSeconds ?? 120;
+  if (!Number.isSafeInteger(stallTimeoutSeconds) || stallTimeoutSeconds < 1 || stallTimeoutSeconds > 86400) {
+    throw new Error("stallTimeoutSeconds must be an integer from 1 to 86400");
   }
   const root = path.resolve(path.dirname(manifestPath), manifest.root ?? ".");
   const outputs = new Set();
@@ -41,6 +65,11 @@ export function resolveManifest(manifest, manifestPath) {
       throw new Error("stills must be a nonempty array of nonnegative frame numbers");
     }
     if (job.output === undefined && !job.stills) throw new Error("Each job needs output or stills");
+    if (job.frameRange !== undefined && (!Array.isArray(job.frameRange) || job.frameRange.length !== 2
+      || job.frameRange.some((frame) => !Number.isSafeInteger(frame) || frame < 0)
+      || job.frameRange[0] > job.frameRange[1] || job.output === undefined)) {
+      throw new Error("frameRange needs an output and inclusive nonnegative [start, end] frames");
+    }
     return {
       ...job,
       entryPoint: text(job.entryPoint) ? path.resolve(root, job.entryPoint) : undefined,
@@ -53,9 +82,34 @@ export function resolveManifest(manifest, manifestPath) {
     };
   });
   return {
-    root, concurrency: manifest.concurrency, jobs,
+    root, concurrency: manifest.concurrency ?? defaultConcurrency(), jobs,
     browserExecutable: path.resolve(root, manifest.browserExecutable),
+    hardwareAcceleration, videoBitrate: manifest.videoBitrate, gl, port: manifest.port, stallTimeoutSeconds,
   };
+}
+
+export async function probeHardwareEncoder(runtime, composition, platform = process.platform) {
+  const encoder = platform === "darwin" ? "h264_videotoolbox"
+    : ["win32", "linux"].includes(platform) ? "h264_nvenc" : null;
+  if (!encoder) return { available: false, reason: `No supported H.264 hardware encoder on ${platform}` };
+  const { width, height, fps } = composition;
+  // One black PNG pixel: bundled FFmpeg supports image2pipe, but not rawvideo or lavfi color.
+  const input = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNgYGAAAAAEAAH2FzhVAAAAAElFTkSuQmCC", "base64");
+  try {
+    // Pinned Remotion's own FFmpeg and environment, not a system binary or encoder-list check.
+    await runtime.RenderInternals.callFf({
+      bin: "ffmpeg", indent: false, logLevel: "error", binariesDirectory: null,
+      args: ["-hide_banner", "-loglevel", "error", "-f", "image2pipe", "-vcodec", "png",
+        "-r", String(fps), "-i", "pipe:0", "-vf", `scale=${width}:${height}`, "-pix_fmt", "yuv420p",
+        "-frames:v", "1", "-an", "-c:v", encoder,
+        ...(platform === "darwin" ? ["-allow_sw", "0"] : []),
+        "-f", "null", "-"],
+      options: { input, timeout: 15000 },
+    });
+    return { available: true, encoder };
+  } catch (error) {
+    return { available: false, encoder, reason: error.stderr || error.message || String(error) };
+  }
 }
 
 async function loadRuntime(root) {
@@ -78,12 +132,16 @@ export async function renderJobs(manifestPath, runtime) {
   const results = {
     startedAt: new Date().toISOString(), status: "running",
     concurrency: manifest.concurrency, bundles: [], jobs: [],
+    browserExecutable: manifest.browserExecutable, gl: manifest.gl,
+    hardwareAcceleration: manifest.hardwareAcceleration,
+    port: manifest.port ?? null, stallTimeoutSeconds: manifest.stallTimeoutSeconds,
   };
   const started = performance.now();
   const elapsed = () => Number(((performance.now() - started) / 1000).toFixed(3));
   const save = () => writeFile(resultsPath, JSON.stringify(results, null, 2));
   const message = (error) => error instanceof Error ? error.message : String(error);
   const bundles = new Map();
+  const encoderProbes = new Map();
   let browser;
   let active;
   try {
@@ -94,6 +152,7 @@ export async function renderJobs(manifestPath, runtime) {
     browser = await runtime.openBrowser("chrome", {
       forceDeviceScaleFactor: 1,
       browserExecutable: manifest.browserExecutable,
+      chromiumOptions: { gl: manifest.gl },
     });
     for (const [index, job] of manifest.jobs.entries()) {
       active = { id: job.id, status: "running", beginSeconds: elapsed() };
@@ -115,6 +174,7 @@ export async function renderJobs(manifestPath, runtime) {
       const { inputProps } = job;
       const composition = await runtime.selectComposition({
         serveUrl, id: job.id, inputProps, puppeteerInstance: browser,
+        chromiumOptions: { gl: manifest.gl }, port: manifest.port,
       });
       if (composition.width !== job.width || composition.height !== job.height || composition.fps !== job.fps) {
         throw new Error(`Unexpected native format for ${job.id}: ${composition.width}x${composition.height}@${composition.fps}`);
@@ -122,11 +182,21 @@ export async function renderJobs(manifestPath, runtime) {
       if (job.stills?.some((frame) => frame >= composition.durationInFrames)) {
         throw new Error(`Still frame outside ${job.id} duration: ${composition.durationInFrames}`);
       }
+      if (job.frameRange && job.frameRange[1] >= composition.durationInFrames) {
+        throw new Error(`frameRange exceeds ${job.id} duration: ${composition.durationInFrames}`);
+      }
+      if (job.output && (composition.width % 2 || composition.height % 2)) {
+        throw new Error("H.264 output requires even native width and height");
+      }
       Object.assign(active, {
         nativeWidth: composition.width, nativeHeight: composition.height, fps: composition.fps,
         durationFrames: composition.durationInFrames, serveUrl,
+        frameRange: job.frameRange ?? null,
       });
-      const common = { serveUrl, composition, inputProps, puppeteerInstance: browser, scale: 1, concurrency: manifest.concurrency };
+      const common = {
+        serveUrl, composition, inputProps, puppeteerInstance: browser, scale: 1, concurrency: manifest.concurrency,
+        chromiumOptions: { gl: manifest.gl }, port: manifest.port,
+      };
       if (job.stills) {
         const begin = elapsed();
         await mkdir(job.stillOutput, { recursive: true });
@@ -139,19 +209,67 @@ export async function renderJobs(manifestPath, runtime) {
         active.stillOutput = job.stillOutput;
       }
       if (job.output) {
+        let probe = { available: false, reason: "Hardware encoding disabled by manifest" };
+        if (manifest.hardwareAcceleration !== "disable") {
+          const key = `${composition.width}x${composition.height}@${composition.fps}`;
+          if (!encoderProbes.has(key)) {
+            encoderProbes.set(key, await probeHardwareEncoder(runtime, composition));
+          }
+          probe = encoderProbes.get(key);
+        }
+        active.encoding = probe.available
+          ? {
+            hardwareAcceleration: "required",
+            videoBitrate: manifest.videoBitrate ?? `${Math.max(1000,
+              Math.round(30000 * composition.width * composition.height * composition.fps / (1920 * 1080 * 30)))}k`,
+          }
+          : { hardwareAcceleration: "disable", crf: 18, x264Preset: "veryfast" };
+        active.encoder = probe.available ? probe.encoder : "libx264";
+        if (!probe.available) {
+          active.encodingReason = probe.reason;
+          console.log("ENCODER", job.id, active.encoder, probe.reason);
+          if (manifest.hardwareAcceleration === "required") {
+            throw new Error(`Hardware encoding required but probe failed: ${probe.reason}`);
+          }
+        } else {
+          console.log("ENCODER", job.id, active.encoder, active.encoding.videoBitrate);
+        }
         const begin = elapsed();
-        let lastProgress = -1;
         await mkdir(path.dirname(job.output), { recursive: true });
-        await runtime.renderMedia({
-          ...common, outputLocation: job.output, codec: "h264", crf: 18, x264Preset: "veryfast",
-          onProgress: ({ progress }) => {
-            const step = Math.floor(progress * 10);
-            if (step > lastProgress) {
-              console.log("RENDER", job.id, `${step * 10}%`);
-              lastProgress = step;
-            }
-          },
-        });
+        const cancellation = runtime.makeCancelSignal();
+        let lastAdvance = Date.now();
+        let stalled;
+        const totalFrames = job.frameRange ? job.frameRange[1] - job.frameRange[0] + 1 : composition.durationInFrames;
+        active.progress = { renderedFrames: 0, encodedFrames: 0, totalFrames, stage: "starting" };
+        const report = () => console.log("PROGRESS", job.id, JSON.stringify({
+          ...active.progress, elapsedSeconds: Number((elapsed() - begin).toFixed(1)),
+        }));
+        const timer = setInterval(() => {
+          report();
+          if (!stalled && Date.now() - lastAdvance >= manifest.stallTimeoutSeconds * 1000) {
+            stalled = new Error(`No render or encoding progress for ${manifest.stallTimeoutSeconds}s`);
+            console.error(stalled.message);
+            cancellation.cancel();
+          }
+        }, Math.min(5000, manifest.stallTimeoutSeconds * 1000));
+        report();
+        try {
+          await runtime.renderMedia({
+            ...common, outputLocation: job.output, codec: "h264", ...active.encoding,
+            frameRange: job.frameRange, cancelSignal: cancellation.cancelSignal,
+            onProgress: ({ renderedFrames, encodedFrames, stitchStage }) => {
+              if (renderedFrames > active.progress.renderedFrames || encodedFrames > active.progress.encodedFrames
+                || stitchStage !== active.progress.stage) lastAdvance = Date.now();
+              active.progress = { renderedFrames, encodedFrames, totalFrames, stage: stitchStage };
+            },
+          });
+          if (stalled) throw stalled;
+          report();
+        } catch (error) {
+          throw stalled ?? error;
+        } finally {
+          clearInterval(timer);
+        }
         active.renderSeconds = elapsed() - begin;
         active.output = job.output;
       }
