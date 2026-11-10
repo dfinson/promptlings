@@ -27,6 +27,8 @@ The Promptlings installer's demo toolchain provides these globally installed spe
 
 ## Capture real events
 
+Keep automation infrastructure in the background. Do not open dashboards, inspectors, reports or browser windows for the user unless an unavoidable login or other critical user action requires it. First check whether an authorized authentication context can be reused. If human action is necessary, verify that the presented surface actually supports interaction and connects to the capture session. A dashboard or read-only preview is not a sign-in surface.
+
 Check privacy, the intended viewport and recording readiness before executing the workflow. Record the first authorized run with event timestamps so it serves as both rehearsal and a candidate take. Inspect an early native-resolution segment as soon as the recorder supports it. Keep footage that satisfies the approved evidence, framing and timing requirements rather than repeating a successful run solely for capture.
 
 Use separate rehearsal only when a specific action is irreversible, changes state that is difficult to restore, or needs practice before a one-shot capture. Rehearse that action using a safe substitute or resettable state, then record the actual required evidence. Record the reason in the existing production notes.
