@@ -64,6 +64,8 @@ explanation of their behavior and any decision that constrains them>
 - Subagents are allowed for transient work inside this lane.
 - Commit with messages prefixed `<task-key>:`. Open a PR only when the user
   authorized publication, using the stated target and accessible spec reference.
+  Load `pr-description-writing` for the PR title, description, and
+  before/after media.
   PRs are the default handoff and integration boundary. Without publication
   authority, hand off the scoped branch and report that missing permission.
 - Before handing off, commit everything, confirm

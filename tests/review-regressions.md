@@ -34,13 +34,13 @@ diff --git a/permissions.py b/permissions.py
 
 ### Expected behavior
 
-Nitcracker reports one defect anchored to added line 2. A non-admin owner (`"alice", "alice", False`) is denied, and a non-owner admin (`"bob", "alice", True`) is also denied. The required correction restores the contract's alternative paths, rather than asking the reviewer to choose an access policy.
+Nitcracker reports one defect anchored to added line 2. A non-admin owner (`"alice", "alice", False`) is denied, and a non-owner admin (`"bob", "alice", True`) is also denied. The required correction restores the contract's alternative paths, rather than asking the reviewer to choose an access policy. The finding carries a proposed comment anchored to `permissions.py`, `RIGHT`, line 2. The comment reads on its own: it names both denied paths and the `and`/`or` mechanism, asks for the contract's alternative paths (a `suggestion` block is acceptable), and contains no heading, bold label, severity tag, finding ID, line coordinates, hedge, or disclaimer.
 
 Walkthrough explains the new intersection of ownership and administrator status with a quote of the changed line. It can briefly identify the contract mismatch and recommend functional review, as its scope permits. It does not produce inline findings, severity ratings, or a fix proposal.
 
 Both agents produce the narrative, keep the supplied snapshot/local-draft limitation visible, and do not reclassify the demonstrated defect as an open design fork or an implicit bet.
 
-Sparring Partner demonstrates both denied authorized paths, identifies the contract violation at added line 2, recommends restoring the alternative paths, and explains a regression assertion that would catch the defect. It does not invent an unresolved access-policy decision.
+Sparring Partner demonstrates both denied authorized paths, identifies the contract violation at added line 2, recommends restoring the alternative paths, and explains a regression assertion that would catch the defect. It does not invent an unresolved access-policy decision. It returns the same kind of anchored proposed comment as Nitcracker, without posting it.
 
 ## R2: A cache makes a legitimate, explicit tradeoff
 
@@ -72,7 +72,7 @@ diff --git a/status.py b/status.py
 
 ### Expected behavior
 
-Both agents explain and quote the chosen 30-second cache window as an implicit bet. They state the mechanical tradeoff: callers within the window reuse a value and avoid upstream calls, while a shorter window or fetching every time reduces staleness at the cost of more upstream work. They ask which refresh/load balance the reviewer wants, without deciding it.
+Both agents explain and quote the chosen 30-second cache window as an implicit bet. They state the mechanical tradeoff: callers within the window reuse a value and avoid upstream calls, while a shorter window or fetching every time reduces staleness at the cost of more upstream work. They ask which refresh/load balance the reviewer wants, without deciding it. If either attaches a proposed comment to the bet, it is anchored to an added line in `status.py` and asks the author one plain question about the refresh window, without hedges or labels.
 
 Neither agent reports caching itself as a defect, invents a real-time requirement, or presents the already-selected 30-second policy as an unresolved design fork. The narrative and implicit-bet appendix remain present. Live provider checks remain unavailable and no external posting occurs.
 
@@ -187,3 +187,8 @@ Alongside R1-R3, check these boundaries when changing Sparring Partner or the en
 - Both installers' review selections include all three default agents and publish all five required Sparring Partner methods. Explicit agent selections remain caller-controlled.
 - Standalone reviews retain the four core methods, adding intent-alignment on request or material cross-source purpose or scope uncertainty. An unavailable required method is disclosed rather than claimed as applied.
 - A caller-selected composition without Sparring Partner explicitly assigns alignment to a selected reviewer whose contract supports it, or reports Blocked without silently changing the roster.
+- The ensemble's final result pairs each confirmed finding with one deduplicated, anchored proposed comment rewritten through `review-comment-writing`, drops comments for contradicted candidates, and returns them without posting.
+
+## PR description probe
+
+When changing `pr-description-writing`, ask an agent to draft a PR for a small user-visible change in a repository that has a PR template. The draft keeps every template section and its order, follows the repository's title convention, opens with what users now see, places real before/after screenshots or a short demo video right after the opening (or names the files to attach when upload is unavailable), states what stays the same and which checks actually ran, and contains no boilerplate headings outside the template, "This PR..." opener, file inventory, hedges, AI footer, emoji, or em dashes. A non-visual change instead shows one concrete before/after example as text.

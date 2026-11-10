@@ -283,6 +283,36 @@ class ContractTests(unittest.TestCase):
         self.assertIn("PRs are the default review", agent)
         self.assertIn("explicit\nauthorization", agent)
 
+    def test_specification_mode_does_not_inherit_execution_fields(self):
+        agent = self.read("agents/orchestration/spec-master.agent.md")
+        delivery = self.read("skills/spec-delivery/SKILL.md")
+        writing = self.read("skills/design-writing/SKILL.md")
+        self.assertIn("Specification-only requests do not need execution manifests.", agent)
+        self.assertIn("without adding an execution manifest to a writing-only", agent)
+        self.assertIn("This applies even when this delivery skill was loaded by a caller.", delivery)
+        self.assertIn("Agreement on the human specification alone is not execution readiness.", delivery)
+        self.assertIn("Before implementation,", delivery)
+        self.assertIn("criterion commands\nand critical markings at an immutable revision", delivery)
+        self.assertIn("Do not import execution-only fields into a human specification", writing)
+        self.assertIn("Never silently omit a required field", writing)
+
+    def test_human_template_preserves_precision_and_checks_comprehension(self):
+        template = self.read("skills/spec-delivery/references/spec-template.md")
+        self.assertLess(template.index("## Decisions"), template.index("## How"))
+        for requirement in [
+            "guide level",
+            "reference-level",
+            "Preserve existing scenarios and constraints",
+            "Assess coverage and comprehension separately.",
+            "each proposed change back to",
+            "An executive summary above an unchanged dense body does not pass.",
+        ]:
+            with self.subTest(requirement=requirement):
+                self.assertIn(requirement, template)
+        agent = self.read("agents/orchestration/spec-master.agent.md")
+        self.assertIn("Investigate feasibility where it affects the proposal.", agent)
+        self.assertIn("Material\nbehavior or design changes return for review.", agent)
+
 
 if __name__ == "__main__":
     unittest.main()
