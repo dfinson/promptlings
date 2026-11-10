@@ -1,6 +1,6 @@
 {
   "name": "promptlings",
-  "version": "0.1.0-alpha.3",
+  "version": "0.1.0-alpha.5",
   "description": "Install the promptlings agents, skills, Basic Memory and supporting toolchain on any OS.",
   "license": "Apache-2.0",
   "repository": {
@@ -31,5 +31,8 @@
     "add-mcp": "2.6.0",
     "rulesync": "42.0.0",
     "skills": "1.7.4"
+  },
+  "devDependencies": {
+    "semver": "7.7.3"
   }
 }

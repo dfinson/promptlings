@@ -1,12 +1,12 @@
 {
   "name": "promptlings",
-  "version": "0.1.0-alpha.3",
+  "version": "0.1.0-alpha.5",
   "lockfileVersion": 3,
   "requires": true,
   "packages": {
     "": {
       "name": "promptlings",
-      "version": "0.1.0-alpha.3",
+      "version": "0.1.0-alpha.5",
       "license": "Apache-2.0",
       "dependencies": {
         "add-mcp": "2.6.0",
@@ -15,6 +15,9 @@
       },
       "bin": {
         "promptlings": "bin/promptlings.js"
+      },
+      "devDependencies": {
+        "semver": "7.7.3"
       },
       "engines": {
         "node": ">=22.20.0"
@@ -1936,6 +1939,19 @@
       },
       "engines": {
         "node": ">=4"
+      }
+    },
+    "node_modules/semver": {
+      "version": "7.7.3",
+      "resolved": "https://registry.npmjs.org/semver/-/semver-7.7.3.tgz",
+      "integrity": "sha1-S19BQ9AHYzqNxnHNCm75FHuLuUY=",
+      "dev": true,
+      "license": "ISC",
+      "bin": {
+        "semver": "bin/semver.js"
+      },
+      "engines": {
+        "node": ">=10"
       }
     },
     "node_modules/send": {
