@@ -35,14 +35,14 @@ function run(code, args = [], env = {}, cwd = packageRoot) {
   });
 }
 
-function select(t, baseline, type, metadata, tags = "") {
+function select(t, baseline, type, metadata, tags = "", mainSha = sha) {
   const directory = fixture(t);
   const registryFile = join(directory, "registry.json");
   const tagsFile = join(directory, "tags.txt");
   writeFileSync(registryFile, JSON.stringify(metadata));
   writeFileSync(tagsFile, tags);
-  return run('select_version "$2" "$3" "$4" "$5" "$6"',
-    [baseline, type, sha, shellPath(registryFile), shellPath(tagsFile)]);
+  return run('select_version "$2" "$3" "$4" "$5" "$6" "$7"',
+    [baseline, type, sha, shellPath(registryFile), shellPath(tagsFile), mainSha]);
 }
 
 test("release Bash parses and only admits manual main runs", () => {
@@ -100,6 +100,24 @@ test("retries reuse their annotated tag, including a failed publish's reserved v
   }
   const beta = select(t, "0.1.0-alpha.5", "beta", registry(["0.1.0-alpha.6"]), tag("0.1.0-alpha.6", sha));
   assert.equal(beta.stdout.trim(), "0.1.0-beta.0", "A different release type can promote the same commit.");
+});
+
+test("only current main can reserve a new release, while existing reservations can resume", (t) => {
+  const metadata = registry(["0.1.0-alpha.5"]);
+  const stale = select(t, "0.1.0-alpha.5", "alpha", metadata, "", otherSha);
+  assert.notEqual(stale.status, 0);
+  assert.match(stale.stderr, /current main tip/);
+  const reserved = tag("0.1.0-alpha.6", sha);
+  const retry = select(t, "0.1.0-alpha.5", "alpha", metadata, reserved, otherSha);
+  assert.equal(retry.status, 0, retry.stderr);
+  assert.equal(retry.stdout.trim(), "0.1.0-alpha.6");
+  const differentType = select(t, "0.1.0-alpha.5", "beta", metadata, reserved, otherSha);
+  assert.notEqual(differentType.status, 0);
+  assert.match(differentType.stderr, /current main tip/);
+  const superseded = select(t, "0.1.0-alpha.5", "alpha",
+    registry(["0.1.0-alpha.7"]), reserved, otherSha);
+  assert.notEqual(superseded.status, 0);
+  assert.match(superseded.stderr, /superseded/);
 });
 
 test("invalid inputs and superseded retries fail instead of publishing a downgrade", (t) => {
@@ -168,6 +186,7 @@ test("release reserves the real main SHA, stamps and packs without committing, a
   git("config", "user.name", "Release Test");
   git("config", "user.email", "release-test@example.invalid");
   git("remote", "add", "origin", remote);
+  writeFileSync(join(checkout, ".gitattributes"), "* text=auto eol=lf\n");
   const manifest = { name: "promptlings", version: "0.1.0-alpha.5", files: ["index.js"] };
   writeFileSync(join(checkout, "package.json"), JSON.stringify(manifest, null, 2));
   writeFileSync(join(checkout, "npm-shrinkwrap.json"), JSON.stringify({
@@ -178,7 +197,7 @@ test("release reserves the real main SHA, stamps and packs without committing, a
   git("add", ".");
   git("commit", "-m", "Fixture main");
   git("push", "origin", "main");
-  const commit = git("rev-parse", "HEAD");
+  let commit = git("rev-parse", "HEAD");
   const metadataFile = join(directory, "registry.json");
   writeFileSync(metadataFile, JSON.stringify(registry(["0.1.0-alpha.5"])));
   const output = join(directory, "outputs");
@@ -202,6 +221,22 @@ npm() {
   const prepare = run(`${mocks}\nmain prepare`, [], env, checkout);
   assert.equal(prepare.status, 0, prepare.stderr);
   assert.equal(readFileSync(output, "utf8").trim(), "version=0.1.0-alpha.6");
+  git("commit", "--allow-empty", "-m", "Advance main before reservation");
+  git("push", "origin", "main");
+  const advanced = git("rev-parse", "HEAD");
+  git("switch", "--detach", commit);
+  for (const command of ["prepare", "publish"]) {
+    const stale = run(`${mocks}\nmain ${command}`, [], env, checkout);
+    assert.notEqual(stale.status, 0);
+    assert.match(stale.stderr, /current main tip/);
+  }
+  assert.equal(git("tag", "--list"), "", "Stale publication must not reserve a tag.");
+  assert.ok(!existsSync(calls), "Stale publication must not call npm publish.");
+  git("switch", "main");
+  commit = advanced;
+  env.GITHUB_SHA = commit;
+  const freshPrepare = run(`${mocks}\nmain prepare`, [], env, checkout);
+  assert.equal(freshPrepare.status, 0, freshPrepare.stderr);
   const publish = run(`${mocks}\nmain publish`, [], env, checkout);
   assert.equal(publish.status, 0, publish.stderr);
   assert.equal(git("rev-parse", "v0.1.0-alpha.6^{commit}"), commit);
@@ -219,17 +254,27 @@ npm() {
   const metadata = registry(["0.1.0-alpha.5", env.RELEASE_VERSION]);
   metadata.versions[env.RELEASE_VERSION].dist = { integrity: pack.integrity };
   writeFileSync(metadataFile, JSON.stringify(metadata));
-  const retry = run(`${mocks}\nmain publish`, [], env, checkout);
+  git("commit", "--allow-empty", "-m", "Advance main after reservation");
+  git("push", "origin", "main");
+  const currentMain = git("rev-parse", "HEAD");
+  const retryCheckout = join(directory, "retry-checkout");
+  git("clone", "--branch", "main", remote, retryCheckout);
+  git("-C", retryCheckout, "switch", "--detach", commit);
+  assert.equal(readFileSync(join(retryCheckout, "index.js"), "utf8"),
+    readFileSync(join(checkout, "index.js"), "utf8"));
+  const resumedPrepare = run(`${mocks}\nmain prepare`, [], env, retryCheckout);
+  assert.equal(resumedPrepare.status, 0, resumedPrepare.stderr);
+  const retry = run(`${mocks}\nmain publish`, [], env, retryCheckout);
   assert.equal(retry.status, 0, retry.stderr);
   assert.match(retry.stdout, /already published/);
   assert.equal(readFileSync(calls, "utf8"), publishedCalls, "Retry must not publish twice.");
   metadata.versions[env.RELEASE_VERSION].dist.integrity = "sha512-conflict";
   writeFileSync(metadataFile, JSON.stringify(metadata));
-  const conflict = run(`${mocks}\nmain publish`, [], env, checkout);
+  const conflict = run(`${mocks}\nmain publish`, [], env, retryCheckout);
   assert.notEqual(conflict.status, 0);
   assert.match(conflict.stderr, /different bytes/);
   assert.equal(readFileSync(calls, "utf8"), publishedCalls, "A package conflict must never reach npm publish.");
-  assert.equal(git("rev-parse", "origin/main"), commit);
+  assert.equal(git("rev-parse", "origin/main"), currentMain);
   git("switch", "-c", "feature");
   writeFileSync(join(checkout, "index.js"), "export const example = false;\n");
   git("add", "index.js");
@@ -301,7 +346,7 @@ test("workflow is manual-only, serialized, SHA-pinned and gates write permission
   assert.match(workflow, /default: alpha/);
   assert.match(workflow, /options: \[alpha, beta, patch, minor, major\]/);
   assert.doesNotMatch(workflow, /^\s+(push|pull_request|workflow_run):/m);
-  assert.match(workflow, /group: npm-release\s+cancel-in-progress: false/);
+  assert.match(workflow, /group: npm-release\s+queue: max\s+cancel-in-progress: false/);
   assert.match(workflow, /publish:[\s\S]*needs: \[prepare, test\][\s\S]*github\.ref == 'refs\/heads\/main'/);
   assert.match(workflow, /verify:[\s\S]*needs: \[prepare, publish\]/);
   assert.doesNotMatch(workflow, /always\(\)/);

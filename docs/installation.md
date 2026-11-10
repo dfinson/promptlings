@@ -57,11 +57,21 @@ precedence always increases. Every release type is published as `latest`.
 
 The workflow tests the stamped package on Windows, macOS and Linux, reserves
 its version tag, and publishes with provenance and `--tag latest` through npm
-trusted publishing. Release runs are serialized and never cancel an active
-publication. The token writes tags, not commits to protected main.
+trusted publishing. New reservations require the selected SHA to equal the
+current main tip, checked during preparation and again before reserving the tag.
+If main advances before reservation, start a new run from main. The pipeline
+does not silently switch to source that the test jobs did not check.
+
+Release runs are serialized through verification and never cancel an active
+publication. `queue: max` retains up to 100 pending runs instead of replacing the
+waiting run when another is dispatched. GitHub cancels further runs when that
+queue is full. A queued run still has to pass the source-freshness check.
+The token writes tags, not commits to protected main.
 
 A rerun or another dispatch for the same commit and release type reuses its
 reserved version. The annotated tag records the selected release type.
+An existing reservation can resume after main advances, while its source remains
+on main and no newer version has superseded it.
 If npm already has it, CI compares archive integrity and skips publishing only
 when the bytes match. It refuses conflicting packages and releases superseded
 by a newer reserved or published version. A failed publish leaves its tag

@@ -22,7 +22,7 @@ select_version() {
 const fs = require("node:fs");
 const assert = require("node:assert/strict");
 const semver = require("semver");
-const [baseline, type, sha, registryFile, tagsFile] = process.argv.slice(2);
+const [baseline, type, sha, registryFile, tagsFile, mainSha] = process.argv.slice(2);
 assert.ok(["alpha", "beta", "patch", "minor", "major"].includes(type), "Invalid release type.");
 assert.equal(semver.valid(baseline), baseline, "Invalid source version.");
 const registry = JSON.parse(fs.readFileSync(registryFile, "utf8"));
@@ -41,6 +41,7 @@ if (previous) {
   assert.ok(semver.gte(previous.version, highest), "This release was superseded. Run from current main instead.");
   console.log(previous.version);
 } else {
+  assert.equal(sha, mainSha, "New releases require the current main tip. Start a new run from main.");
   const prerelease = type === "alpha" || type === "beta";
   let version = semver.inc(highest, prerelease ? "prerelease" : type, type);
   // Returning from beta to alpha starts the next patch's prerelease, never a downgrade.
@@ -109,7 +110,7 @@ main() {
       registry_metadata
       local version
       version=$(select_version "$(node -p 'require("./package.json").version')" "$type" \
-        "$GITHUB_SHA" "$directory/registry.json" "$directory/tags.txt")
+        "$GITHUB_SHA" "$directory/registry.json" "$directory/tags.txt" "$(git rev-parse origin/main)")
       echo "version=$version" >> "${GITHUB_OUTPUT:?Missing workflow output}"
       echo "Selected $version ($type) from main commit $GITHUB_SHA"
       ;;
@@ -118,7 +119,7 @@ main() {
       registry_metadata
       local expected tag
       expected=$(select_version "$(node -p 'require("./package.json").version')" "$type" \
-        "$GITHUB_SHA" "$directory/registry.json" "$directory/tags.txt")
+        "$GITHUB_SHA" "$directory/registry.json" "$directory/tags.txt" "$(git rev-parse origin/main)")
       if [[ "${RELEASE_VERSION:?Missing release version}" != "$expected" ]]; then
         echo "Release state changed since preparation. Start a new run from main." >&2
         return 1

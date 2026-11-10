@@ -17,6 +17,7 @@ env:
 
 concurrency:
   group: npm-release
+  queue: max
   cancel-in-progress: false
 
 jobs:

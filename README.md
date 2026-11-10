@@ -5,6 +5,8 @@
   </picture>
 </p>
 
+[![npm release](https://img.shields.io/npm/v/promptlings/latest)](https://www.npmjs.com/package/promptlings)
+
 Custom agents and reusable skills for coding assistants. Use them to review a
 pull request, work through a technical problem, carry context between sessions,
 or make a technical demo or live presentation.
