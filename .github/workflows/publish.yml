@@ -46,3 +46,24 @@ jobs:
       # Trusted publishing cannot run `npm dist-tag`, so the tag is set here.
       - name: Publish
         run: npm publish --access public --provenance --tag latest
+      - name: Verify npm latest and download the published package
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          directory="$RUNNER_TEMP/promptlings-release"
+          mkdir -p "$directory"
+          for attempt in {1..6}; do
+            npm view promptlings dist-tags --json --prefer-online > "$directory/dist-tags.json"
+            latest=$(node -p 'require(process.env.RUNNER_TEMP + "/promptlings-release/dist-tags.json").latest')
+            echo "Registry latest: $latest, expected: $version (attempt $attempt)"
+            if [ "$latest" = "$version" ]; then break; fi
+            sleep 10
+          done
+          test "$latest" = "$version"
+          npm pack "promptlings@$version" --ignore-scripts --pack-destination "$directory" --json > "$directory/pack.json"
+      - name: Retain the published npm package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: promptlings-${{ github.ref_name }}
+          path: ${{ runner.temp }}/promptlings-release/
+          if-no-files-found: error
+          retention-days: 14

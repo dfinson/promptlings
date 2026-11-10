@@ -20,6 +20,16 @@ The installer prints its plan and asks for approval. Add `--yes` for an
 approved noninteractive run. Help, listing, and dry-run perform no downloads
 or writes.
 
+### Release verification
+
+The Publish workflow runs on `v*` tags, requires the tag to match the package
+version, and publishes to npm with provenance and the `latest` tag after the
+Windows, macOS, and Linux tests pass. It then reads npm's dist-tags to verify
+`latest`, downloads that exact version from npm, and retains the tarball plus
+registry and package metadata in a `promptlings-v<VERSION>` workflow artifact
+for 14 days. The downloaded tarball can be used for installation when direct
+npm access is unavailable, while dependencies still use the configured registry.
+
 ### Supported systems
 
 | System | Package manager |
