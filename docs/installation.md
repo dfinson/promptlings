@@ -26,9 +26,13 @@ The Publish workflow runs on `v*` tags, requires the tag to match the package
 version, and publishes to npm with provenance and the `latest` tag after the
 Windows, macOS, and Linux tests pass. It then reads npm's dist-tags to verify
 `latest`, downloads that exact version from npm, and retains the tarball plus
-registry and package metadata in a `promptlings-v<VERSION>` workflow artifact
+registry and package metadata in a `promptlings-release-<RUN_ID>` workflow artifact
 for 14 days. The downloaded tarball can be used for installation when direct
 npm access is unavailable, while dependencies still use the configured registry.
+Registry propagation is retried for up to five minutes. Verification is a
+separate job, so a failed readback can be rerun without publishing again.
+A manual workflow dispatch only verifies and downloads the package version
+in the selected ref, without rerunning tests or publishing.
 
 ### Supported systems
 

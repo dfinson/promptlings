@@ -3,6 +3,7 @@ name: Publish
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -10,6 +11,7 @@ permissions:
 jobs:
   test:
     name: Test (${{ matrix.os }})
+    if: github.event_name == 'push'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: true
@@ -25,6 +27,7 @@ jobs:
 
   publish:
     name: Publish to npm
+    if: github.event_name == 'push'
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -46,12 +49,24 @@ jobs:
       # Trusted publishing cannot run `npm dist-tag`, so the tag is set here.
       - name: Publish
         run: npm publish --access public --provenance --tag latest
+
+  verify:
+    name: Verify published package
+    needs: publish
+    if: always() && (needs.publish.result == 'success' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
       - name: Verify npm latest and download the published package
         run: |
           version=$(node -p 'require("./package.json").version')
           directory="$RUNNER_TEMP/promptlings-release"
           mkdir -p "$directory"
-          for attempt in {1..6}; do
+          for attempt in {1..30}; do
             npm view promptlings dist-tags --json --prefer-online > "$directory/dist-tags.json"
             latest=$(node -p 'require(process.env.RUNNER_TEMP + "/promptlings-release/dist-tags.json").latest')
             echo "Registry latest: $latest, expected: $version (attempt $attempt)"
@@ -63,7 +78,7 @@ jobs:
       - name: Retain the published npm package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: promptlings-${{ github.ref_name }}
+          name: promptlings-release-${{ github.run_id }}
           path: ${{ runner.temp }}/promptlings-release/
           if-no-files-found: error
           retention-days: 14
