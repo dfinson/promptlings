@@ -27,6 +27,8 @@ The Promptlings installer's demo toolchain provides these globally installed spe
 
 ## Capture real events
 
+Keep automation infrastructure in the background. Do not open dashboards, inspectors, reports or browser windows for the user unless an unavoidable login or other critical user action requires it. First check whether an authorized authentication context can be reused. If human action is necessary, verify that the presented surface actually supports interaction and connects to the capture session. A dashboard or read-only preview is not a sign-in surface.
+
 Rehearse the actual workflow, protect privacy and inspect a short native-viewport capture before a full take. Drive the flow with the capture specialist, supplying the app's address and any authentication it needs. Preserve originals in a new take directory. Stop and retain failure evidence when a required action fails. When narration presents a produced file the capture does not show, render its actual pages as described above and show them, narrating only what is visible.
 
 Record named events against a monotonic clock with a documented recording origin. Log each event when its narrated condition first becomes visible, not after an arbitrary settling delay. Mark long waits with start/end times. Number repeated names across the whole take: `complete`, `complete#2`, `complete#3`, including across scenes. Record explicitly skipped optional actions by the exact narrated event name. A missing required event always fails. For an explicitly skipped optional event, warn, list the omitted cue in the timing report and fail if the approved delivery requires every cue.
