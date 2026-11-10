@@ -18,8 +18,6 @@ Read these before drafting, in order of precedence:
 1. The user's explicit instructions for this PR.
 2. The PR template: `.github/pull_request_template.md`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/PULL_REQUEST_TEMPLATE/`, `docs/pull_request_template.md`, or a root `pull_request_template.md`. Keep its headings, order, and HTML comments. Fill every section. Write `N/A` for a section that does not apply instead of deleting it. Tick a checkbox only when that item was actually done.
 3. Repository instructions that mention PRs, titles, commits, or changelogs: `.github/copilot-instructions.md`, `.github/instructions/`, `AGENTS.md`, `CLAUDE.md`, `CONTRIBUTING.md`, and equivalent files in the changed package.
-4. Conventions visible in recent merged PRs, such as `gh pr list --state merged --limit 10 --json title,body`: title prefixes, ticket IDs (`AB#123`, `JIRA-42`), closing keywords, and how much the description usually covers.
-
 Where these say nothing, use the defaults below. A template or instruction wins over a default when they conflict.
 
 ## 2. Gather the evidence
