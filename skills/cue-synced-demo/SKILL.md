@@ -27,7 +27,11 @@ The Promptlings installer's demo toolchain provides these globally installed spe
 
 ## Capture real events
 
-Rehearse the actual workflow, protect privacy and inspect a short native-viewport capture before a full take. Drive the flow with the capture specialist, supplying the app's address and any authentication it needs. Preserve originals in a new take directory. Stop and retain failure evidence when a required action fails. When narration presents a produced file the capture does not show, render its actual pages as described above and show them, narrating only what is visible.
+Check privacy, the intended viewport and recording readiness before executing the workflow. Record the first authorized run with event timestamps so it serves as both rehearsal and a candidate take. Inspect an early native-resolution segment as soon as the recorder supports it. Keep footage that satisfies the approved evidence, framing and timing requirements rather than repeating a successful run solely for capture.
+
+Use separate rehearsal only when a specific action is irreversible, changes state that is difficult to restore, or needs practice before a one-shot capture. Rehearse that action using a safe substitute or resettable state, then record the actual required evidence. Record the reason in the existing production notes.
+
+Drive the flow with the capture specialist, supplying the app's address and any authentication it needs. Preserve originals in a new take directory. Stop and retain failure evidence when a required action fails. Retake only affected sections when their starting state and continuity can be reproduced faithfully, otherwise repeat the dependent sequence. When narration presents a produced file the capture does not show, render its actual pages as described above and show them, narrating only what is visible.
 
 Record named events against a monotonic clock with a documented recording origin. Log each event when its narrated condition first becomes visible, not after an arbitrary settling delay. Mark long waits with start/end times. Number repeated names across the whole take: `complete`, `complete#2`, `complete#3`, including across scenes. Record explicitly skipped optional actions by the exact narrated event name. A missing required event always fails. For an explicitly skipped optional event, warn, list the omitted cue in the timing report and fail if the approved delivery requires every cue.
 
