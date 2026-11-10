@@ -33,3 +33,51 @@ requirements. They are not industry-wide conclusions from these sources.
 Atlassian even suggests a questions table. Its format recommendation does not
 override this repository's human-specification policy. Sources also do not
 establish a universal word count or prove that a new prompt improves outcomes.
+
+## Intent alignment, precision and execution boundaries
+
+Reviewed on 2026-11-10. These precedents inform the distinction between human
+agreement, precise contracts and execution readiness:
+
+- [OpenSpec's spec-driven schema](https://github.com/Fission-AI/OpenSpec/blob/579fcac57ae00c2dff38f971b6d88b6f1f098b8a/schemas/spec-driven/schema.yaml)
+  separates the proposal, behavioral specifications, technical design and tasks.
+  Requirements retain scenarios. Its
+  [validator](https://github.com/Fission-AI/OpenSpec/blob/579fcac57ae00c2dff38f971b6d88b6f1f098b8a/src/core/validation/validator.ts)
+  warns about long requirement descriptions but exempts modified requirements
+  from that length check to preserve existing contracts.
+  [Scenario-loss regression tests](https://github.com/Fission-AI/OpenSpec/blob/579fcac57ae00c2dff38f971b6d88b6f1f098b8a/test/core/validation.scenario-loss.test.ts)
+  protect baseline scenarios. The local rule is to separate assessable behaviors
+  without losing cases, not to adopt OpenSpec's 500-character threshold.
+- [Spec Kit's specification template](https://github.com/github/spec-kit/blob/08252af8c5fb1c68135768fde2049d6578fa46c3/templates/spec-template.md)
+  starts with prioritized user journeys, acceptance scenarios and requirements,
+  separate from the technical plan. Its
+  [analysis method](https://github.com/github/spec-kit/blob/08252af8c5fb1c68135768fde2049d6578fa46c3/templates/commands/analyze.md)
+  checks coverage, ambiguity, duplication and contradictions. Promptlings retains
+  consequential technical design in a human specification where the decision
+  needs it, rather than importing a blanket prohibition on implementation detail.
+- [Kiro's feature specifications](https://kiro.dev/docs/specs/feature-specs/)
+  distinguish requirements, design and tasks, including a design-first path.
+  Its [requirements analysis](https://kiro.dev/docs/specs/analyze-requirements/)
+  examines interactions and ambiguity. Separating execution metadata does not
+  defer necessary feasibility investigation or settle unresolved choices.
+- [The Rust RFC template](https://github.com/rust-lang/rfcs/blob/3bdcd22feea6848a7920fa06d17ad4c6ada9db89/0000-template.md)
+  provides direct precedent for guide-level explanation through examples followed
+  by reference-level semantics, interactions and corner cases in one artifact.
+  [RFC 2394](https://github.com/rust-lang/rfcs/blob/3bdcd22feea6848a7920fa06d17ad4c6ada9db89/text/2394-async_await.md)
+  applies that structure. Its historical syntax is not a current Rust reference.
+  This supports layering, not an arbitrary size limit or mandatory companion.
+- [PEP 1](https://peps.python.org/pep-0001/) makes consensus, rationale, precise
+  specification, compatibility and unresolved issues part of proposal work.
+  Acceptance and Final implementation status are distinct. A reference
+  implementation is required before Final, while early prototypes can establish
+  feasibility. [PEP 572](https://peps.python.org/pep-0572/) is an applied example
+  with semantics, rationale and rejected alternatives. This supports informed
+  agreement without treating agreement as completed delivery.
+
+The repository-source links pin the inspected revisions. Kiro and PEP links
+are live documentation, assessed on the date above. Source and upstream tests
+were inspected, not executed as part of this research. These sources establish
+precedent for the chosen boundaries, not measured superiority of this combined
+prompt. Local no-default-table, companion-authorization and delivery-gate rules
+remain local policy. Native regression evidence must separately establish what
+the revised Promptlings instructions actually do.

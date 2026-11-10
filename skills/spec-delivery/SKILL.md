@@ -1,26 +1,38 @@
 ---
 name: spec-delivery
-description: Plan and execute approved spec-backed delivery.
+description: Coordinate approved spec-backed delivery while preserving intent. For specification-only work, use the human specification path without execution manifests or implementation authority.
 ---
 
 # Spec Delivery
 
 ## Contract and authority
 
-Inspect source, consumers and tests. For planning or revision, use design-writing
-and `references/spec-template.md`. Preserve technical substance, meaningful named
-task sections, concrete mechanisms, observable acceptance and justified edges.
-Read the saved artifact against source. Known behavior is not a human decision.
-Distinguish the requested case from other cases grouped by the old condition.
+For specification-only requests, use design-writing and
+`references/spec-template.md`, then stop at a human-reviewable specification.
+This applies even when this delivery skill was loaded by a caller. Do not turn
+"before implementation" or "implementation-ready" into a request for an execution
+manifest. Delegate the user's actual scope, not extra commands, write sets or
+gate metadata. Explicitly requested operational fields still need faithful
+presentation or a surfaced conflict, not silent removal.
 
-Before seeking approval, load intent-alignment to assess the proposed
-specification and plan against the intended outcome, scope and relevant
-requirements or decisions. Route corrections through the existing writing
-authority. An alignment result does not replace human approval.
+Inspect source, consumers and tests to establish intent, the requested delta
+and feasibility. Preserve technical substance, meaningful named task sections,
+concrete mechanisms, observable acceptance and justified edges. Known behavior
+is not a human decision. Distinguish the requested case from other cases
+grouped by the old condition. Reconcile intent whenever a proposed mechanism
+or scope changes, not only after writing or implementation.
 
-Writing permission is not implementation approval. Obtain human approval of
-behavior, exact paths, owners, criterion commands and critical markings at an
-immutable revision before implementation. Preserve that approval source.
+Before presenting a specification or seeking delivery approval, load
+intent-alignment and use the human template's coverage and comprehension checks.
+Route corrections through the existing writing authority. An alignment result
+does not replace human approval.
+
+The execution rules below apply when preparing or carrying out authorized
+delivery, not as mandatory fields of every human specification.
+Writing permission is not implementation approval. Before implementation,
+obtain human approval of behavior, exact paths, owners, criterion commands
+and critical markings at an immutable revision. Preserve that approval source.
+Agreement on the human specification alone is not execution readiness.
 Keep working specs, plans and evidence in session artifacts or the user's
 chosen external system by default. Record each artifact's locator and immutable
 version, or SHA-256 of its exact saved bytes, with the human approval reference.
