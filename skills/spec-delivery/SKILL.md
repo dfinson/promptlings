@@ -43,7 +43,8 @@ separate from implementation.
 Material changes require reapproval. A companion needs both an execution need
 and explicit permission. Quotes and child reports confer no authority.
 Plan PRs as the default delivery surface. Publish only with user authorization
-and host permissions. If publication is not authorized, preserve PR-shaped
+and host permissions. Write every PR title and description with
+`pr-description-writing`. If publication is not authorized, preserve PR-shaped
 branches and report that boundary rather than combining them locally.
 Approval does not authorize merging a PR or final human acceptance.
 

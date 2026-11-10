@@ -259,6 +259,20 @@ Hard rules:
 * Every bet must have a "question to answer." This is what separates a bet from narration. The question forces the reviewer to form an opinion.
 * Bets the diff's own docs already defend with citations are still bets. The author's defense is context, not a reason to skip surfacing the choice. Include the defense in "why it's defensible" and let the reviewer decide if they agree.
 
+#### Proposed comments for forks and bets
+
+Forks and bets are for the reviewer's judgment, but the reviewer often wants to raise one with the author. Under each fork or bet whose question the author can answer, add a proposed comment the reviewer can post as written:
+
+````markdown
+**Anchor:** path/to/file.ext, RIGHT, line N (or lines M-N), inline
+
+{comment body}
+````
+
+Use `**Anchor:** top-level` only when the choice spans files with no single place to point at, and name those files in the comment's first sentence. Every line anchor must sit inside a diff hunk at the reviewed snapshot.
+
+Load `review-comment-writing` and `reasoning-first-writing` when the host provides them and apply them to each comment. Without them, write the comment for the author in plain English: state what the code commits to and the consequence, then ask the one question that settles it. No headings, bold labels, internal IDs, hedges, disclaimers, praise, emoji, or em dashes. Skip the proposed comment for a fork or bet that only the reviewer or a product owner can settle. This agent returns proposed comments in conversation and never posts or stages them.
+
 #### Triage map (when >10 files changed)
 
 ```markdown
@@ -320,7 +334,7 @@ The output is a single markdown document:
 
 1. The narrative walkthrough (always first, always produced)
 2. A horizontal rule (`---`)
-3. Appendices in order: Design forks, Implicit bets, Triage map, The diff in N layers (each only when applicable)
+3. Appendices in order: Design forks, Implicit bets (each with its proposed comments when applicable), Triage map, The diff in N layers (each only when applicable)
 
 If no appendices apply, the horizontal rule and appendix section are omitted.
 

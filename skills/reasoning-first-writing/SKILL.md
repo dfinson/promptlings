@@ -35,6 +35,8 @@ Return the complete requested artifact in the caller's format. Add editing comme
 
 - For speech, invoke `reasoning-first-narration`. It loads this foundation and adds delivery and visual-evidence rules.
 - For ADRs, specifications, design documents, or tracker tickets, invoke `design-writing`. It loads this foundation and the applicable artifact reference.
+- For pull request titles and descriptions, invoke `pr-description-writing`. It reads the repository's PR template and instructions first, then loads this foundation.
+- For PR review comments and the findings that carry them, invoke `review-comment-writing`. It loads this foundation and adds anchoring rules.
 - A mixed deliverable can use both specialists for separate outputs. They are not a mandatory three-stage pipeline.
 - `no-ai-slop` remains an optional editor. Load it only when requested or useful for the editing task. Its draft requirement, change report, and blanket contrast removal must not override this skill's fidelity rules or the caller's output contract.
 
