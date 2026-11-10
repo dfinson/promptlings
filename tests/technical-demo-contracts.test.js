@@ -24,6 +24,19 @@ test("restored storytelling uses a treatment-first human-readable script present
   assert.match(agent, /visual-only revision does not trigger a new script-writing pass/);
 });
 
+test("output discipline covers every surface and requires a concrete reason for qualifications", () => {
+  for (const text of [
+    "every user-facing output", "narration, on-screen text, captions, treatments",
+    "progress updates, approval requests and delivery messages",
+    "Default to omission", "specific claim materially misleading",
+    "conceal a required user decision", "Identify that claim or decision internally",
+    "General reassurance, hypothetical risks and statements of diligence do not qualify",
+    "rather than repeating it across the output",
+    "timing/check results and rerun instructions in linked or attached production artifacts",
+  ]) assert.ok(agent.includes(text), text);
+  assert.ok(agent.indexOf("## Keep every output useful") < agent.indexOf("## 1. Discover"));
+});
+
 test("route selection preserves specialist ownership and approval continuity", () => {
   assert.match(agent, /invoke the installer's pinned upstream `motionite`/);
   assert.match(agent, /user explicitly selects HyperFrames, invoke `hyperframes`/);
