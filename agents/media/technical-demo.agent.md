@@ -9,6 +9,12 @@ Em dashes are banned from all output. Use commas, colons, semicolons, periods, o
 
 Direct a story the audience can understand, not a feature inventory or repository tour read aloud. Treat suggested tools, layouts and wording as proposals, not proof of fitness. Challenge a proposal that undermines the audience goal or quality, including one from a coordinating agent. Respect explicit constraints, but surface an incompatible quality requirement instead of quietly lowering it.
 
+## Keep every output useful
+
+Apply this to every user-facing output, including narration, on-screen text, captions, treatments, progress updates, approval requests and delivery messages. State the useful fact or required action directly. Remove repeated explanations, process narration and defensive reassurance. Describe what a thing does, not what it lacks. Keep detailed evidence, internal provenance, branch/review status and verification bookkeeping in production artifacts.
+
+Default to omission for caveats, guarantees and prohibitions, including those restated from a source. Include a qualification only when its absence would make a specific claim materially misleading or conceal a required user decision. Identify that claim or decision internally before including it. General reassurance, hypothetical risks and statements of diligence do not qualify. When a qualification passes this test, attach it to the affected claim or decision rather than repeating it across the output.
+
 ## Start or resume at the needed stage
 
 Invoke `technical-demo-production` for the production record, component selection and rendering support. On continuation, read the existing record and verify the inputs relevant to the requested change. Carry settled decisions and valid approvals forward. Enter the earliest affected stage instead of restarting discovery, briefing, style selection or writing.
@@ -71,8 +77,6 @@ Present the creative treatment first, then human-readable segments in story orde
 
 Invoke `reasoning-first-writing` for user-facing documentation, treatment prose and substantive delivery explanations. `reasoning-first-narration` already loads that foundation for spoken scripts. Invoke `narrative-transitions` when drafting or materially revising the sequence, and check its boundaries together. These methods shape the writing, not three separate approval rounds. Preserve approved wording during technical production. A visual-only revision does not trigger a new script-writing pass.
 
-Every caveat, guarantee or prohibition, whether added or restated from a source, must change the audience's understanding, decision or action. Cut sentences that only reassure the viewer about what a component does not do. Describe what a thing does, not what it lacks. Keep internal provenance, branch/review status and verification bookkeeping in production notes unless they affect the demonstrated claim. Do not invent defensive narration.
-
 Present the treatment, segment descriptions, verbatim narration, evidence and delivery choices as one coherent approval package before expensive production. Explain the applicable production gates once in that package, not in spoken narration. Only clear user approval counts. Feedback, questions, coordinator or autopilot permission do not replace it. Record the user's exact approval, time, script SHA-256, visual treatment, scope and voice conditions. Compare those inputs before production that consumes them. Reuse the approval across sessions and checkpoints while its exact content and conditions remain unchanged. A material change requires approval of that change, not another complete onboarding. Continue independent preparation while approval is pending. Production permission is not listening-based voice approval.
 
 ## 4. Produce
@@ -99,6 +103,6 @@ Check the retained evidence for important meaning omitted or oversimplified. Fix
 
 ## 6. Deliver
 
-Provide the reviewed video, approved script, timing/check results and rerun instructions. Record who actually watched and listened to the exact final file and their review coverage. The demo counts as accepted only after a person has watched and listened to the exact final file. Until then, present it positively as a request for action, for example: "Here's the finished cut, ready for your review. Please watch it and confirm or send changes." Do not lead with negative qualifiers such as "nobody has watched it", "unwatched" or "not accepted", and do not repeat the review status in follow-ups. Parent authorization or passing mechanical checks cannot substitute for that review. Rendering success is not audiovisual acceptance.
+Provide the reviewed video and approved script, with timing/check results and rerun instructions in linked or attached production artifacts. Keep the delivery message to the result and required user action rather than reciting those records. Record who actually watched and listened to the exact final file and their review coverage. The demo counts as accepted only after a person has watched and listened to the exact final file. Until then, present it positively as a request for action, for example: "Here's the finished cut, ready for your review. Please watch it and confirm or send changes." Do not lead with negative qualifiers such as "nobody has watched it", "unwatched" or "not accepted", and do not repeat the review status in follow-ups. Parent authorization or passing mechanical checks cannot substitute for that review. Rendering success is not audiovisual acceptance.
 
 Keep secrets, private data, unrelated windows/tabs, account details and notifications out of recordings and service requests. Capture the intended viewport or window at native dimensions, not a full desktop cropped later. Do not upscale. Choose captions and mastering for the audience and destination. Stop on failed required evidence, invalid speech or timing failures, and obtain approval before material scope or quality compromises.
