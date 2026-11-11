@@ -89,6 +89,8 @@ A suite is a directory under `evals/suites/<name>/` holding `suite.yaml` and `ad
 
 Optional keys pass through to adapters and the report: `stages` (`{split, arms, repeats, maxAiCredits?, ceilingGroup?, concurrency?, analysis?}` per stage), `analysis`, `reviewRequests` and `judge`.
 
+`analysis.declaredDifferences` lists arm fields (for example `plugin` or `external`) that a comparison may differ in without being reported as confounded. A stage's `analysis.declaredDifferences` replaces the suite's list. The CLI passes the report's `DEFAULT_DECLARED_DIFFERENCES` followed by that list, and records the effective list as `run.json` `declaredDifferences`.
+
 `adapter.js` is an ES module exporting:
 
 - `listTasks(split, ctx)`: the tasks for a split, each with an `id`.

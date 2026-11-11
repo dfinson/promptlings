@@ -236,12 +236,14 @@ async function reportStage(run, manifest, scoreResult, usable) {
     run.report = { skipped: "the run is not usable for a verdict" };
     return;
   }
-  const options = reportOptions(manifest, run.stage, run.arms);
+  const { writeReport, DEFAULT_DECLARED_DIFFERENCES } = await importEvals("report", "index.js");
+  if (!Array.isArray(DEFAULT_DECLARED_DIFFERENCES)) throw new Error("report/index.js does not export DEFAULT_DECLARED_DIFFERENCES");
+  const options = reportOptions(manifest, run.stage, run.arms, DEFAULT_DECLARED_DIFFERENCES);
+  run.declaredDifferences = options.declaredDifferences;
   if (!hasComparisons(options)) {
     run.report = { skipped: "no declared comparison has both arms in this stage" };
     return;
   }
-  const { writeReport } = await importEvals("report", "index.js");
   const { jsonPath, mdPath } = writeReport(run.runDir, join(run.runDir, "report"), options);
   run.report = { json: jsonPath, markdown: mdPath };
   notePanelInReport(run);

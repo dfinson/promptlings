@@ -8,7 +8,9 @@ export function stageAnalysis(manifest, stageName) {
 
 // The stage's own analysis block (for example {verdict, minPairedN}) is passed unchanged as `analysis`;
 // planned n comes from the task list, not from minPairedN.
-export function reportOptions(manifest, stageName, armIds) {
+// `defaults` is the report's DEFAULT_DECLARED_DIFFERENCES; the suite's analysis.declaredDifferences (a stage-level list
+// replaces the suite's) adds the arm fields a comparison may differ in without being confounded.
+export function reportOptions(manifest, stageName, armIds, defaults = []) {
   const own = stageAnalysis(manifest, stageName);
   const analysis = { ...(manifest.analysis ?? {}), ...(own ?? {}) };
   const options = { ...analysis };
@@ -22,6 +24,11 @@ export function reportOptions(manifest, stageName, armIds) {
   if (typeof analysis.guardrail === "string") options.guardrail = [analysis.guardrail];
   if (typeof analysis.secondary === "string") options.secondary = [analysis.secondary];
   if (options.alpha === undefined && analysis.familywiseAlpha !== undefined) options.alpha = analysis.familywiseAlpha;
+  const declared = analysis.declaredDifferences ?? [];
+  if (!Array.isArray(declared) || declared.some((field) => typeof field !== "string")) {
+    throw new Error("analysis.declaredDifferences must be a list of arm field names");
+  }
+  if (defaults.length || declared.length) options.declaredDifferences = [...new Set([...defaults, ...declared])];
   return options;
 }
 
