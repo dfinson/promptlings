@@ -71,6 +71,7 @@ test('dataset: datasets.lock records the ReviewBench pin and its licenses', () =
   assert.match(entry.contentHash, /^sha256:[0-9a-f]{64}$/);
   assert.equal(entry.codeLicense, 'MIT');
   assert.ok('dataLicense' in entry, 'data license is recorded, null when ReviewBench states none');
+  if (entry.dataLicense === null) assert.deepEqual(Object.keys(entry.licenseDecision ?? {}).sort(), ['by', 'date', 'decision']);
   assert.deepEqual(entry.counts, { full: 219, test: 25, heldout: 194, testGoldenFindings: 565, testGoldenTruePositives: 352 });
 });
 

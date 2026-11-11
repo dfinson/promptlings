@@ -235,5 +235,5 @@ scorers:
 
 license:
   code: MIT
-  data: not stated by ReviewBench; use requires the maintainer decision recorded in datasets.lock
+  data: not stated by ReviewBench; local benchmark use approved by the maintainer decision recorded in datasets.lock
   redistribution: none; corpus, golden data and mirrors stay under EVALS_ARTIFACT_ROOT, never in Git
