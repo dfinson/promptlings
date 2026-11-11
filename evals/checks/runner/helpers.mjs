@@ -80,7 +80,7 @@ export function makeFixtureSuite(root, { repeats = 2, concurrency = 1, ceiling, 
   writeFileSync(join(root, "suites", "package.json"), '{"type": "module"}\n');
   const armList = arms ?? [stockArm];
   const armYaml = armList
-    .map((arm) => `  - id: ${arm.id}\n    ref: ${arm.ref ?? "null"}\n    model: ${arm.model}\n    reasoningEffort: ${arm.reasoningEffort}\n    selection: ${JSON.stringify(arm.selection ?? null)}\n`)
+    .map((arm) => `  - id: ${arm.id}\n    ref: ${arm.ref ?? "null"}\n    model: ${arm.model}\n    reasoningEffort: ${arm.reasoningEffort}\n    selection: ${JSON.stringify(arm.selection ?? null)}\n${arm.plugin ? `    plugin: ${JSON.stringify(arm.plugin)}\n` : ""}${arm.agent ? `    agent: ${JSON.stringify(arm.agent)}\n` : ""}${Object.entries(arm.extra ?? {}).map(([key, value]) => `    ${key}: ${JSON.stringify(value)}\n`).join("")}`)
     .join("");
   writeFileSync(join(dir, "suite.yaml"), [
     "name: fixture",
