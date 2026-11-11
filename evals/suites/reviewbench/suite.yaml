@@ -109,7 +109,7 @@ arms:
         - review-bench.ai
     sandbox: true
     customInstructions: false
-    limits: { maxAiCredits: 1000 }
+    limits: { maxAiCredits: 5000 }
   - id: nitcracker
     ref: candidate
     selection: --review
@@ -119,7 +119,7 @@ arms:
     tools: *noLeakTools
     sandbox: true
     customInstructions: false
-    limits: { maxAiCredits: 1500 }
+    limits: { maxAiCredits: 5000 }
   - id: sparring-partner
     ref: candidate
     selection: --review
@@ -129,7 +129,7 @@ arms:
     tools: *noLeakTools
     sandbox: true
     customInstructions: false
-    limits: { maxAiCredits: 1500 }
+    limits: { maxAiCredits: 5000 }
   - id: ensemble
     ref: candidate
     selection: --review
@@ -149,7 +149,7 @@ arms:
     tools: *noLeakTools
     sandbox: true
     customInstructions: false
-    limits: { maxAiCredits: 1500 }
+    limits: { maxAiCredits: 5000 }
   # Spec Amendment 3: Microsoft hve-core's Code Review orchestrator as an external comparator.
   # No Promptlings install; the runner fetches the pinned commit once per run, verifies it and
   # passes --plugin-dir. The agent is human-gated unless an automation host declares its hidden
@@ -158,7 +158,8 @@ arms:
   - id: hve-code-review
     ref: null
     selection: null
-    agent: Code Review
+    # Under --plugin-dir the CLI namespaces plugin agents as <plugin name>:<agent file stem>.
+    agent: hve-core:code-review
     plugin: { repo: microsoft/hve-core, commit: 299c0b68741d9bc08106b132043724c23166e2a4 }
     external: { name: hve-core, version: 3.2.2, license: MIT }
     model: gpt-6.1-sol
@@ -226,7 +227,9 @@ stages:
 
 limits:
   timeoutMs: 5400000
-  maxAiCredits: 1500
+  # Every arm carries the same per-trial cap so limits are not a difference between arms;
+  # it is a runaway guard (highest qualification trial: 218.5 credits).
+  maxAiCredits: 5000
   # The pilot group ceiling is the sum of its three blocks (194532 + 22200 + 28125).
   stageCeilings:
     qualification: 23750
@@ -260,6 +263,9 @@ analysis:
   guardrail: grounded_precision
   secondary: [augmented_recall, augmented_precision]
   revisionComparison: [nitcracker, previous]
+  # Fields that may differ between compared arms; core merges these with its defaults (id, label,
+  # ref, selection, agent). Every other arm field, including limits, must match.
+  declaredDifferences: [plugin, external, promptPreamble, qualificationChecks]
   disclosures:
     - arm: hve-code-review
       kind: prompt-preamble

@@ -166,12 +166,21 @@ test('dataset: suite.yaml declares the frozen splits, six arms and three stages'
   assert.deepEqual(suite.arms.map((a) => a.id), ['stock', 'nitcracker', 'sparring-partner', 'ensemble', 'previous', 'hve-code-review']);
   assert.ok(suite.arms.every((a) => a.model === 'gpt-6.1-sol' && a.sandbox === true));
   assert.deepEqual(Object.fromEntries(suite.arms.map((a) => [a.id, a.limits.maxAiCredits])), {
-    stock: 1000, nitcracker: 1500, 'sparring-partner': 1500, ensemble: 5000, previous: 1500, 'hve-code-review': 5000,
+    stock: 5000, nitcracker: 5000, 'sparring-partner': 5000, ensemble: 5000, previous: 5000, 'hve-code-review': 5000,
   });
+  assert.equal(suite.limits.maxAiCredits, 5000);
+  assert.deepEqual(suite.analysis.declaredDifferences, ['plugin', 'external', 'promptPreamble', 'qualificationChecks']);
+  const allowed = new Set(['id', 'label', 'ref', 'selection', 'agent', ...suite.analysis.declaredDifferences]);
+  const byId = Object.fromEntries(suite.arms.map((a) => [a.id, a]));
+  for (const pair of [...suite.analysis.comparisons, suite.analysis.revisionComparison]) {
+    const [a, b] = pair.map((id) => byId[id]);
+    const undeclared = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((k) => !allowed.has(k) && JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+    assert.deepEqual(undeclared, [], `${pair.join(' vs ')} differ only in declared fields`);
+  }
   assert.equal(suite.arms.find((a) => a.id === 'ensemble').agent, null);
   const hve = suite.arms.find((a) => a.id === 'hve-code-review');
   assert.deepEqual(hve.plugin, { repo: 'microsoft/hve-core', commit: '299c0b68741d9bc08106b132043724c23166e2a4' });
-  assert.equal(hve.agent, 'Code Review');
+  assert.equal(hve.agent, 'hve-core:code-review');
   assert.equal(hve.ref, null);
   assert.equal(hve.selection, null);
   assert.deepEqual(hve.tools, suite.arms.find((a) => a.id === 'stock').tools);

@@ -4,8 +4,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PERSPECTIVES = ['functional', 'standards', 'accessibility', 'security', 'readiness'];
-const PERSPECTIVE_AGENT = new RegExp(`^code[- ]review[- ](?:${PERSPECTIVES.join('|')})$`, 'i');
-const CODE_REVIEW_AGENT = /^code[- ]review(?:[- ][a-z]+)?$/i;
+// Subagents appear by display name ("Code Review Security") or by the CLI's plugin-namespaced id
+// ("hve-core:code-review-security").
+const NS = '(?:[\\w.-]+:)?';
+const PERSPECTIVE_AGENT = new RegExp(`^${NS}code[- ]review[- ](?:${PERSPECTIVES.join('|')})$`, 'i');
+const CODE_REVIEW_AGENT = new RegExp(`^${NS}code[- ]review(?:[- ][a-z]+)?$`, 'i');
 const SKILL_FILE = /code-review[\\/]+(?:SKILL\.md|references[\\/])/i;
 const PERSPECTIVE_FILE = new RegExp(`(?:${PERSPECTIVES.join('|')})-findings\\.json`, 'i');
 const PERSPECTIVE_TAG = new RegExp(`\\[(?:${PERSPECTIVES.join('|')})\\]`, 'i');
@@ -86,6 +89,7 @@ export function qualifyTrial({ record = {}, trialDir, armConfig, findingsSource,
 
   const all = {
     'agent-ran': () => {
+      // The flag must carry the arm's configured id (for plugins, the namespaced <plugin>:<stem> id).
       const flagOk = agentFlag === armConfig?.agent;
       const pluginOk = !pinned || (plugin?.commit === pinned.commit && (!armConfig.external?.version || plugin?.version === armConfig.external.version));
       const activity = skillOk.length > 0 || codeReviewSubagents.length > 0;

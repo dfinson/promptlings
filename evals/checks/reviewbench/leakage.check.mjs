@@ -104,6 +104,48 @@ test('leakage: writing findings that mention gh pr or a PR URL with a file tool 
   assert.ok(classifyCall('some_new_tool', { input: 'gh pr view 1' }).some((h) => h.rule === 'gh-cli'), 'unknown tools are still scanned');
 });
 
+// rb-qual-2 false positives, verbatim from the events files: literal data inside inline scripts.
+const QUAL2_K1LOW_ENSEMBLE = "@'\nimport hashlib, json, subprocess, sys\nfrom pathlib import Path\nsys.stdout.reconfigure(encoding='utf-8')\ndef git(*args):\n return subprocess.run(['git', *args], capture_output=True, check=True, timeout=30).stdout\nbase = '5f3765a9ef25d9c5a57699418bed105d9ac54691'\nhead = 'f98281938e63acd1d2df9b89d6af98dcf58c9fa8'\nfor ref, expected in [('HEAD',head), ('pr-head',head), ('review-base',base)]:\n actual = git('rev-parse',ref).decode().strip()\n print(f'{ref}: {actual}; unchanged={actual == expected}')\n assert actual == expected\nassert git('merge-base',base,head).decode().strip() == base\nfor name in ['cmd/root.go', 'internal/github/github.go', '.github/workflows/ci.yml', 'Makefile']:\n local = Path(name).read_bytes().replace(b'\\r\\n',b'\\n')\n committed = git('show',f'{head}:{name}').replace(b'\\r\\n',b'\\n')\n print(f'{name}: workspace matches reviewed head={local == committed}; sha256={hashlib.sha256(local).hexdigest()}')\n assert local == committed\npatch = git('--no-pager','diff','--no-ext-diff',base,head).replace(b'\\r\\n',b'\\n')\nsupplied = Path('.reviewbench/diff.patch').read_bytes().replace(b'\\r\\n',b'\\n')\nprint(f'Supplied patch matches committed patch={patch == supplied}; sha256={hashlib.sha256(patch).hexdigest()}')\nassert patch == supplied\npr = json.loads(Path('.reviewbench/pr.json').read_text(encoding='utf-8'))\nassert pr['base'] == base and pr['head'] == head and pr['pr_number'] == 9\nassert pr['title'] == 'feat: skip Copilot review request when existing review is newer than last commit'\nfor text in ['CheckCopilotReviewStatus()', \"review's `commit_id`\", 'current PR head SHA', \"gh api --paginate --jq '.[]'\", 'json.Decoder']:\n assert text in pr['body'], text\nprint('Local PR identity and cited requirements unchanged')\nprint('Working tree status:',git('--no-optional-locks','status','--short').decode().strip() or 'clean')\nprint('Original new-side hunk ranges: cmd/root.go modified 70-84; internal/github/github.go modified 3-9 and 72-121')\n'@ | python -";
+const QUAL2_FIGLET_ENSEMBLE = "$env:NODE_NO_WARNINGS='1'; @'\nconst fs=require('fs'); const vm=require('vm'); const assert=require('assert/strict'); const {stripTypeScriptTypes}=require('node:module');\nconst messages=[], external=[], events=[];\nconst vscode={workspace:{getConfiguration(){return {get(key){return {fontDirectory:'',layoutMode:'smush'}[key];}};}},window:{activeTextEditor:null},Uri:{parse(url){const u=new URL(url);return {scheme:u.protocol.slice(0,-1),authority:u.host};}},env:{async openExternal(uri){external.push(uri);}}};\nconst font={};const deps={vscode,path:require('path'),fs:{async readFile(){return 'font content';}},FIGLetFontManager:{availableFonts:[],async setFontDirectory(){}},FIGFont:{async getDefault(){return font;}},FIGLetRenderer:class {render(t){events.push('render');return t;}},LayoutMode:{FullSize:-1,Kerning:0,Smushing:1},BannerUtils:{async insertBanner(){events.push('insert');}},console};\nlet code=fs.readFileSync('FIGLet.VSCodeExtension/src/FigletPanel.ts','utf8').replace(/^import .*;\\r?\\n/gm,'').replace(/export /g,'');\nconst FigletPanel=vm.runInNewContext(stripTypeScriptTypes(code,{mode:'transform'})+';FigletPanel',deps);\nconst panel=Object.create(FigletPanel.prototype);\npanel._context={extensionPath:'.',globalState:{get(key){assert.equal(key,'lastFontUsed');return 'custom-font';},async update(key,value){assert.equal(key,'lastFontUsed');assert.equal(value,'custom-font');await Promise.resolve();events.push('state-updated');}}};\npanel._editor={document:{languageId:'python'}};panel._panel={webview:{async postMessage(msg){messages.push(msg);}}};\n(async()=>{\n await panel._sendInitData();assert.equal(messages[0].defaultFont,'custom-font');console.log('INIT',JSON.stringify(messages[0]));\n for (const url of ['https://github.com/PaulStSmith/figlet-comment-generator/issues','http://github.com/issues','https://example.com/']) await panel._handleMessage({type:'openExternal',url});\n assert.equal(external.length,1);console.log('EXTERNAL',JSON.stringify(external));\n await panel._insertBanner({type:'ok',text:'Hi',font:'custom-font',layoutMode:'smush',language:'python'});\n assert.equal(events.join(','),'state-updated,render,insert');console.log('INSERT ORDER',events.join(' -> '));\n})().catch(e=>{console.error(e);process.exitCode=1;});\n'@ | node -";
+
+test('leakage: gh text and PR URLs that are only string literals in inline scripts do not invalidate', (t) => {
+  for (const [name, command] of [['k1LoW_gh-copilot-review_9 ensemble', QUAL2_K1LOW_ENSEMBLE], ['PaulStSmith_figlet-comment-generator_32 ensemble', QUAL2_FIGLET_ENSEMBLE]]) {
+    assert.deepEqual(classifyCall('powershell', { command }), [], name);
+    const scan = scanTrial({ eventsPath: writeEvents(scratch(t), [...BENIGN, { toolName: 'powershell', args: { command } }]) });
+    assert.equal(scan.invalidated, false, name);
+  }
+  for (const command of ['echo "gh pr view 1"', 'rg -n "gh pr view" src', 'Select-String -Pattern "https://github.com/o/r/pull/1" notes.md', '# gh pr view 1', "python - <<'EOF'\nprint('gh pr view 1')\nEOF"]) {
+    assert.deepEqual(classifyCall('powershell', { command }), [], command);
+  }
+});
+
+test('leakage: gh, HTTP clients and network calls that execute in a shell invalidate with exactly one reason', (t) => {
+  const cases = {
+    'gh pr view 1': 'gh-cli',
+    '& gh api repos/o/r/pulls/1': 'gh-cli',
+    'curl https://github.com/o/r/pull/1': 'http-client',
+    'python -c "import subprocess; subprocess.run([\'gh\',\'pr\',\'view\',\'1\'])"': 'gh-cli',
+    'python -c "import urllib.request; urllib.request.urlopen(\'https://github.com/o/r/pull/1\')"': 'github-pr-page',
+    'node -e "fetch(\'https://api.github.com/repos/o/r/pulls/1\')"': 'github-pr-api',
+    // Command position after separators, prefixes and quoting, and shells fed a body.
+    'git status && gh pr diff 3': 'gh-cli',
+    "$env:GH_TOKEN='x'; gh pr view 1": 'gh-cli',
+    '& "C:\\Program Files\\GitHub CLI\\gh.exe" pr view 1': 'gh-cli',
+    'bash -c "gh pr view 1"': 'gh-cli',
+    'echo "x $(gh pr view 1)"': 'gh-cli',
+    "@'\ngh pr view 1\n'@ | pwsh -": 'gh-cli',
+    "cat <<'EOF' | bash\ngh pr view 1\nEOF": 'gh-cli',
+    'node -e "require(\'child_process\').spawn(\'gh\', [\'pr\',\'view\',\'1\'])"': 'gh-cli',
+    'git -C repo --no-pager fetch origin': 'git-remote',
+  };
+  for (const [command, rule] of Object.entries(cases)) {
+    assert.deepEqual(classifyCall('powershell', { command }).map((h) => h.rule), [rule], command);
+    const scan = scanTrial({ eventsPath: writeEvents(scratch(t), [{ toolName: 'powershell', args: { command } }]) });
+    assert.equal(scan.invalidated, true, command);
+    assert.equal(scan.reasons.length, 1, command);
+  }
+});
+
 test('leakage: generated CLI args for every ReviewBench arm allow shell together with every deny-tool and deny-url entry', async (t) => {
   const runnerPath = fileURLToPath(new URL('../../runner/index.js', import.meta.url));
   if (!existsSync(runnerPath)) {
@@ -186,7 +228,7 @@ test('leakage: collect on an audited trial writes the judge candidate', (t) => {
 const HVE = 'hve-code-review';
 const HVE_COMMIT = '299c0b68741d9bc08106b132043724c23166e2a4';
 
-function hveTrial(t, events, { findings, extraFiles = {}, flags = ['--agent', 'Code Review'], plugin = { repo: 'microsoft/hve-core', commit: HVE_COMMIT, name: 'hve-core', version: '3.2.2' } } = {}) {
+function hveTrial(t, events, { findings, extraFiles = {}, flags = ['--agent', 'hve-core:code-review'], plugin = { repo: 'microsoft/hve-core', commit: HVE_COMMIT, name: 'hve-core', version: '3.2.2' } } = {}) {
   const trialDir = join(scratch(t), 'trials', 'acme_widgets_1-bbbbbbbb', HVE, '0');
   const workspace = join(trialDir, 'workspace');
   mkdirSync(join(workspace, PR_DIR), { recursive: true });
@@ -276,4 +318,14 @@ test('leakage: hve qualification fails on ask_user, a refused skill read, missin
   assert.equal(collect(wrongPlugin.record, TASK).qualification.checks['agent-ran'].pass, false);
   const noAgent = hveTrial(t, HVE_GOOD, { findings: HVE_FINDINGS, flags: [] });
   assert.equal(collect(noAgent.record, TASK).qualification.checks['agent-ran'].pass, false);
+  // rb-qual-2: the display name is not an agent id under --plugin-dir; the CLI exits "No such agent".
+  const displayName = hveTrial(t, HVE_GOOD, { findings: HVE_FINDINGS, flags: ['--agent', 'Code Review'] });
+  assert.equal(collect(displayName.record, TASK).qualification.checks['agent-ran'].pass, false);
+  const namespacedSubagents = [
+    ...HVE_GOOD.filter((e) => e.type !== 'subagent.started'),
+    { type: 'subagent.started', data: { agentName: 'hve-core:code-review-functional', agentType: 'hve-core:code-review-functional' } },
+  ];
+  const ns = collect(hveTrial(t, namespacedSubagents, { findings: HVE_FINDINGS }).record, TASK).qualification.checks;
+  assert.equal(ns.perspectives.mode, 'dispatched');
+  assert.equal(ns['agent-ran'].pass, true);
 });
