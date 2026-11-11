@@ -91,7 +91,7 @@ test('harness passes ctx to adapter hooks, uses buildPrompt, accepts a runTrial-
   const budgeted = await import(pathToFileURL(path.join(here, 'fake-budgeted.mjs')).href);
   const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'evals-harness-judged-'));
   const artifactRoot = path.join(runDir, 'artifacts');
-  const suite = { name: 'reviewbench', prompt: 'Review {{review_request}}', reviewRequests: { default: 'Review this PR.', promptlings: 'Use the-nitcracker.' } };
+  const suite = { name: 'reviewbench', prompt: 'Review {{review_request}}', reviewRequests: { default: 'Review this PR.', promptlings: 'Use the-nitcracker.' }, analysis: { minPairedN: 2 } };
   const saved = process.env.FAKE_TRIAL_STATUS;
   delete process.env.FAKE_TRIAL_STATUS;
 
@@ -130,6 +130,7 @@ test('harness passes ctx to adapter hooks, uses buildPrompt, accepts a runTrial-
   const onDisk = JSON.parse(fs.readFileSync(path.join(runDir, 'scores.json'), 'utf8'));
   assert.deepEqual(onDisk.trials, scores.trials);
   assert.deepEqual(scores.context.plannedTasks, ['owner_repo_1-aaaaaaaa', 'owner_repo_2-bbbbbbbb']);
+  assert.equal(scores.context.minPairedN, 2, 'the suite minimum is recorded for the report');
   const trial = (task, arm, repeat) => scores.trials.find((t) => t.task === task && t.arm === arm && t.repeat === repeat);
   const scored = trial('owner_repo_1-aaaaaaaa', 'promptlings', 1);
   assert.equal(scored.judge, 'scored');

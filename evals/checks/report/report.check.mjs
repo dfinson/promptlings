@@ -73,7 +73,8 @@ test('report gives per-metric intervals, Holm verdicts and invalidated counts', 
     ],
     [arm('stock'), arm('nitcracker', { agent: 'the-nitcracker' }), arm('sparring', { agent: 'sparring-partner' })],
   );
-  const report = buildReport(doc, { baseline: 'stock', plannedN: 19 });
+  doc.context.minPairedN = 18; // as suite.yaml analysis.minPairedN declares it
+  const report = buildReport(doc, { baseline: 'stock' });
 
   assert.equal(report.comparisons.length, 2);
   const nit = report.comparisons.find((c) => c.b === 'nitcracker');
@@ -88,7 +89,9 @@ test('report gives per-metric intervals, Holm verdicts and invalidated counts', 
   assert.ok(recall.pAdjusted >= recall.p);
   assert.equal(nit.pairing.kept, 19);
   assert.deepEqual(nit.pairing.dropped.map((d) => [d.task, d.reasons[0].reason]), [['pr-00', 'invalidated']]);
-  assert.equal(nit.pairing.shortfall, 0);
+  assert.equal(nit.pairing.plannedN, 20);
+  assert.equal(nit.pairing.minPairedN, 18);
+  assert.equal(nit.pairing.shortfall, 0, 'one dropped task of 20 still meets the minimum of 18');
 
   const sparRecall = spar.metrics.find((m) => m.metric === 'recall');
   assert.equal(sparRecall.verdict, 'inconclusive');
@@ -155,7 +158,7 @@ test('report refuses a verdict on confounded arms', async () => {
   assert.ok(cross.comparisons[0].confoundedBy.includes('run.datasetPin'));
 });
 
-test('report drops tasks with missing pairs, counts kept and dropped, and refuses a verdict below the planned n', async () => {
+test('report drops tasks with missing pairs, counts kept and dropped, and refuses a verdict below the minimum paired n', async () => {
   const { buildReport, renderMarkdown } = await load('report/index.js');
   const { mergeScoreEntries } = await load('scoring/scores.js');
   const stock = trialsFor('stock');
@@ -172,6 +175,7 @@ test('report drops tasks with missing pairs, counts kept and dropped, and refuse
   const report = buildReport(judged, { baseline: 'stock' });
   const [c] = report.comparisons;
   assert.equal(c.pairing.plannedN, 20);
+  assert.equal(c.pairing.minPairedN, 20, 'without a declared minimum the planned count is required');
   assert.equal(c.pairing.kept, 17);
   const reasons = Object.fromEntries(c.pairing.dropped.map((d) => [d.task, d.reasons.map((r) => `${r.arm}:${r.reason}`)]));
   assert.deepEqual(reasons, {
@@ -183,14 +187,22 @@ test('report drops tasks with missing pairs, counts kept and dropped, and refuse
   const recall = c.metrics.find((m) => m.metric === 'recall');
   assert.equal(recall.tasks, 17, 'only kept tasks enter the bootstrap');
   assert.equal(recall.verdict, null);
-  assert.match(recall.verdictNote, /17 of planned 20 tasks paired, shortfall 3/);
+  assert.match(recall.verdictNote, /17 tasks paired, below the minimum paired n of 20 \(planned 20\), shortfall 3/);
   assert.equal(recall.pAdjusted, undefined, 'an underpowered comparison stays out of the Holm family');
   assert.ok(Number.isFinite(recall.ci[0]), 'the interval is still shown');
 
   const md = renderMarkdown(report);
-  assert.match(md, /Tasks: 17 kept, 3 dropped, planned n 20\./);
-  assert.match(md, /\*\*Shortfall:\*\* 3 task\(s\) below the planned n/);
+  assert.match(md, /Tasks: 17 kept, 3 dropped, planned n 20, minimum paired n 20\./);
+  assert.match(md, /\*\*Shortfall:\*\* 3 task\(s\) below the minimum paired n/);
   assert.match(md, /- pr-02: stock repeat 0 absent from judge output/);
+
+  // The suite's power-derived minimum, not the planned count, decides the refusal.
+  const atMin = buildReport({ ...judged, context: { ...judged.context, minPairedN: 17 } }, { baseline: 'stock' }).comparisons[0];
+  assert.equal(atMin.pairing.shortfall, 0);
+  assert.equal(atMin.metrics.find((m) => m.metric === 'recall').verdict, 'better');
+  const belowMin = buildReport(judged, { baseline: 'stock', minPairedN: 18 }).comparisons[0];
+  assert.equal(belowMin.pairing.shortfall, 1);
+  assert.equal(belowMin.metrics.find((m) => m.metric === 'recall').verdict, null);
 
   const rejected = mergeScoreEntries(doc, { entries: entries.filter((e) => e.arm !== 'nitcracker'), rejected: [{ arm: 'nitcracker', repeat: '0', variant: 'primary', reason: 'verification failed' }] });
   const none = buildReport(rejected, { baseline: 'stock' }).comparisons[0];

@@ -97,6 +97,13 @@ function plannedNFor(a, b, planned, options) {
   return declared.length ? Math.max(...declared) : planned.length;
 }
 
+// The power-derived minimum (suite analysis.minPairedN); the planned count when none is declared.
+function minPairedNFor(a, b, plannedN, options) {
+  if (Number.isInteger(options.minPairedN)) return options.minPairedN;
+  const declared = [a.run.context?.minPairedN, b.run.context?.minPairedN].filter(Number.isInteger);
+  return declared.length ? Math.max(...declared) : plannedN;
+}
+
 // Tasks drop out of a comparison when either arm has no trial for them or any trial is unusable.
 function pairTasks(a, b, planned) {
   const kept = [];
@@ -202,6 +209,7 @@ export function buildReport(inputs, options = {}) {
     const undeclared = differences.filter((d) => !d.declared);
     const planned = plannedTasksFor(a, b, options);
     const plannedN = plannedNFor(a, b, planned, options);
+    const minPairedN = minPairedNFor(a, b, plannedN, options);
     const { kept, dropped } = pairTasks(a, b, planned);
     const keep = new Set(kept);
     const metricRows = [...new Set([...primary, ...secondary, ...guardrail])].map((metric) => ({
@@ -215,12 +223,12 @@ export function buildReport(inputs, options = {}) {
       confounded: undeclared.length > 0,
       confoundedBy: undeclared.map((d) => d.field),
       differences,
-      pairing: { planned: planned.length, plannedN, kept: kept.length, dropped, shortfall: Math.max(0, plannedN - kept.length) },
+      pairing: { planned: planned.length, plannedN, minPairedN, kept: kept.length, dropped, shortfall: Math.max(0, minPairedN - kept.length) },
       metrics: metricRows,
     };
   });
 
-  // Holm family: every primary metric of every unconfounded, fully powered comparison with a computable p.
+  // Holm family: every primary metric with a computable p in an unconfounded comparison that meets the minimum paired n.
   const family = [];
   for (const c of comparisons) {
     for (const row of c.metrics) {
@@ -234,7 +242,7 @@ export function buildReport(inputs, options = {}) {
       if (row.role !== 'primary') continue;
       if (c.pairing.shortfall > 0) {
         row.verdict = null;
-        row.verdictNote = `${c.pairing.kept} of planned ${c.pairing.plannedN} tasks paired, shortfall ${c.pairing.shortfall}; no verdict`;
+        row.verdictNote = `${c.pairing.kept} tasks paired, below the minimum paired n of ${c.pairing.minPairedN} (planned ${c.pairing.plannedN}), shortfall ${c.pairing.shortfall}; no verdict`;
       } else if (Number.isFinite(row.p)) family.push(row);
       else {
         row.verdict = null;
@@ -265,7 +273,7 @@ export function buildReport(inputs, options = {}) {
       multiplicity: `Holm step-down over ${family.length} primary comparison(s), family-wise alpha ${alpha}`,
       repeats: 'repeats are averaged within each task before pairing',
       invalidated: 'invalidated trials are excluded from every metric',
-      pairing: 'a task drops out of a comparison when either arm has an invalidated, errored, unjudged or absent trial for it; fewer kept tasks than the planned n gives no verdict',
+      pairing: 'a task drops out of a comparison when either arm has an invalidated, errored, unjudged or absent trial for it; fewer kept tasks than the minimum paired n gives no verdict',
       seed,
     },
     metrics: { primary, secondary, guardrail, higherIsBetter },
@@ -295,8 +303,8 @@ export function renderMarkdown(report, { outDir } = {}) {
       lines.push(`**Confounded:** the arms differ in ${c.confoundedBy.map((f) => `\`${f}\``).join(', ')}, beyond their declared difference. No verdict is given.`, '');
     }
     const pr = c.pairing;
-    lines.push(`Tasks: ${pr.kept} kept, ${pr.dropped.length} dropped, planned n ${pr.plannedN}.`);
-    if (pr.shortfall > 0) lines.push(`**Shortfall:** ${pr.shortfall} task(s) below the planned n. No verdict is given.`);
+    lines.push(`Tasks: ${pr.kept} kept, ${pr.dropped.length} dropped, planned n ${pr.plannedN}, minimum paired n ${pr.minPairedN}.`);
+    if (pr.shortfall > 0) lines.push(`**Shortfall:** ${pr.shortfall} task(s) below the minimum paired n. No verdict is given.`);
     lines.push('');
     if (pr.dropped.length) {
       lines.push('Dropped tasks:', '');

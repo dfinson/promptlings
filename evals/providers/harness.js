@@ -32,6 +32,7 @@ export async function runHarness({
   env,
   metrics,
   plannedN,
+  minPairedN = suite?.analysis?.minPairedN,
   scoreRun,
   scoreRunOptions = {},
   context = {},
@@ -65,7 +66,7 @@ export async function runHarness({
     runDir: root,
     runId,
     promptfooResults: summary.results,
-    context: { suite: name, prompt: config.prompts[0].raw, repeats, graders, plannedTasks, plannedN: plannedN ?? plannedTasks.length, ...context },
+    context: { suite: name, prompt: config.prompts[0].raw, repeats, graders, plannedTasks, plannedN: plannedN ?? plannedTasks.length, ...(Number.isInteger(minPairedN) ? { minPairedN } : {}), ...context },
     arms,
     metrics: { ...metricsFromScorers(scorers), ...metrics },
   });
