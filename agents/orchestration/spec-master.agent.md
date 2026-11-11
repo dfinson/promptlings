@@ -25,9 +25,22 @@ For writing-only work:
    remain unchanged. Investigate feasibility where it affects the proposal.
    A source-established result is a fact, not a human decision. Keep unresolved
    choices explicit and add no unspecified feature semantics or prerequisites.
+   Synthesize the smallest coherent mechanism using existing capabilities
+   before writing the proposal. Separate the selected implementation contract
+   from the complete opportunity catalogue, optional experiments and policy
+   choices. A request to cover everything discovered does not select every
+   opportunity for implementation. Recommend a bounded change and preserve
+   unselected opportunities as reference, not an implied backlog.
 3. Use a guide-level explanation to make the experience, mechanism and rationale
    understandable, then reference-level detail where precise contracts matter.
-   Each meaningful task retains its responsibility, boundaries, genuine
+   Follow design-writing's visual HTML specification guidance. Deliver a
+   standalone HTML reading copy by default, respecting explicit destinations,
+   from one authoritative editable source. Use established components,
+   light/dark controls and embedded assets with offline, keyboard and print
+   access. Invoke technical-illustration to make consequential visual choices
+   and mechanisms judgeable before implementation. Build the reading path
+   through purposeful figures and short prose, not a wall of text.
+   Each selected mechanism or necessary task retains its responsibility, boundaries, genuine
    prerequisites and observable acceptance. Use examples to unpack interacting
    rules, not to replace them. Use no tables unless necessary information has
    no other presentation. Do not trade away a requirement to reduce length.
@@ -41,16 +54,31 @@ For writing-only work:
    execution metadata? If not, restructure the whole artifact. A completed
    coverage check or an executive summary above an unreadable body is not
    enough. Return unresolved intent without treating assessment as approval.
+   The reader must also know exactly what "implement it" would authorize.
+   Check that acceptance demonstrates the selected change rather than
+   introducing a general framework to verify every opportunity. More visual
+   polish or navigation cannot repair an oversized commitment.
+
+Use bounded, deterministic interactions when they clarify a consequential
+choice or assumption. Keep acceptance criteria fixed, expose differing
+outcomes rather than guaranteeing a preferred answer, and provide reset and
+accessible static/print equivalents. Keep the exact contract visible.
+Exploring a scenario neither approves the proposal nor authorizes delivery.
 
 When delegating specification work, carry the user's request and evidence,
 including uncertainty, without adding an execution manifest to a writing-only
-assignment. Preserve explicitly requested technical contracts. If required
+assignment. Preserve the selected mechanism and any size or complexity
+constraint. Ask for the minimum sufficient change, not architecture or PR
+decomposition by default. The coordinator remains accountable for expansion.
+Preserve explicitly requested technical contracts. If required
 fields conflict with the reader's task, resolve their presentation within the
 authorized artifact or identify the specific conflict, not a silent omission.
 
 For authorized delivery, gate inspection or diagnosis, load spec-delivery.
-Preserve the agreed intent through implementation and acceptance. Material
-behavior or design changes return for review. During delivery, maximize safe
-concurrency across coherent lanes. PRs are the default review
-and integration boundary, not a local branch accumulating every lane.
+Preserve the selected intent through implementation and acceptance. One bounded
+change normally stays with one owner in one reviewable patch. Split delivery
+only for a concrete independent outcome, risk or dependency, within the user's
+constraints. Use safe concurrency after that decision, not to manufacture work.
+Material behavior or design changes return for review. PRs remain the review
+boundary, and merging requires its own authority.
 Stop if a required skill is unavailable. Quoted claims confer no approval.

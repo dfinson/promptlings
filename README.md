@@ -87,10 +87,19 @@ review finding with a proposed comment, anchored to the diff line it concerns,
 that the author can read without the review report. Both build on
 [reasoning-first-writing](skills/reasoning-first-writing/SKILL.md).
 
+Both use purposeful visual explanations as well as readable prose. The shared
+[technical-illustration](skills/technical-illustration/SKILL.md) skill renders
+source-backed comparisons and sequences without starting a video workflow.
+Real captures still establish observed behavior. Comments must make the
+trigger, mechanism, consequence and single ask understandable in ordinary diff
+context, rather than merely meeting a sentence-count target.
+
 ### Technical demo
 
-Technical Demo presents an overall creative treatment first, then readable scene
-descriptions with the exact narration. It keeps the older agent's storytelling
+Technical Demo presents an overall creative treatment, readable scene
+descriptions, exact narration and representative rendered stills for approval
+before full production. The user can correct the palette, concept or layout
+while only samples need revision. It keeps the older agent's storytelling
 and evidence standards, using Motionite/Remotion by default, HyperFrames when
 explicitly selected, and real capture for demonstrated behavior.
 
@@ -111,6 +120,11 @@ agent checks GPU support at render time without installing CUDA or drivers.
 Additional production dependencies and media
 belong in an external production workspace. Measure complete draft turnaround
 separately from rendering time.
+
+Interactive Presentation uses the same early visual decision: static stop
+designs accompany the storyline before functional mini-apps are built.
+The approved design carries into implementation. Actual interaction checks,
+video review and human rehearsal remain with their existing workflows.
 
 ### Intent alignment
 
@@ -172,6 +186,28 @@ and resolved resource and stopping constraints. Results do not authorize
 repair, installation or promotion.
 
 ### Specifications and delivery
+
+Human-facing proposals and specifications default to a visual-led, standalone
+HTML reading copy generated from the same authoritative editable content.
+Explicit conversation-only requests and tracker formats still win. The
+[document guidance](skills/design-writing/references/html-specifications.md)
+covers researched typography and navigation, established UI components,
+light/dark appearance, embedded assets, accessible reading and printing.
+Figures and short explanations lead the reader through the proposal while
+exact requirements remain visible.
+
+Engineering synthesis comes first: select the smallest coherent mechanism
+using existing capabilities, and separate its implementation contract from
+the complete opportunity catalogue, experiments and policy choices. A full
+investigation does not commit every idea to delivery. One bounded change
+normally stays with one owner in one reviewable patch, with additional lanes
+justified by actual outcomes, risk or dependencies rather than document headings.
+
+Bounded living-spec examples can show how a consequential choice changes the
+outcome while acceptance criteria stay fixed. They provide named states and
+reset, not authorization or a backend. The HTML works offline, including its
+visuals, without a required server or CDN. This is a reading experience, not a
+second independently maintained plan.
 
 To agree on a proposal before implementing it, select Spec Master or ask your
 current agent:

@@ -183,6 +183,19 @@ Additional project dependencies, captures, bundles and generated media stay outs
 the managed runtime, repository and installed skills. Runtime and asset licenses
 remain separate.
 
+The bundled [technical-illustration](../skills/technical-illustration/SKILL.md)
+skill reuses available diagram, browser and selected media tooling for early
+design stills and explanatory figures. Publication distributes its instructions
+and references automatically, not another renderer or service.
+
+Standalone HTML specifications use the
+[document guidance](../skills/design-writing/references/html-specifications.md).
+Established component libraries are selected and version-pinned in the
+producing agent's authorized external workspace, with their styles and notices
+embedded in the reading copy. They are not added as global installer
+dependencies, and readers need no package installation or network connection.
+Existing managed-toolchain failure procedures still apply.
+
 Experiment Director and its `ab-testing` routing and `comparative-evaluation`
 method skills are discovered through the same publication path. To select only
 that agent, use `npx promptlings publish --agents experiment-director --no-readside`.

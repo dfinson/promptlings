@@ -9,9 +9,15 @@ dependencies, and coupling decisions. It does not replace the human explanation.
 Record both artifacts' locators and immutable versions or exact-byte SHA-256
 hashes with the human approval reference, separately from product base SHAs.
 
+This template serves a justified execution need, not every approved change.
+For an ordinary bounded change, keep the necessary scope, base and checks in
+the existing session record. When this plan is requested, preserve its exact
+fields without converting opportunity-catalogue entries into tasks.
+
 Use meaningful task names and stable descriptive keys such as `report-amounts`,
-not numbered lane codes. Every task has its own section in both artifacts.
-The human specification owns behavior, rationale, named lane responsibilities,
+not numbered lane codes. Map each selected task to the human explanation.
+Several operational tasks may serve one mechanism without duplicating sections.
+The human specification owns selected behavior, rationale, responsibilities,
 dependencies and observable acceptance. Link each operational
 entry to the relevant human section and resolve mismatches before execution.
 Do not hide a new requirement or an undecided behavior in this file.
@@ -32,8 +38,8 @@ Approval reference: <human decision identifying the approved artifact versions>
 
 ## Task graph
 
-(Mermaid dependency graph. Nodes display meaningful task names and edges show
-prerequisites. Use descriptive keys, not numbered lane labels.)
+(For a justified multi-task plan, show genuine prerequisites with meaningful
+task names. A one-task plan may state that it has no dependencies.)
 
 ## Task: <Meaningful task name>
 
@@ -80,7 +86,10 @@ If no pairs are flagged, state that briefly.
   `tests: AC-<n>` for each critical criterion it writes tests for.
 - Every Depends on target exists, graph edges match those fields, and the
   graph has no cycle.
-- Maximize safe concurrency. Launch every ready independent lane before
+- Select a proportional split before creating lanes. One coherent change
+  normally stays with one owner in one reviewable patch. Preserve explicit
+  size and complexity constraints and justify additional delivery units.
+- After that split, maximize safe concurrency. Launch ready independent lanes before
   waiting. A consumer may stack on an unmerged producer's passing contract
   rather than wait for its PR merge. Coordinate shared-file edits instead of
   treating overlap as an automatic whole-lane dependency.
