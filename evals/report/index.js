@@ -63,10 +63,10 @@ function configDifferences(a, b, declared) {
   return diffs;
 }
 
-function taskMeans(arm, metric) {
+function taskMeans(arm, metric, keep) {
   const byTask = new Map();
   for (const t of arm.trials) {
-    if (t.invalidated) continue;
+    if (!keep.has(t.task)) continue;
     const v = t.metrics?.[metric];
     if (typeof v !== 'number' || !Number.isFinite(v)) continue;
     if (!byTask.has(t.task)) byTask.set(t.task, { values: [], trialDirs: [] });
@@ -76,9 +76,53 @@ function taskMeans(arm, metric) {
   return byTask;
 }
 
-function compareMetric(a, b, metric, { resamples, seed }) {
-  const ma = taskMeans(a, metric);
-  const mb = taskMeans(b, metric);
+// Why a trial cannot be paired; null when usable. A judged run also needs the trial's judge entry.
+function unusableReason(trial, run) {
+  if (trial.invalidated || trial.status === 'invalidated') return 'invalidated';
+  if (trial.status !== 'completed') return trial.status ?? 'errored';
+  if (run.judged && trial.judge !== 'scored') return trial.judge === 'rejected' ? 'judge rejected' : 'absent from judge output';
+  return null;
+}
+
+function plannedTasksFor(a, b, options) {
+  if (options.plannedTasks) return [...new Set(options.plannedTasks.map(String))].sort();
+  const declared = [a.run.context?.plannedTasks, b.run.context?.plannedTasks].filter(Array.isArray);
+  const source = declared.length ? declared.flat() : [...a.trials, ...b.trials].map((t) => t.task);
+  return [...new Set(source.map(String))].sort();
+}
+
+function plannedNFor(a, b, planned, options) {
+  if (Number.isInteger(options.plannedN)) return options.plannedN;
+  const declared = [a.run.context?.plannedN, b.run.context?.plannedN].filter(Number.isInteger);
+  return declared.length ? Math.max(...declared) : planned.length;
+}
+
+// Tasks drop out of a comparison when either arm has no trial for them or any trial is unusable.
+function pairTasks(a, b, planned) {
+  const kept = [];
+  const dropped = [];
+  for (const task of planned) {
+    const reasons = [];
+    for (const arm of [a, b]) {
+      const trials = arm.trials.filter((t) => t.task === task);
+      if (!trials.length) {
+        reasons.push({ arm: arm.key, reason: 'absent' });
+        continue;
+      }
+      for (const t of trials) {
+        const reason = unusableReason(t, arm.run);
+        if (reason) reasons.push({ arm: arm.key, repeat: t.repeat, reason, detail: t.judgeReason ?? t.reason ?? null, trialDir: t.trialDir ?? null });
+      }
+    }
+    if (reasons.length) dropped.push({ task, reasons });
+    else kept.push(task);
+  }
+  return { kept, dropped };
+}
+
+function compareMetric(a, b, metric, keep, { resamples, seed }) {
+  const ma = taskMeans(a, metric, keep);
+  const mb = taskMeans(b, metric, keep);
   const tasks = [...ma.keys()].filter((t) => mb.has(t)).sort();
   const va = tasks.map((t) => mean(ma.get(t).values));
   const vb = tasks.map((t) => mean(mb.get(t).values));
@@ -88,8 +132,8 @@ function compareMetric(a, b, metric, { resamples, seed }) {
   return {
     metric,
     tasks: tasks.length,
+    withoutValue: keep.size - tasks.length,
     repeats: { a: count(ma), b: count(mb) },
-    unpairedTasks: { a: [...ma.keys()].filter((t) => !mb.has(t)).length, b: [...mb.keys()].filter((t) => !ma.has(t)).length },
     a: mean(va),
     b: mean(vb),
     difference: boot.mean,
@@ -156,8 +200,12 @@ export function buildReport(inputs, options = {}) {
     if (!a || !b) throw new Error(`Unknown arm in comparison ${ka} vs ${kb}`);
     const differences = configDifferences(a, b, declared);
     const undeclared = differences.filter((d) => !d.declared);
+    const planned = plannedTasksFor(a, b, options);
+    const plannedN = plannedNFor(a, b, planned, options);
+    const { kept, dropped } = pairTasks(a, b, planned);
+    const keep = new Set(kept);
     const metricRows = [...new Set([...primary, ...secondary, ...guardrail])].map((metric) => ({
-      ...compareMetric(a, b, metric, { resamples, seed }),
+      ...compareMetric(a, b, metric, keep, { resamples, seed }),
       role: primary.includes(metric) ? 'primary' : guardrail.includes(metric) ? 'guardrail' : 'secondary',
       higherIsBetter: higherIsBetter[metric] ?? true,
     }));
@@ -167,11 +215,12 @@ export function buildReport(inputs, options = {}) {
       confounded: undeclared.length > 0,
       confoundedBy: undeclared.map((d) => d.field),
       differences,
+      pairing: { planned: planned.length, plannedN, kept: kept.length, dropped, shortfall: Math.max(0, plannedN - kept.length) },
       metrics: metricRows,
     };
   });
 
-  // Holm family: every primary metric of every unconfounded comparison with a computable p.
+  // Holm family: every primary metric of every unconfounded, fully powered comparison with a computable p.
   const family = [];
   for (const c of comparisons) {
     for (const row of c.metrics) {
@@ -182,8 +231,12 @@ export function buildReport(inputs, options = {}) {
       }
       const worseSide = row.higherIsBetter ? row.ci[1] < 0 : row.ci[0] > 0;
       if (row.role === 'guardrail') row.guardrailFlag = Number.isFinite(row.ci[0]) && worseSide;
-      if (row.role === 'primary' && Number.isFinite(row.p)) family.push(row);
-      else if (row.role === 'primary') {
+      if (row.role !== 'primary') continue;
+      if (c.pairing.shortfall > 0) {
+        row.verdict = null;
+        row.verdictNote = `${c.pairing.kept} of planned ${c.pairing.plannedN} tasks paired, shortfall ${c.pairing.shortfall}; no verdict`;
+      } else if (Number.isFinite(row.p)) family.push(row);
+      else {
         row.verdict = null;
         row.verdictNote = 'no paired tasks; no verdict';
       }
@@ -212,6 +265,7 @@ export function buildReport(inputs, options = {}) {
       multiplicity: `Holm step-down over ${family.length} primary comparison(s), family-wise alpha ${alpha}`,
       repeats: 'repeats are averaged within each task before pairing',
       invalidated: 'invalidated trials are excluded from every metric',
+      pairing: 'a task drops out of a comparison when either arm has an invalidated, errored, unjudged or absent trial for it; fewer kept tasks than the planned n gives no verdict',
       seed,
     },
     metrics: { primary, secondary, guardrail, higherIsBetter },
@@ -232,13 +286,25 @@ export function renderMarkdown(report, { outDir } = {}) {
   };
   const lines = ['# Evaluation report', ''];
   lines.push(`Runs: ${report.runs.map((r) => `\`${r.runId}\``).join(', ')}.`);
-  lines.push(`Statistics: ${report.statistics.interval}; ${report.statistics.multiplicity}; ${report.statistics.repeats}; ${report.statistics.invalidated}.`, '');
+  lines.push(`Statistics: ${report.statistics.interval}; ${report.statistics.multiplicity}; ${report.statistics.repeats}; ${report.statistics.invalidated}; ${report.statistics.pairing}.`, '');
 
   lines.push('## Comparisons', '');
   for (const c of report.comparisons) {
     lines.push(`### ${c.b} vs ${c.a}`, '');
     if (c.confounded) {
       lines.push(`**Confounded:** the arms differ in ${c.confoundedBy.map((f) => `\`${f}\``).join(', ')}, beyond their declared difference. No verdict is given.`, '');
+    }
+    const pr = c.pairing;
+    lines.push(`Tasks: ${pr.kept} kept, ${pr.dropped.length} dropped, planned n ${pr.plannedN}.`);
+    if (pr.shortfall > 0) lines.push(`**Shortfall:** ${pr.shortfall} task(s) below the planned n. No verdict is given.`);
+    lines.push('');
+    if (pr.dropped.length) {
+      lines.push('Dropped tasks:', '');
+      for (const d of pr.dropped) {
+        const why = d.reasons.map((r) => `${cell(r.arm)}${r.repeat !== undefined ? ` repeat ${r.repeat}` : ''} ${r.reason}${r.detail ? ` (${cell(r.detail)})` : ''}`);
+        lines.push(`- ${cell(d.task)}: ${why.join('; ')}`);
+      }
+      lines.push('');
     }
     lines.push(`| Metric | Role | ${cell(c.a)} | ${cell(c.b)} | Difference | 95% CI | Tasks | Trials (a/b) | p | Holm p | Verdict |`);
     lines.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |');

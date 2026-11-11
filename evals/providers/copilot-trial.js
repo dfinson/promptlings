@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadRunner } from './runner.js';
+import { trialStatus } from '../scoring/scores.js';
 
 export function safeSegment(value) {
   const text = String(value ?? '').replace(/[^A-Za-z0-9._-]/g, '_');
@@ -52,7 +53,8 @@ export default class CopilotTrialProvider {
   }
 
   async callApi(prompt, context = {}) {
-    const { arm, runDir, artifactRoot, adapterModule, runnerModule } = this.config;
+    const { arm, runDir, adapterModule, runnerModule, suite } = this.config;
+    const artifactRoot = this.config.artifactRoot ?? process.env.EVALS_ARTIFACT_ROOT;
     const vars = context.vars ?? {};
     const task = vars.task && typeof vars.task === 'object' ? vars.task : { id: vars.taskId };
     const taskId = String(task.id ?? vars.taskId ?? '');
@@ -74,22 +76,30 @@ export default class CopilotTrialProvider {
       const workspace = path.join(trialDir, 'workspace');
       fs.mkdirSync(workspace);
       const adapter = await importAdapter(adapterModule);
-      if (adapter?.materialize) await adapter.materialize(task, workspace, { artifactRoot: artifactRoot ?? process.env.EVALS_ARTIFACT_ROOT });
+      const ctx = { workspace, trialDir, arm, artifactRoot, runDir: path.resolve(runDir), suite };
+      if (adapter?.materialize) await adapter.materialize(task, workspace, ctx);
+      // An adapter that words the request per arm (ReviewBench's reviewRequests) owns the prompt;
+      // otherwise the suite's prompt is used verbatim, and Promptfoo's rendered prompt only without a suite prompt.
+      const trialPrompt = adapter?.buildPrompt
+        ? await adapter.buildPrompt(task, arm, suite)
+        : typeof suite?.prompt === 'string' ? suite.prompt
+        : typeof prompt === 'string' ? prompt : JSON.stringify(prompt);
+      fs.writeFileSync(path.join(trialDir, 'prompt.txt'), trialPrompt);
       const runner = await loadRunner(runnerModule);
       const record = await runner.runTrial({
         trialDir,
         workspace,
-        prompt: typeof prompt === 'string' ? prompt : JSON.stringify(prompt),
+        prompt: trialPrompt,
         arm,
         limits: this.config.limits ?? arm.limits ?? {},
         env: this.config.env ?? {},
       });
-      const collected = normalizeCollected(adapter?.collect ? await adapter.collect(record, task) : null);
+      const collected = normalizeCollected(adapter?.collect ? await adapter.collect(record, task, ctx) : null);
       fs.writeFileSync(path.join(trialDir, 'collected.json'), JSON.stringify(collected, null, 2));
 
       let output = collected.output;
       if (output == null && record?.outputPath && fs.existsSync(record.outputPath)) output = fs.readFileSync(record.outputPath, 'utf8');
-      const status = collected.invalidated ? 'invalidated' : record?.status ?? 'errored';
+      const status = trialStatus(record, collected);
       const response = {
         output: output ?? '',
         cached: false,

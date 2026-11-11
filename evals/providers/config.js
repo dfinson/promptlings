@@ -74,6 +74,7 @@ export function assertionsFromScorers(scorers = [], context = {}) {
 
 export function buildPromptfooConfig({
   suiteName,
+  suite,
   prompt,
   arms,
   tasks,
@@ -89,6 +90,7 @@ export function buildPromptfooConfig({
   concurrency = 1,
   env,
 }) {
+  prompt = prompt ?? suite?.prompt;
   if (!prompt) throw new Error('Suite prompt is required');
   if (!arms?.length) throw new Error('At least one arm is required');
   if (!tasks?.length) throw new Error('At least one task is required');
@@ -101,6 +103,7 @@ export function buildPromptfooConfig({
     const config = { arm, runDir: path.resolve(runDir) };
     if (artifactRoot) config.artifactRoot = artifactRoot;
     if (adapterModule) config.adapterModule = path.resolve(adapterModule);
+    if (suite !== undefined) config.suite = suite;
     if (runnerModule) config.runnerModule = runnerModule;
     if (limits) config.limits = limits;
     if (env) config.env = env;

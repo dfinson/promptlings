@@ -11,11 +11,19 @@ export function runnerModuleUrl(explicit) {
   return pathToFileURL(path.resolve(spec)).href;
 }
 
-export async function loadRunner(explicit) {
+export async function loadRunner(explicit, required = ['runTrial']) {
   const url = runnerModuleUrl(explicit);
   const mod = await import(url);
-  for (const name of ['runTrial', 'runCopilotOnce']) {
+  for (const name of required) {
     if (typeof mod[name] !== 'function') throw new Error(`Runner module ${url} does not export ${name}`);
   }
   return mod;
+}
+
+// Trial runners may be wrappers (for example core's budgeted.js) that expose only runTrial;
+// the grader then uses the base runner's runCopilotOnce.
+export async function loadCopilotOnceRunner(explicit) {
+  const mod = await import(runnerModuleUrl(explicit));
+  if (typeof mod.runCopilotOnce === 'function') return mod;
+  return loadRunner(DEFAULT_RUNNER_MODULE, ['runCopilotOnce']);
 }

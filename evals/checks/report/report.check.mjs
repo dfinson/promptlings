@@ -73,7 +73,7 @@ test('report gives per-metric intervals, Holm verdicts and invalidated counts', 
     ],
     [arm('stock'), arm('nitcracker', { agent: 'the-nitcracker' }), arm('sparring', { agent: 'sparring-partner' })],
   );
-  const report = buildReport(doc, { baseline: 'stock' });
+  const report = buildReport(doc, { baseline: 'stock', plannedN: 19 });
 
   assert.equal(report.comparisons.length, 2);
   const nit = report.comparisons.find((c) => c.b === 'nitcracker');
@@ -86,6 +86,9 @@ test('report gives per-metric intervals, Holm verdicts and invalidated counts', 
   assert.ok(recall.ci[0] > 0 && recall.ci[1] > recall.ci[0]);
   assert.equal(recall.verdict, 'better');
   assert.ok(recall.pAdjusted >= recall.p);
+  assert.equal(nit.pairing.kept, 19);
+  assert.deepEqual(nit.pairing.dropped.map((d) => [d.task, d.reasons[0].reason]), [['pr-00', 'invalidated']]);
+  assert.equal(nit.pairing.shortfall, 0);
 
   const sparRecall = spar.metrics.find((m) => m.metric === 'recall');
   assert.equal(sparRecall.verdict, 'inconclusive');
@@ -150,6 +153,50 @@ test('report refuses a verdict on confounded arms', async () => {
   const cross = buildReport([scoresDoc(trialsFor('stock'), [arm('stock')]), otherRun], { comparisons: [['r1/stock', 'r2/promptlings']] });
   assert.equal(cross.comparisons[0].confounded, true);
   assert.ok(cross.comparisons[0].confoundedBy.includes('run.datasetPin'));
+});
+
+test('report drops tasks with missing pairs, counts kept and dropped, and refuses a verdict below the planned n', async () => {
+  const { buildReport, renderMarkdown } = await load('report/index.js');
+  const { mergeScoreEntries } = await load('scoring/scores.js');
+  const stock = trialsFor('stock');
+  const nit = trialsFor('nitcracker', { effect: 0.15 }).filter((t) => t.task !== 'pr-19');
+  nit[1] = { ...nit[1], status: 'errored', reason: 'exit code 1' };
+  const doc = scoresDoc([...stock, ...nit], [arm('stock'), arm('nitcracker', { agent: 'the-nitcracker' })]);
+  doc.context.plannedTasks = TASKS;
+
+  // Judge output as scoreRun returns it: string repeats, no entry for pr-02 under stock.
+  const entries = [...stock, ...nit]
+    .filter((t) => !(t.arm === 'stock' && t.task === 'pr-02'))
+    .map((t) => ({ task: t.task, arm: t.arm, repeat: String(t.repeat), variant: 'primary', metrics: t.metrics }));
+  const judged = mergeScoreEntries(doc, { entries });
+  const report = buildReport(judged, { baseline: 'stock' });
+  const [c] = report.comparisons;
+  assert.equal(c.pairing.plannedN, 20);
+  assert.equal(c.pairing.kept, 17);
+  const reasons = Object.fromEntries(c.pairing.dropped.map((d) => [d.task, d.reasons.map((r) => `${r.arm}:${r.reason}`)]));
+  assert.deepEqual(reasons, {
+    'pr-01': ['nitcracker:errored'],
+    'pr-02': ['stock:absent from judge output'],
+    'pr-19': ['nitcracker:absent'],
+  });
+  assert.equal(c.pairing.shortfall, 3);
+  const recall = c.metrics.find((m) => m.metric === 'recall');
+  assert.equal(recall.tasks, 17, 'only kept tasks enter the bootstrap');
+  assert.equal(recall.verdict, null);
+  assert.match(recall.verdictNote, /17 of planned 20 tasks paired, shortfall 3/);
+  assert.equal(recall.pAdjusted, undefined, 'an underpowered comparison stays out of the Holm family');
+  assert.ok(Number.isFinite(recall.ci[0]), 'the interval is still shown');
+
+  const md = renderMarkdown(report);
+  assert.match(md, /Tasks: 17 kept, 3 dropped, planned n 20\./);
+  assert.match(md, /\*\*Shortfall:\*\* 3 task\(s\) below the planned n/);
+  assert.match(md, /- pr-02: stock repeat 0 absent from judge output/);
+
+  const rejected = mergeScoreEntries(doc, { entries: entries.filter((e) => e.arm !== 'nitcracker'), rejected: [{ arm: 'nitcracker', repeat: '0', variant: 'primary', reason: 'verification failed' }] });
+  const none = buildReport(rejected, { baseline: 'stock' }).comparisons[0];
+  assert.equal(none.pairing.kept, 0);
+  assert.ok(none.pairing.dropped.some((d) => d.reasons.some((r) => r.reason === 'judge rejected' && r.detail === 'verification failed')));
+  assert.throws(() => mergeScoreEntries(doc, { entries: [{ task: 'pr-99', arm: 'stock', repeat: '0', metrics: {} }] }), /match no trial/);
 });
 
 test('report writes Markdown and JSON with same-model disclosure', async () => {

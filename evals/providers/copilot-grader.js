@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { loadRunner } from './runner.js';
+import { loadCopilotOnceRunner } from './runner.js';
 
 export const MIN_GRADER_CREDITS = 30;
 // An allowlist naming only an unknown tool disables every tool. A bare or empty
@@ -202,7 +202,7 @@ export default class CopilotGraderProvider {
     for (const d of [dirs.home, dirs.cwd, dirs.logs]) fs.mkdirSync(d);
     fs.writeFileSync(path.join(callDir, 'prompt.txt'), text);
 
-    const runner = await loadRunner(this.config.runnerModule);
+    const runner = await loadCopilotOnceRunner(this.config.runnerModule);
     const env = graderEnv(dirs.home, token);
     const version = await cliVersion(runner, dirs.home, dirs.cwd, env);
     const args = graderArgs(this.config, text, dirs);
