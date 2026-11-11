@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { runTrial } from "../../runner/index.js";
 import { runSuite } from "../../runner/run.js";
-import { fakeCopilot, makeFixtureSuite, makeRealHome, tempDir, testToken, treeDigest, withParentEnv } from "./helpers.mjs";
+import { fakeCopilot, makeFixtureSuite, makeRealHome, stockArm, tempDir, testToken, treeDigest, withParentEnv } from "./helpers.mjs";
 
 const inside = (child, parent) => realpathSync(child).startsWith(realpathSync(parent));
 
@@ -61,4 +62,36 @@ test("isolation: two trials of the same input get distinct homes and workspaces 
 
   assert.deepEqual(treeDigest(realHome), before, "the real Copilot home must be byte-identical after the run");
   assert.ok(!existsSync(join(realHome, ".copilot", "fake-copilot-marker")));
+});
+
+test("isolation: sandboxed git skips the unreadable system config and the container temp under the real Packages folder stays reachable", async () => {
+  const root = tempDir("isolation-sandbox");
+  const realHome = makeRealHome(root);
+  const realPackages = join(realHome, "AppData", "Local", "Packages");
+  mkdirSync(join(realPackages, "sandbox.existing", "AC", "Temp"), { recursive: true });
+  writeFileSync(join(realPackages, "sandbox.existing", "AC", "Temp", "keep.txt"), "keep\n");
+  const before = treeDigest(realHome);
+  const trialDir = join(root, "trial");
+  const workspace = join(root, "workspace");
+  mkdirSync(workspace, { recursive: true });
+
+  const record = await withParentEnv(
+    { LOCALAPPDATA: join(realHome, "AppData", "Local"), EVALS_COPILOT_BIN: fakeCopilot },
+    () => runTrial({ trialDir, workspace, prompt: "Answer briefly.", arm: stockArm, limits: { timeoutMs: 60_000, maxAiCredits: 30 }, env: { COPILOT_GITHUB_TOKEN: testToken } }),
+  );
+  assert.equal(record.status, "completed", record.reason);
+  const seen = JSON.parse(readFileSync(join(record.homePath, ".copilot", "fake-copilot-record.json"), "utf8"));
+  assert.equal(seen.GIT_CONFIG_NOSYSTEM, "1");
+  assert.ok(inside(seen.LOCALAPPDATA, record.homePath), "LOCALAPPDATA must stay inside the trial home");
+
+  // The Windows sandbox puts its AppContainer temp under %LOCALAPPDATA%\Packages, which only the real profile has.
+  const link = join(seen.LOCALAPPDATA, "Packages");
+  if (process.platform === "win32") {
+    assert.ok(lstatSync(link).isSymbolicLink(), "Packages must be a junction to the real folder");
+    assert.equal(realpathSync(link), realpathSync(realPackages));
+  } else {
+    assert.equal(existsSync(link), false);
+  }
+  rmSync(trialDir, { recursive: true, force: true });
+  assert.deepEqual(treeDigest(realHome), before, "removing the trial must leave the real Packages folder intact");
 });
