@@ -84,17 +84,35 @@ export class RunBudget {
   }
 
   /**
-   * Releases a trial's reservation and charges it (see trialCharge). Sets `creditsCharged` and
-   * `creditsEstimated` on the record and returns the charge.
+   * Releases a trial's reservation and charges its final attempt (see trialCharge). Sets `creditsCharged`
+   * on the record to the total over every attempt, including retried attempts that retryAttempt charged,
+   * and `creditsEstimated` when any attempt's charge was estimated. Returns the final attempt's charge.
    */
   settleTrial(reservedAmount, record) {
     const charge = trialCharge(record, reservedAmount);
-    if (record) {
-      record.creditsCharged = charge.credits;
-      record.creditsEstimated = charge.estimated;
-    }
     this.settle(reservedAmount, charge);
+    if (record) {
+      const earlier = (record.attempts ?? []).slice(0, -1);
+      const last = record.attempts?.at(-1);
+      if (last) Object.assign(last, { creditsCharged: charge.credits, creditsEstimated: charge.estimated });
+      record.creditsCharged = earlier.reduce((sum, a) => sum + (a.creditsCharged ?? 0), charge.credits);
+      record.creditsEstimated = charge.estimated || earlier.some((a) => a.creditsEstimated === true);
+    }
     return charge;
+  }
+
+  /**
+   * Charges a failed attempt that is about to be retried while the trial keeps its reservation for the
+   * next attempt. Returns false, charging nothing, when the charge would not fit under the ceiling; the
+   * attempt is then the trial's final attempt and settleTrial charges it.
+   */
+  retryAttempt(reservedAmount, record) {
+    const charge = trialCharge(record, reservedAmount);
+    if (!this.stage.canReserve(charge.credits) || (this.group && !this.group.canReserve(charge.credits))) return false;
+    record.creditsCharged = charge.credits;
+    record.creditsEstimated = charge.estimated;
+    this.settle(0, charge);
+    return true;
   }
 
   settle(reservedAmount, charge) {

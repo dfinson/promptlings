@@ -24,6 +24,7 @@ Options:
   --run-id <id>           Run identifier. Default: <suite>-<stage>-<timestamp>.
   --candidate-ref <ref>   Git ref installed for arms with ref "candidate". Default: HEAD.
   --previous-ref <ref>    Git ref installed for arms with ref "previous". Required when used.
+  --concurrency <n>       Trials run at once. Default: the stage's concurrency, else the suite's.
   --engine <name>         harness (Promptfoo, default when installed) or native.
   --diagnostic            Ask the suite's scoreRun for its diagnostic variants as well.
   --dry-run               Plan the trials without running Copilot.
@@ -66,6 +67,7 @@ function trialSummary(record, runDir) {
     status: record.status,
     reason: record.reason ?? null,
     aiCredits: record.aiCredits ?? null,
+    attempts: record.attempts?.length ?? 1,
     creditsCharged: record.creditsCharged ?? 0,
     creditsEstimated: record.creditsEstimated ?? false,
     cliVersion: record.cliVersion ?? null,
@@ -90,6 +92,7 @@ async function runWithHarness(options, token) {
     repeats: plan.repeats,
     taskCount: tasks.length,
     scheduled: tasks.length * plan.arms.length * plan.repeats,
+    concurrency: options.concurrency ?? plan.concurrency,
     stoppedByCeiling: false,
     budget: null,
     creditDerivation,
@@ -124,7 +127,7 @@ async function runWithHarness(options, token) {
       grader: manifest.grader,
       limits: manifest.limits,
       repeats: plan.repeats,
-      concurrency: manifest.concurrency,
+      concurrency: run.concurrency,
       analysis: stageAnalysis(manifest, options.stage),
       context: { stage: options.stage, refs },
     });
@@ -201,6 +204,7 @@ async function main() {
       "run-id": { type: "string" },
       "candidate-ref": { type: "string" },
       "previous-ref": { type: "string" },
+      concurrency: { type: "string" },
       engine: { type: "string" },
       diagnostic: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
@@ -217,6 +221,8 @@ async function main() {
   if (!["harness", "native"].includes(engine)) throw new Error(`Unknown engine ${engine}. Use harness or native.`);
   if (engine === "harness" && !existsSync(harnessPath)) throw new Error(`The harness engine needs ${harnessPath}.`);
 
+  const concurrency = values.concurrency === undefined ? undefined : Number(values.concurrency);
+  if (concurrency !== undefined && !(Number.isInteger(concurrency) && concurrency > 0)) throw new Error("--concurrency must be a positive integer.");
   const dryRun = values["dry-run"];
   const token = dryRun ? null : resolveToken();
   const artifactRoot = resolve(values["artifact-root"] ?? defaultArtifactRoot());
@@ -227,6 +233,7 @@ async function main() {
     runId: values["run-id"],
     candidateRef: values["candidate-ref"],
     previousRef: values["previous-ref"],
+    concurrency,
     dryRun,
   };
 

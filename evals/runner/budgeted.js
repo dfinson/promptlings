@@ -50,7 +50,11 @@ export async function runTrial(options) {
   let record;
   let failure;
   try {
-    record = await baseRunTrial({ ...options, env: { ...active.env, ...(options.env ?? {}) } });
+    record = await baseRunTrial({
+      ...options,
+      env: { ...active.env, ...(options.env ?? {}) },
+      retryGate: (attempt) => active.budget.retryAttempt(reservation, attempt),
+    });
   } catch (error) {
     failure = error;
     throw error;

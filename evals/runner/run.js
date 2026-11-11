@@ -86,6 +86,7 @@ export async function runSuite({
   suitesRoot = defaultSuitesRoot,
   candidateRef,
   previousRef,
+  concurrency,
   env = {},
   dryRun = false,
   log = () => {},
@@ -119,6 +120,7 @@ export async function runSuite({
     repeats: plan.repeats,
     taskCount: tasks.length,
     scheduled: jobs.length,
+    concurrency: concurrency ?? plan.concurrency,
     started: 0,
     remaining: jobs.length,
     stoppedByCeiling: false,
@@ -154,7 +156,7 @@ export async function runSuite({
       const prompt = typeof adapter.buildPrompt === "function"
         ? await adapter.buildPrompt(task, arm, manifest)
         : renderPrompt(arm.prompt ?? manifest.prompt, task, workspace);
-      record = await runTrial({ trialDir, workspace, prompt, arm, limits, env: trialEnv });
+      record = await runTrial({ trialDir, workspace, prompt, arm, limits, env: trialEnv, retryGate: (attempt) => budget.retryAttempt(reservation, attempt) });
     } catch (error) {
       record = { status: "errored", reason: error.message, launched: error.launched === true, trialDir, workspacePath: workspace, armId: arm.id, arm, aiCredits: null };
       writeFileSync(join(trialDir, "trial.json"), `${JSON.stringify(record, null, 2)}\n`);
@@ -175,6 +177,7 @@ export async function runSuite({
       status: record.status,
       reason: record.reason ?? null,
       aiCredits: record.aiCredits ?? null,
+      attempts: record.attempts?.length ?? 1,
       creditsCharged: record.creditsCharged,
       creditsEstimated: record.creditsEstimated,
       cliVersion: record.cliVersion ?? null,
@@ -199,7 +202,7 @@ export async function runSuite({
       await runJob(job, reservation);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(manifest.concurrency, jobs.length || 1) }, worker));
+  await Promise.all(Array.from({ length: Math.min(run.concurrency, jobs.length || 1) }, worker));
 
   finishRun(run, budget, manifest);
   save();

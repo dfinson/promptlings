@@ -116,6 +116,7 @@ export function validateManifest(manifest, { suiteName } = {}) {
           else for (const id of stage.arms) if (!armIds.has(id)) fail(errors, `stages.${name}.arms`, `unknown arm ${id}`);
         }
         if (stage.repeats !== undefined && !positiveInteger(stage.repeats)) fail(errors, `stages.${name}.repeats`, "must be a positive integer");
+        if (stage.concurrency !== undefined && !positiveInteger(stage.concurrency)) fail(errors, `stages.${name}.concurrency`, "must be a positive integer");
         if (stage.maxAiCredits !== undefined && (typeof stage.maxAiCredits !== "number" || stage.maxAiCredits <= 0)) fail(errors, `stages.${name}.maxAiCredits`, "must be a positive number");
         if (stage.ceilingGroup !== undefined && (typeof stage.ceilingGroup !== "string" || !/^[A-Za-z0-9._-]+$/.test(stage.ceilingGroup))) fail(errors, `stages.${name}.ceilingGroup`, "must be a path-safe string");
       }
@@ -133,7 +134,7 @@ export function loadManifest(file, options) {
 }
 
 /**
- * Resolves the split, arms and repeats for a stage. `stages[stage]` wins when present; otherwise the stage
+ * Resolves the split, arms, repeats and concurrency for a stage. `stages[stage]` wins when present; otherwise the stage
  * name is used as the split name with every arm and the suite's repeats.
  */
 export function resolveStage(manifest, stage) {
@@ -148,6 +149,7 @@ export function resolveStage(manifest, stage) {
     split,
     arms: manifest.arms.filter((a) => armIds.includes(a.id)),
     repeats: block?.repeats ?? manifest.repeats,
+    concurrency: block?.concurrency ?? manifest.concurrency,
     ceiling: block?.maxAiCredits ?? manifest.limits.stageCeilings?.[stage] ?? null,
     group: block?.ceilingGroup ?? null,
     groupCeiling: block?.ceilingGroup ? groupCeiling(manifest, block.ceilingGroup) : null,
