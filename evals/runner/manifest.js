@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { parse } from "yaml";
+import { pluginCommitPattern, pluginRepoPattern } from "./plugin.js";
 
 function fail(errors, path, message) {
   errors.push(`${path}: ${message}`);
@@ -32,6 +33,15 @@ function validateArm(arm, index, errors) {
     }
   }
   if (arm.agent !== undefined && arm.agent !== null && typeof arm.agent !== "string") fail(errors, `${at}.agent`, "must be a string or null");
+  if (arm.plugin !== undefined && arm.plugin !== null) {
+    if (!isObject(arm.plugin)) fail(errors, `${at}.plugin`, "must be a mapping with repo and commit");
+    else {
+      if (typeof arm.plugin.repo !== "string" || !pluginRepoPattern.test(arm.plugin.repo)) fail(errors, `${at}.plugin.repo`, "must be <owner>/<name>");
+      if (typeof arm.plugin.commit !== "string" || !pluginCommitPattern.test(arm.plugin.commit)) {
+        fail(errors, `${at}.plugin.commit`, "must be a 40-character lowercase hexadecimal commit SHA");
+      }
+    }
+  }
   if (arm.tools !== undefined) {
     if (!isObject(arm.tools)) fail(errors, `${at}.tools`, "must be a mapping");
     else {
@@ -53,6 +63,7 @@ function normalizeArm(arm) {
     timeoutMs: arm.timeoutMs ?? arm.limits?.timeoutMs,
     selection: arm.selection ?? null,
     agent: arm.agent ?? null,
+    plugin: arm.plugin ? { repo: arm.plugin.repo, commit: arm.plugin.commit } : null,
     tools: { allow: [], deny: [], allowUrl: [], denyUrl: [], ...(arm.tools ?? {}) },
     sandbox: arm.sandbox ?? false,
     customInstructions: arm.customInstructions ?? true,

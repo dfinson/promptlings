@@ -5,13 +5,14 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import { hasComparisons, reportOptions, stageAnalysis } from "../runner/analysis.js";
+import { hasComparisons, notePanelInReport, reportOptions, stageAnalysis } from "../runner/analysis.js";
 import { RunBudget } from "../runner/budget.js";
 import { tokenVariable } from "../runner/env.js";
 import { creditDerivation } from "../runner/index.js";
 import { loadManifest } from "../runner/manifest.js";
 import { artifactRoot as defaultArtifactRoot, evalsRoot, suitesRoot } from "../runner/paths.js";
-import { finishRun, prepareStage, runSuite } from "../runner/run.js";
+import { pluginSummary } from "../runner/plugin.js";
+import { finishRun, preflightStage, prepareStage, runSuite } from "../runner/run.js";
 import { discoverSuites, loadSuite } from "../runner/suites.js";
 
 const usage = `Usage: npm --prefix evals run eval -- <suite> --stage <stage> [options]
@@ -89,6 +90,7 @@ async function runWithHarness(options, token) {
     arms: plan.arms.map((a) => a.id),
     refs,
     installArgs,
+    plugins: pluginSummary(plan.arms),
     repeats: plan.repeats,
     taskCount: tasks.length,
     scheduled: tasks.length * plan.arms.length * plan.repeats,
@@ -101,6 +103,7 @@ async function runWithHarness(options, token) {
     trials: [],
   };
   if (options.dryRun) return { run: { ...run, dryRun: true }, adapter: prepared.adapter, manifest };
+  await preflightStage(prepared.adapter, manifest, { runDir, artifactRoot, env: { [tokenVariable]: token } });
 
   const budget = new RunBudget({ plan, suite: options.suite, artifactRoot, runId });
   const budgeted = await import(budgetedUrl);
@@ -168,6 +171,53 @@ async function scoreStage(adapter, run, manifest, diagnostic, token, artifactRoo
   }
 }
 
+// The panel module: EVALS_PANEL_MODULE, else the first of report/panel.js and scoring/panel.js present in this checkout.
+function panelModulePath() {
+  if (process.env.EVALS_PANEL_MODULE) return resolve(process.env.EVALS_PANEL_MODULE);
+  return [join(evalsRoot, "report", "panel.js"), join(evalsRoot, "scoring", "panel.js")].find((file) => existsSync(file)) ?? null;
+}
+
+/**
+ * Runs the post-experiment analysis panel when the suite declares `panel:` and the panel module exists. A panel
+ * failure is recorded in run.json and the report; it does not fail the stage.
+ */
+async function panelStage(adapter, run, manifest, artifactRoot) {
+  if (!manifest.panel) return;
+  const file = panelModulePath();
+  if (!file) {
+    run.panel = { skipped: "the suite declares panel: but no panel module exists in this checkout" };
+    return;
+  }
+  if (run.rejected) {
+    run.panel = { skipped: "the run was rejected, so there are no usable judged findings" };
+    return;
+  }
+  const panel = manifest.panel;
+  try {
+    const { runPanelAnalysis } = await import(pathToFileURL(file).href);
+    if (typeof runPanelAnalysis !== "function") throw new Error(`${file} does not export runPanelAnalysis`);
+    const inputs = typeof adapter.panelInputs === "function" ? ((await adapter.panelInputs(run.runDir, manifest, { artifactRoot })) ?? {}) : {};
+    const { comparisons } = reportOptions(manifest, run.stage, run.arms);
+    const requireFrozen = typeof inputs.requireFrozen === "function" ? inputs.requireFrozen(run.stage) : (inputs.requireFrozen ?? panel.requireFrozen ?? false);
+    const { outDir } = await runPanelAnalysis({
+      runDir: run.runDir,
+      arms: run.arms,
+      comparisons,
+      taxonomy: inputs.taxonomy ?? panel.taxonomy,
+      ...(inputs.taxonomyPath ? { taxonomyPath: inputs.taxonomyPath } : {}),
+      namedInAdvance: inputs.namedInAdvance ?? panel.namedInAdvance ?? [],
+      requireFrozen,
+      ...(panel.aliases ? { aliases: panel.aliases } : {}),
+      ...(panel.graderConfig ? { graderConfig: panel.graderConfig } : {}),
+      goldenDir: inputs.goldenDir,
+      diffFilesFor: inputs.diffFilesFor,
+    });
+    run.panel = { ok: true, outDir: outDir ?? join(run.runDir, "panel") };
+  } catch (error) {
+    run.panel = { ok: false, error: error.message };
+  }
+}
+
 // Merges scoreRun into scores.json and writes the report. Harness runs only: they produce scores.json.
 async function reportStage(run, manifest, scoreResult, usable) {
   const scoresFile = join(run.runDir, "scores.json");
@@ -194,6 +244,7 @@ async function reportStage(run, manifest, scoreResult, usable) {
   const { writeReport } = await importEvals("report", "index.js");
   const { jsonPath, mdPath } = writeReport(run.runDir, join(run.runDir, "report"), options);
   run.report = { json: jsonPath, markdown: mdPath };
+  notePanelInReport(run);
 }
 async function main() {
   const { values, positionals } = parseArgs({
@@ -252,6 +303,7 @@ async function main() {
     return;
   }
   const scoreResult = await scoreStage(adapter, run, manifest, values.diagnostic, token, artifactRoot);
+  await panelStage(adapter, run, manifest, artifactRoot);
   const problemsOf = () => [
     run.stoppedByCeiling && "the stage credit ceiling stopped the run before every trial started",
     run.comparable === false && run.comparabilityReason,

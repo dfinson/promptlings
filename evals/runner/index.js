@@ -4,6 +4,7 @@ import { delimiter, dirname, extname, isAbsolute, join, relative, resolve } from
 import { homePaths, isolatedEnv, tokenVariable } from "./env.js";
 import { diffWorkspace, hashTree, redaction, scrubToken, snapshotWorkspace } from "./evidence.js";
 import { installArm } from "./install.js";
+import { grantPluginReads } from "./plugin.js";
 import { artifactRoot } from "./paths.js";
 
 export { isolatedEnv } from "./env.js";
@@ -148,6 +149,10 @@ export function buildArgs({ prompt, arm, limits, trialDir }) {
     "--reasoning-effort", arm.reasoningEffort,
   ];
   if (arm.agent) args.push("--agent", arm.agent);
+  if (arm.plugin) {
+    if (!arm.plugin.path) throw new Error(`Arm ${arm.id} plugin ${arm.plugin.repo}@${arm.plugin.commit} has no prepared checkout.`);
+    args.push("--plugin-dir", arm.plugin.path);
+  }
   const tools = arm.tools ?? {};
   for (const entry of tools.allow ?? []) args.push(`--allow-tool=${entry}`);
   for (const entry of tools.deny ?? []) args.push(`--deny-tool=${entry}`);
@@ -448,6 +453,7 @@ async function runAttempt({ trialDir, workspace, prompt, arm, limits, env }) {
     workspacePath: workspace,
     armId: arm.id,
     arm,
+    plugin: arm.plugin ?? null,
     limits,
     sourceSha: null,
   };
@@ -467,6 +473,7 @@ async function runAttempt({ trialDir, workspace, prompt, arm, limits, env }) {
     const installed = installArm(arm, { home, env: installEnv, root: env.EVALS_ARTIFACT_ROOT || artifactRoot() });
     record.installedHashes = installed.installedHashes;
     record.sourceSha = installed.sourceSha;
+    record.sandboxReadonlyPaths = grantPluginReads(homePaths(home).copilotHome, arm.plugin);
     record.cliVersion = await copilotVersion(installEnv);
   } catch (error) {
     record.reason = error.message;
@@ -554,7 +561,7 @@ function finishTrial({ record, result, built, paths, prompt, token, workspace, b
     record.status = "completed";
   }
 
-  const classified = classifyEnvironmentDenials(sessionEvents.length ? sessionEvents : events, message, { roots: [workspace, record.homePath], cwd: workspace });
+  const classified = classifyEnvironmentDenials(sessionEvents.length ? sessionEvents : events, message, { roots: [workspace, record.homePath, ...(record.plugin?.path ? [record.plugin.path] : [])], cwd: workspace });
   record.environmentDenials = classified.denials;
   record.environmentWarnings = classified.warnings;
   if (record.environmentDenials.length) {

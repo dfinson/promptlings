@@ -1,3 +1,5 @@
+import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
+
 // Maps a suite's `analysis` block (top level, overridden per stage by stages[name].analysis) to report options.
 // Suites list each comparison as [treatment, baseline]; the report takes [baseline, treatment].
 export function stageAnalysis(manifest, stageName) {
@@ -26,4 +28,13 @@ export function reportOptions(manifest, stageName, armIds) {
 /** A declared comparison list with no pair inside this stage means the stage has nothing to compare. */
 export function hasComparisons(options) {
   return !Array.isArray(options.comparisons) || options.comparisons.length > 0;
+}
+
+// Adds a failed or skipped panel to the written report, which the report module does not know about.
+export function notePanelInReport(run) {
+  if (!run.panel || run.panel.ok || !run.report?.json) return;
+  const report = JSON.parse(readFileSync(run.report.json, "utf8"));
+  writeFileSync(run.report.json, `${JSON.stringify({ ...report, panel: run.panel }, null, 2)}\n`);
+  const line = run.panel.error ? `The analysis panel failed: ${run.panel.error}` : `The analysis panel was skipped: ${run.panel.skipped}`;
+  appendFileSync(run.report.markdown, `\n## Analysis panel\n\n${line}\n`);
 }

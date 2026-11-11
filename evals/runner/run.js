@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import { RunBudget } from "./budget.js";
 import { creditDerivation, runTrial } from "./index.js";
 import { preflightArms, resolveArmRefs } from "./install.js";
+import { pluginSummary, preparePlugins } from "./plugin.js";
 import { resolveStage } from "./manifest.js";
 import { artifactRoot as defaultArtifactRoot, suitesRoot as defaultSuitesRoot } from "./paths.js";
 import { loadSuite } from "./suites.js";
@@ -59,7 +60,9 @@ export async function prepareStage({
   const loaded = await loadSuite(suite, suitesRoot);
   const { manifest, adapter } = loaded;
   const stagePlan = resolveStage(manifest, stage);
-  const { refs, arms } = resolveArmRefs(stagePlan.arms, { candidateRef, previousRef });
+  const { refs, arms: refArms } = resolveArmRefs(stagePlan.arms, { candidateRef, previousRef });
+  // Pinned external plugins are checked out once per run, outside every trial workspace and home.
+  const arms = preparePlugins(refArms, { root: artifactRoot });
   const plan = { ...stagePlan, arms };
   // Every installing arm's selection is checked against its source's installer before any trial runs.
   const installArgs = preflightArms(arms, { root: artifactRoot });
@@ -72,6 +75,24 @@ export async function prepareStage({
     if (task?.id === undefined || task?.id === null) throw new Error(`Suite ${suite} returned a task without an id.`);
   }
   return { loaded, manifest, adapter, plan, refs, installArgs, runId, runDir, artifactRoot, ctx, tasks };
+}
+
+/**
+ * Calls the suite's preflight(suite, ctx) before a stage's first trial when the adapter exports it. A rejection
+ * aborts the stage: it is recorded in <runDir>/preflight.json and rethrown, so no trial starts.
+ */
+export async function preflightStage(adapter, manifest, { runDir, artifactRoot, env = {} }) {
+  if (typeof adapter.preflight !== "function") return null;
+  mkdirSync(runDir, { recursive: true });
+  const file = join(runDir, "preflight.json");
+  try {
+    const result = await adapter.preflight(manifest, { runDir, artifactRoot, env });
+    writeFileSync(file, `${JSON.stringify({ ok: true }, null, 2)}\n`);
+    return result ?? null;
+  } catch (error) {
+    writeFileSync(file, `${JSON.stringify({ ok: false, error: error.message }, null, 2)}\n`);
+    throw new Error(`Suite ${manifest.name} preflight rejected the stage: ${error.message}`);
+  }
 }
 
 /**
@@ -117,6 +138,7 @@ export async function runSuite({
     arms: plan.arms.map((a) => a.id),
     refs,
     installArgs,
+    plugins: pluginSummary(plan.arms),
     repeats: plan.repeats,
     taskCount: tasks.length,
     scheduled: jobs.length,
@@ -136,6 +158,7 @@ export async function runSuite({
     run.trials = jobs.map((j) => ({ task: String(j.task.id), arm: j.arm.id, repeat: j.repeat, trialDir: j.trialDir }));
     return run;
   }
+  await preflightStage(adapter, manifest, { runDir, artifactRoot, env });
   mkdirSync(runDir, { recursive: true });
   save();
 
