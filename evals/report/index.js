@@ -226,6 +226,7 @@ const cell = (v) => String(v ?? '').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ')
 
 export function renderMarkdown(report, { outDir } = {}) {
   const link = (dir) => {
+    if (!dir) return 'no trial directory recorded';
     const target = outDir ? path.relative(outDir, dir) || '.' : dir;
     return `[${path.basename(path.dirname(path.dirname(dir)))}/${path.basename(path.dirname(dir))}/${path.basename(dir)}](${target.replace(/\\/g, '/')})`;
   };
