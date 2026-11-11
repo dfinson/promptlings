@@ -57,11 +57,67 @@ export function prepareSource(ref, { root = artifactRoot() } = {}) {
   return { sha, dir: target };
 }
 
+/**
+ * Installer selection flags for an arm's `selection`:
+ * - absent, null or "all": no flag, so publish installs every agent it can (it skips agents that need
+ *   dependencies, which an explicit --all would reject);
+ * - "review": --review;
+ * - a string starting with "--": raw installer flags, split on whitespace (for example "--review");
+ * - an array: raw installer arguments as given;
+ * - any other string: a comma-separated agent list for --agents.
+ */
 export function selectionArgs(selection) {
   if (Array.isArray(selection)) return selection.map(String);
-  if (!selection || selection === "all") return ["--all"];
-  if (selection === "review") return ["--review"];
-  return ["--agents", String(selection)];
+  if (selection === undefined || selection === null) return [];
+  if (typeof selection !== "string") throw new Error(`Arm selection must be a string or an array, got ${JSON.stringify(selection)}.`);
+  const text = selection.trim();
+  if (!text || text === "all") return [];
+  if (text === "review") return ["--review"];
+  if (text.startsWith("--")) return text.split(/\s+/);
+  return ["--agents", text];
+}
+
+export function publishArgs(arm) {
+  return ["publish", ...selectionArgs(arm.selection), "--no-readside"];
+}
+
+function installerEnv(home) {
+  const env = { HOME: home, USERPROFILE: home };
+  for (const key of ["PATH", "Path", "SystemRoot", "ComSpec", "PATHEXT", "TEMP", "TMP", "TMPDIR"]) {
+    if (process.env[key] !== undefined) env[key] = process.env[key];
+  }
+  return env;
+}
+
+/**
+ * Runs `promptlings publish --dry-run` with the arm's selection against the given source checkout, so a
+ * selection the installer rejects fails once, before any trial starts. Writes nothing and needs no network.
+ * Returns the installer arguments and its printed plan.
+ */
+export function preflightInstall(arm, { sourceDir = repoRoot, home = sourceDir } = {}) {
+  const args = [...publishArgs(arm), "--dry-run"];
+  const result = spawnSync(process.execPath, [join(sourceDir, "bin", "promptlings.js"), ...args], {
+    cwd: sourceDir,
+    env: installerEnv(home),
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  if (result.error || result.status !== 0) {
+    const detail = (result.error?.message || result.stderr || result.stdout || "").trim();
+    throw new Error(`Arm ${arm.id} selection ${JSON.stringify(arm.selection ?? null)} is rejected by the installer (promptlings ${args.join(" ")}): ${detail}`);
+  }
+  return { args: args.filter((a) => a !== "--dry-run"), plan: result.stdout.trim() };
+}
+
+/** Prepares each installing arm's source and checks its selection with preflightInstall. */
+export function preflightArms(arms, { root } = {}) {
+  const plans = {};
+  for (const arm of arms) {
+    if (isStockArm(arm)) continue;
+    const source = prepareSource(arm.resolvedRef ?? arm.ref, { root });
+    plans[arm.id] = preflightInstall(arm, { sourceDir: source.dir }).args;
+  }
+  return plans;
 }
 
 export function isStockArm(arm) {
@@ -101,7 +157,7 @@ export function installArm(arm, { home, env, root }) {
   const ref = arm.resolvedRef ?? (arm.ref === "candidate" ? "HEAD" : arm.ref);
   const source = prepareSource(ref, { root });
   const before = hashTree(home);
-  const args = [join(source.dir, "bin", "promptlings.js"), "publish", ...selectionArgs(arm.selection), "--no-readside", "--yes"];
+  const args = [join(source.dir, "bin", "promptlings.js"), ...publishArgs(arm), "--yes"];
   const result = spawnSync(process.execPath, args, { cwd: home, env, encoding: "utf8", windowsHide: true });
   if (result.error || result.status !== 0) {
     throw new Error(`Promptlings publish failed (${result.status}): ${(result.error?.message || result.stderr || result.stdout || "").trim()}`);

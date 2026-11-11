@@ -13,7 +13,10 @@ const minimumCredits = 30;
 const capPattern = /session limit|max-ai-credits|AI credit limit|credit limit reached/i;
 
 function which(command, env) {
-  if (isAbsolute(command) || command.includes("/") || command.includes("\\")) return resolve(command);
+  if (isAbsolute(command) || command.includes("/") || command.includes("\\")) {
+    const path = resolve(command);
+    return existsSync(path) ? path : null;
+  }
   const pathValue = env.PATH ?? env.Path ?? process.env.PATH ?? process.env.Path ?? "";
   const extensions = process.platform === "win32"
     ? ["", ...(env.PATHEXT ?? process.env.PATHEXT ?? ".COM;.EXE;.BAT;.CMD").split(";").map((e) => e.toLowerCase())]
@@ -93,6 +96,7 @@ export function runCopilotOnce({ home, cwd, args, env, timeoutMs }) {
         stderr: Buffer.concat(err).toString("utf8") + (spawnError ? `\n${spawnError.message}` : ""),
         timedOut,
         wallMs: Date.now() - started,
+        launched: !spawnError,
         args: fullArgs,
         binary: resolved.path,
       });
@@ -243,6 +247,7 @@ export async function runTrial({ trialDir, workspace, prompt, arm, limits = {}, 
   };
   const record = {
     status: "errored",
+    launched: false,
     exitCode: null,
     wallMs: 0,
     cliVersion: null,
@@ -289,6 +294,18 @@ export async function runTrial({ trialDir, workspace, prompt, arm, limits = {}, 
 
   const before = snapshotWorkspace(workspace);
   const result = await runCopilotOnce({ home, cwd: workspace, args: built.args, env: trialEnv, timeoutMs: limits.timeoutMs });
+  record.launched = result.launched;
+  try {
+    return finishTrial({ record, result, built, paths, prompt, token, workspace, before, limits, save });
+  } catch (error) {
+    // Copilot already ran, so the budget must charge this trial even though its evidence was not processed.
+    error.launched = record.launched;
+    throw error;
+  }
+}
+
+function finishTrial({ record, result, built, paths, prompt, token, workspace, before, limits, save }) {
+  const { trialDir } = record;
   record.exitCode = result.exitCode;
   record.wallMs = result.wallMs;
   record.flags = result.args.map((arg) => (arg === prompt ? "@prompt.txt" : arg));

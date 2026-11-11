@@ -1,15 +1,27 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-// Credit ceiling. Each trial reserves its cap before it starts and settles to its reported credits
-// (or keeps the full cap when usage is unknown), so concurrent trials cannot jointly exceed the ceiling.
-// `priorSpent` carries spend already recorded by earlier runs that share the ceiling.
+/**
+ * What a finished trial costs the budget. A trial whose Copilot process never launched costs 0. A launched
+ * trial costs its derived credits. A launched trial without usage data costs its full cap, flagged as
+ * estimated, because its real spend is unknown.
+ */
+export function trialCharge(record, cap) {
+  if (record?.launched !== true) return { credits: 0, estimated: false };
+  if (typeof record.aiCredits === "number" && record.aiCredits >= 0) return { credits: record.aiCredits, estimated: false };
+  return { credits: cap, estimated: true };
+}
+
+// Credit ceiling. Each trial reserves its cap before it starts, so concurrent trials cannot jointly exceed
+// the ceiling, and settles to its charge when it finishes. `priorSpent` carries spend already recorded by
+// earlier runs that share the ceiling.
 export class StageBudget {
   constructor(ceiling, priorSpent = 0) {
     this.ceiling = ceiling ?? Infinity;
     this.priorSpent = priorSpent;
     this.spent = 0;
     this.reserved = 0;
+    this.estimatedTrials = 0;
   }
 
   canReserve(amount) {
@@ -22,13 +34,19 @@ export class StageBudget {
     return true;
   }
 
-  settle(reservedAmount, actual) {
+  settle(reservedAmount, charge) {
     this.reserved -= reservedAmount;
-    this.spent += typeof actual === "number" && actual >= 0 ? actual : reservedAmount;
+    this.spent += charge.credits;
+    if (charge.estimated) this.estimatedTrials += 1;
   }
 
   summary() {
-    return { ceiling: Number.isFinite(this.ceiling) ? this.ceiling : null, priorSpent: this.priorSpent, spent: this.spent };
+    return {
+      ceiling: Number.isFinite(this.ceiling) ? this.ceiling : null,
+      priorSpent: this.priorSpent,
+      spent: this.spent,
+      estimatedTrials: this.estimatedTrials,
+    };
   }
 }
 
@@ -65,10 +83,24 @@ export class RunBudget {
     return true;
   }
 
-  settle(reservedAmount, actual) {
-    this.stage.settle(reservedAmount, actual);
+  /**
+   * Releases a trial's reservation and charges it (see trialCharge). Sets `creditsCharged` and
+   * `creditsEstimated` on the record and returns the charge.
+   */
+  settleTrial(reservedAmount, record) {
+    const charge = trialCharge(record, reservedAmount);
+    if (record) {
+      record.creditsCharged = charge.credits;
+      record.creditsEstimated = charge.estimated;
+    }
+    this.settle(reservedAmount, charge);
+    return charge;
+  }
+
+  settle(reservedAmount, charge) {
+    this.stage.settle(reservedAmount, charge);
     if (!this.group) return;
-    this.group.settle(reservedAmount, actual);
+    this.group.settle(reservedAmount, charge);
     const ledger = readLedger(this.ledgerFile);
     ledger.group = this.groupName;
     ledger.ceiling = this.group.summary().ceiling;

@@ -32,7 +32,7 @@ npm --prefix evals run eval -- --list
 | `--previous-ref <ref>` | Git ref installed for arms with `ref: previous`. Required when the stage includes such an arm. |
 | `--engine harness\|native` | `harness` runs trials through the Promptfoo harness in `providers/harness.js` and is the default when that file exists. `native` runs them directly. |
 | `--diagnostic` | Asks the suite's `scoreRun` for its diagnostic variants too. |
-| `--dry-run` | Prints the planned trials without running Copilot. |
+| `--dry-run` | Prints the planned trials without running Copilot. The installer selection check still runs. |
 
 Exit codes: `0` when the run finishes and is usable, `1` on an error, `2` when the run stopped at a credit ceiling, was rejected by the suite or has nothing comparable.
 
@@ -48,7 +48,7 @@ Exit codes: `0` when the run finishes and is usable, `1` on an error, `2` when t
 ## What a trial does
 
 1. Creates a fresh home (`HOME`, `USERPROFILE`, `COPILOT_HOME`, XDG and AppData paths, temp) and workspace under the run directory. Two trials never share either, and the user's own Copilot home is never read or written.
-2. Installs the arm's Promptlings ref into that home with the repository installer. Stock arms (`ref: null` or `none`) install nothing. Promptlings arms record a SHA-256 hash of every installed file as `installedHashes` in the trial's `trial.json`.
+2. Installs the arm's Promptlings ref into that home with the repository installer (`promptlings publish <selection> --no-readside --yes`). Stock arms (`ref: null` or `none`) install nothing. Promptlings arms record a SHA-256 hash of every installed file as `installedHashes` in the trial's `trial.json`. Before any trial starts, each installing arm's selection runs through `promptlings publish --dry-run` from its ref, so a selection the installer rejects stops the stage once instead of erroring every trial. `run.json` records the installer arguments as `installArgs`.
 3. Builds the child environment from an allowlist (`PATH`, system and locale variables, proxy and CA settings). Nothing else is inherited from the parent process, and `COPILOT_PROVIDER_*` variables are refused.
 4. Runs `copilot -p` with JSON output, a pinned model and reasoning effort, `--max-ai-credits`, `--no-ask-user`, and the arm's tool, URL and agent settings.
 5. Keeps the stdout events, `usage.json`, the shared transcript, CLI logs and the session's `events.jsonl` (subagent and skill events are only in the session log).
@@ -58,7 +58,7 @@ Trial evidence is in `<artifactRoot>/<runId>/trials/<task>/<arm>/<repeat>/`, wit
 
 ### Credits and ceilings
 
-Credits are derived from the CLI usage total as `usage.totalNanoAiu / 1e9`; `run.json` records this as `creditDerivation`. Each trial is capped by `--max-ai-credits` (the arm's `maxAiCredits`, else `limits.maxAiCredits`, never below 30). A stage stops scheduling trials once the next one could exceed its ceiling, taken from `stages.<name>.maxAiCredits` or `limits.stageCeilings.<name>`. Stages that share a `ceilingGroup` also share a ledger under `<artifactRoot>/ceilings/<suite>/<group>.json`, capped by the largest ceiling declared in the group. When a ceiling stops scheduling, `run.json` sets `stoppedByCeiling` (the harness engine also records each unstarted trial as `stopped_by_ceiling`) and the CLI exits 2.
+Credits are derived from the CLI usage total as `usage.totalNanoAiu / 1e9`; `run.json` records this as `creditDerivation`. Each trial is capped by `--max-ai-credits` (the arm's `maxAiCredits`, else `limits.maxAiCredits`, never below 30). Each trial reserves its cap when it starts. When it finishes, the reservation is released and the trial is charged its derived credits. A trial whose Copilot process never launched (for example, a failed install) is charged 0. A trial that launched but left no usage data is charged its full cap and flagged with `creditsEstimated: true`; `run.json` counts these as `budget.estimatedTrials`. Each trial entry in `run.json` records `creditsCharged`. A stage stops scheduling trials once the next one could exceed its ceiling, taken from `stages.<name>.maxAiCredits` or `limits.stageCeilings.<name>`. Stages that share a `ceilingGroup` also share a ledger under `<artifactRoot>/ceilings/<suite>/<group>.json`, capped by the largest ceiling declared in the group. When a ceiling stops scheduling, `run.json` sets `stoppedByCeiling` (the harness engine also records each unstarted trial as `stopped_by_ceiling`) and the CLI exits 2.
 
 ## Adding a suite
 
@@ -71,7 +71,7 @@ A suite is a directory under `evals/suites/<name>/` holding `suite.yaml` and `ad
 | `name` | The directory name. |
 | `taskSource` | Mapping with at least `type`. |
 | `splits` | Mapping of split names to suite-specific selections. |
-| `arms` | List of `{id, ref, model, reasoningEffort, limits, tools, agent?, maxAiCredits?}`. `model` cannot be `auto`. `ref` is `null` or `none` (stock), `candidate`, `previous` or any Git ref. |
+| `arms` | List of `{id, ref, model, reasoningEffort, limits, tools, selection?, agent?, maxAiCredits?}`. `model` cannot be `auto`. `ref` is `null` or `none` (stock), `candidate`, `previous` or any Git ref. `selection` picks the installed agents: absent, `null` or `all` installs every agent `publish` can install; `review` or any string starting with `--` passes installer flags (split on whitespace, for example `--review`); an array passes raw installer arguments; any other string is a comma-separated agent list for `--agents`. |
 | `prompt` | Prompt template. `{{name}}` reads `task.vars`, then task fields, then `workspace`. |
 | `limits` | `{timeoutMs, maxAiCredits, stageCeilings?}`. |
 | `repeats`, `concurrency` | Positive integers. |

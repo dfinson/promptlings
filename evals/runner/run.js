@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { RunBudget } from "./budget.js";
 import { creditDerivation, runTrial } from "./index.js";
-import { resolveArmRefs } from "./install.js";
+import { preflightArms, resolveArmRefs } from "./install.js";
 import { resolveStage } from "./manifest.js";
 import { artifactRoot as defaultArtifactRoot, suitesRoot as defaultSuitesRoot } from "./paths.js";
 import { loadSuite } from "./suites.js";
@@ -61,6 +61,8 @@ export async function prepareStage({
   const stagePlan = resolveStage(manifest, stage);
   const { refs, arms } = resolveArmRefs(stagePlan.arms, { candidateRef, previousRef });
   const plan = { ...stagePlan, arms };
+  // Every installing arm's selection is checked against its source's installer before any trial runs.
+  const installArgs = preflightArms(arms, { root: artifactRoot });
   runId = runId ?? newRunId(suite, stage);
   const runDir = join(artifactRoot, runId);
   const ctx = { artifactRoot, runDir, suite: manifest, suiteDir: loaded.dir, stage, split: plan.split, stagePlan: plan };
@@ -69,7 +71,7 @@ export async function prepareStage({
   for (const task of tasks) {
     if (task?.id === undefined || task?.id === null) throw new Error(`Suite ${suite} returned a task without an id.`);
   }
-  return { loaded, manifest, adapter, plan, refs, runId, runDir, artifactRoot, ctx, tasks };
+  return { loaded, manifest, adapter, plan, refs, installArgs, runId, runDir, artifactRoot, ctx, tasks };
 }
 
 /**
@@ -89,7 +91,7 @@ export async function runSuite({
   log = () => {},
 }) {
   const prepared = await prepareStage({ suite, stage, artifactRoot, runId, suitesRoot, candidateRef, previousRef });
-  const { manifest, adapter, plan, refs, runDir, ctx, tasks } = prepared;
+  const { manifest, adapter, plan, refs, installArgs, runDir, ctx, tasks } = prepared;
   ({ artifactRoot, runId } = prepared);
 
   const jobs = [];
@@ -113,6 +115,7 @@ export async function runSuite({
     finishedAt: null,
     arms: plan.arms.map((a) => a.id),
     refs,
+    installArgs,
     repeats: plan.repeats,
     taskCount: tasks.length,
     scheduled: jobs.length,
@@ -153,10 +156,10 @@ export async function runSuite({
         : renderPrompt(arm.prompt ?? manifest.prompt, task, workspace);
       record = await runTrial({ trialDir, workspace, prompt, arm, limits, env: trialEnv });
     } catch (error) {
-      record = { status: "errored", reason: error.message, trialDir, workspacePath: workspace, armId: arm.id, arm, aiCredits: null };
+      record = { status: "errored", reason: error.message, launched: error.launched === true, trialDir, workspacePath: workspace, armId: arm.id, arm, aiCredits: null };
       writeFileSync(join(trialDir, "trial.json"), `${JSON.stringify(record, null, 2)}\n`);
     }
-    budget.settle(reservation, record.aiCredits);
+    budget.settleTrial(reservation, record);
     let collected = null;
     try {
       collected = (await adapter.collect(record, task, { ...ctx, arm })) ?? null;
@@ -172,6 +175,8 @@ export async function runSuite({
       status: record.status,
       reason: record.reason ?? null,
       aiCredits: record.aiCredits ?? null,
+      creditsCharged: record.creditsCharged,
+      creditsEstimated: record.creditsEstimated,
       cliVersion: record.cliVersion ?? null,
       collectError: collected?.error ?? null,
     });

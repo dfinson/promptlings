@@ -66,13 +66,15 @@ function trialSummary(record, runDir) {
     status: record.status,
     reason: record.reason ?? null,
     aiCredits: record.aiCredits ?? null,
+    creditsCharged: record.creditsCharged ?? 0,
+    creditsEstimated: record.creditsEstimated ?? false,
     cliVersion: record.cliVersion ?? null,
   };
 }
 
 async function runWithHarness(options, token) {
   const prepared = await prepareStage(options);
-  const { manifest, plan, refs, runId, runDir, artifactRoot, tasks, loaded } = prepared;
+  const { manifest, plan, refs, installArgs, runId, runDir, artifactRoot, tasks, loaded } = prepared;
   const run = {
     runId,
     suite: options.suite,
@@ -84,6 +86,7 @@ async function runWithHarness(options, token) {
     finishedAt: null,
     arms: plan.arms.map((a) => a.id),
     refs,
+    installArgs,
     repeats: plan.repeats,
     taskCount: tasks.length,
     scheduled: tasks.length * plan.arms.length * plan.repeats,

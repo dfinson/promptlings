@@ -48,10 +48,14 @@ export async function runTrial(options) {
     return record;
   }
   let record;
+  let failure;
   try {
     record = await baseRunTrial({ ...options, env: { ...active.env, ...(options.env ?? {}) } });
+  } catch (error) {
+    failure = error;
+    throw error;
   } finally {
-    active.budget.settle(reservation, record?.aiCredits ?? null);
+    active.budget.settleTrial(reservation, record ?? { launched: failure?.launched === true });
   }
   active.onTrial(record);
   return record;
