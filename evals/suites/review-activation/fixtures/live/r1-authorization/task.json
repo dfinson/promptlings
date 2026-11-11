@@ -1,0 +1,17 @@
+{
+  "id": "r1-authorization",
+  "seed": "tests/review-regressions.md R1",
+  "summary": "A changed authorization rule introduces a defect: `or` became `and`.",
+  "requirements": "# Requirements\n\nThe contract is that an owner or an administrator can delete a document. Other actors cannot. IDs are non-empty strings and `is_admin` is a boolean. `can_delete` is the complete authorization function, with no external middleware granting access.\n\nNo live PR, provider, or CI is available for this branch.\n",
+  "base": {
+    "permissions.py": "def can_delete(actor_id, owner_id, is_admin):\n    return actor_id == owner_id or is_admin\n"
+  },
+  "head": {
+    "permissions.py": "def can_delete(actor_id, owner_id, is_admin):\n    return actor_id == owner_id and is_admin\n"
+  },
+  "commitMessage": "Tighten document deletion check",
+  "expect": {
+    "mentions": ["permissions.py"],
+    "nitcrackerAnchors": [{ "path": "permissions.py", "line": 2 }]
+  }
+}

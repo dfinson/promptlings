@@ -1,0 +1,8 @@
+{"type":"user.message","data":{"content":"Run the review ensemble on this branch against main."},"id":"e-1","timestamp":"2026-11-11T10:00:01.000Z"}
+{"type":"tool.execution_start","data":{"toolCallId":"e-call-skill","toolName":"skill","arguments":{"skill":"review-ensemble"}},"id":"e-2","timestamp":"2026-11-11T10:00:02.000Z"}
+{"type":"tool.execution_complete","data":{"toolCallId":"e-call-skill","success":true,"toolTelemetry":{"properties":{"found":"true"},"restrictedProperties":{"skillName":"review-ensemble"}}},"id":"e-3","timestamp":"2026-11-11T10:00:03.000Z"}
+{"type":"tool.execution_start","data":{"toolCallId":"e-task-the-nitcracker","toolName":"task","arguments":{"agent_type":"the-nitcracker","mode":"background"}},"id":"e-ts-the-nitcracker","timestamp":"2026-11-11T10:00:04.000Z"}
+{"type":"tool.execution_start","data":{"toolCallId":"e-task-pr-walkthrough","toolName":"task","arguments":{"agent_type":"pr-walkthrough","mode":"background"}},"id":"e-ts-pr-walkthrough","timestamp":"2026-11-11T10:00:05.000Z"}
+{"type":"tool.execution_start","data":{"toolCallId":"e-task-sparring-partner","toolName":"task","arguments":{"agent_type":"sparring-partner","mode":"background"}},"id":"e-ts-sparring-partner","timestamp":"2026-11-11T10:00:06.000Z"}
+{"type":"assistant.message","data":{"content":"Verified finding: permissions.py line 2 changed `or` to `and`, so owners who are not admins cannot delete.","toolRequests":[]},"id":"e-fin","timestamp":"2026-11-11T10:00:30.000Z"}
+{"type":"result","timestamp":"2026-11-11T10:00:31.000Z","sessionId":"33333333-3333-4333-8333-333333333333","exitCode":0,"usage":{"premiumRequests":3}}
