@@ -4,8 +4,9 @@ import { availableParallelism } from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 import { pathToFileURL } from "node:url";
+import { defaultRuntimeRoot, supportedVersion } from "./demo-runtime.mjs";
 
-export const supportedVersion = "4.0.539";
+export { supportedVersion };
 
 export function defaultConcurrency(cpus = availableParallelism(), memory = process.availableMemory()) {
   return Math.max(1, Math.min(4, Math.floor(cpus / 2), Math.floor(memory / (2 * 1024 ** 3))));
@@ -20,9 +21,10 @@ export function resolveManifest(manifest, manifestPath) {
     throw new Error("concurrency must be a positive integer");
   }
   if (manifest.root !== undefined && !text(manifest.root)) throw new Error("root must be a path");
-  if (!text(manifest.browserExecutable)) {
-    throw new Error("browserExecutable must identify the approved browser");
+  if (manifest.browserExecutable !== undefined && !text(manifest.browserExecutable)) {
+    throw new Error("browserExecutable must identify the approved browser when provided");
   }
+  if (manifest.runtimeRoot !== undefined && !text(manifest.runtimeRoot)) throw new Error("runtimeRoot must be a path");
   const hardwareAcceleration = manifest.hardwareAcceleration ?? "auto";
   if (!["auto", "required", "disable"].includes(hardwareAcceleration)) {
     throw new Error("hardwareAcceleration must be auto, required or disable");
@@ -83,7 +85,8 @@ export function resolveManifest(manifest, manifestPath) {
   });
   return {
     root, concurrency: manifest.concurrency ?? defaultConcurrency(), jobs,
-    browserExecutable: path.resolve(root, manifest.browserExecutable),
+    browserExecutable: manifest.browserExecutable === undefined ? undefined : path.resolve(root, manifest.browserExecutable),
+    runtimeRoot: manifest.runtimeRoot === undefined ? undefined : path.resolve(root, manifest.runtimeRoot),
     hardwareAcceleration, videoBitrate: manifest.videoBitrate, gl, port: manifest.port, stallTimeoutSeconds,
   };
 }
@@ -112,17 +115,53 @@ export async function probeHardwareEncoder(runtime, composition, platform = proc
   }
 }
 
-async function loadRuntime(root) {
-  const require = createRequire(path.join(root, "package.json"));
+export async function loadRuntime(root, runtimeRoot) {
+  let require = createRequire(path.join(runtimeRoot ?? root, "package.json"));
+  if (!runtimeRoot) {
+    try { require.resolve("remotion/package.json"); }
+    catch (error) {
+      if (error.code !== "MODULE_NOT_FOUND") throw error;
+      runtimeRoot = defaultRuntimeRoot();
+      require = createRequire(path.join(runtimeRoot, "package.json"));
+    }
+  }
   for (const name of ["remotion", "@remotion/bundler", "@remotion/renderer"]) {
-    const version = require(`${name}/package.json`).version;
+    let version;
+    try { version = require(`${name}/package.json`).version; }
+    catch (error) {
+      throw new Error(`Cannot load ${name} from ${runtimeRoot ?? root}. Run npx promptlings tools to install the demo runtime.`, { cause: error });
+    }
     if (version !== supportedVersion) {
       throw new Error(`Expected ${name} ${supportedVersion}, found ${version}`);
     }
   }
   const bundler = await import(pathToFileURL(require.resolve("@remotion/bundler")).href);
   const renderer = await import(pathToFileURL(require.resolve("@remotion/renderer")).href);
-  return { ...bundler, ...renderer, version: supportedVersion };
+  return { ...bundler, ...renderer, version: supportedVersion, runtimeRoot };
+}
+
+export async function resolveBrowser(manifest, runtime) {
+  if (manifest.browserExecutable) return manifest.browserExecutable;
+  const root = runtime.runtimeRoot ?? defaultRuntimeRoot();
+  const recordPath = path.join(root, "browser.json");
+  let record;
+  try { record = JSON.parse(await readFile(recordPath, "utf8")); }
+  catch (error) {
+    throw new Error(`Cannot read installed browser record ${recordPath}. Run npx promptlings tools or provide browserExecutable.`, { cause: error });
+  }
+  if (record.version !== supportedVersion || typeof record.browserExecutable !== "string"
+    || !path.isAbsolute(record.browserExecutable)) throw new Error(`Invalid installed browser record: ${recordPath}`);
+  return record.browserExecutable;
+}
+
+export function runtimeWebpackOverride(runtimeRoot) {
+  return (config) => ({
+    ...config,
+    resolve: {
+      ...config.resolve,
+      modules: [...(config.resolve?.modules ?? ["node_modules"]), path.join(runtimeRoot, "node_modules")],
+    },
+  });
 }
 
 export async function renderJobs(manifestPath, runtime) {
@@ -145,13 +184,16 @@ export async function renderJobs(manifestPath, runtime) {
   let browser;
   let active;
   try {
-    runtime ??= await loadRuntime(manifest.root);
+    runtime ??= await loadRuntime(manifest.root, manifest.runtimeRoot);
     results.version = runtime.version;
     if (runtime.version !== supportedVersion) throw new Error(`Expected Remotion ${supportedVersion}, found ${runtime.version}`);
-    await access(manifest.browserExecutable);
+    const browserExecutable = await resolveBrowser(manifest, runtime);
+    results.browserExecutable = browserExecutable;
+    results.runtimeRoot = runtime.runtimeRoot ?? manifest.root;
+    await access(browserExecutable);
     browser = await runtime.openBrowser("chrome", {
       forceDeviceScaleFactor: 1,
-      browserExecutable: manifest.browserExecutable,
+      browserExecutable,
       chromiumOptions: { gl: manifest.gl },
     });
     for (const [index, job] of manifest.jobs.entries()) {
@@ -165,6 +207,7 @@ export async function renderJobs(manifestPath, runtime) {
           const output = await runtime.bundle({
             entryPoint: job.entryPoint, rootDir: manifest.root,
             outDir: path.join(path.dirname(manifestPath), `${path.parse(manifestPath).name}-bundle-${index}`),
+            ...(runtime.runtimeRoot ? { webpackOverride: runtimeWebpackOverride(runtime.runtimeRoot) } : {}),
           });
           bundles.set(job.entryPoint, output);
           results.bundles.push({ entryPoint: job.entryPoint, serveUrl: output, seconds: elapsed() - begin });

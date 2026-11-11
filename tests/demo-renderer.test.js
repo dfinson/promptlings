@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { defaultConcurrency, probeHardwareEncoder, renderJobs, resolveManifest, supportedVersion } from "../skills/technical-demo-production/scripts/render-jobs.mjs";
+import { defaultConcurrency, loadRuntime, probeHardwareEncoder, renderJobs, resolveBrowser, resolveManifest, runtimeWebpackOverride, supportedVersion } from "../skills/technical-demo-production/scripts/render-jobs.mjs";
 
 const job = { id: "Film", entryPoint: "src/index.ts", width: 1920, height: 1080, fps: 30, output: "renders/film.mp4" };
 const manifest = { root: ".", browserExecutable: "browser/chrome", concurrency: 2, jobs: [job] };
@@ -36,7 +36,7 @@ async function fixture(t, data = manifest) {
   t.after(() => rm(root, { recursive: true, force: true }));
   const file = path.join(root, "jobs.json");
   await writeFile(file, JSON.stringify(data));
-  const browser = path.resolve(root, data.browserExecutable);
+  const browser = path.resolve(root, data.browserExecutable ?? "browser/chrome");
   await mkdir(path.dirname(browser), { recursive: true });
   await writeFile(browser, "Test runtime does not execute this fixture.");
   return { root, file, browser, result: () => readFile(path.join(root, "jobs-result.json"), "utf8").then(JSON.parse) };
@@ -55,7 +55,7 @@ test("manifest paths are relative to its explicit root and HTTP URLs stay URLs",
 test("invalid manifests fail before production starts", () => {
   for (const invalid of [
     { ...manifest, concurrency: 0 }, { ...manifest, jobs: [] }, { ...manifest, root: 42 },
-    { ...manifest, browserExecutable: undefined },
+    { ...manifest, browserExecutable: "" }, { ...manifest, runtimeRoot: "" },
     { ...manifest, hardwareAcceleration: "if-possible" }, { ...manifest, videoBitrate: "invalid" },
     { ...manifest, videoBitrate: "0M" }, { ...manifest, gl: "magic" },
     { ...manifest, videoBitrate: "30000000" },
@@ -71,6 +71,49 @@ test("invalid manifests fail before production starts", () => {
     ].map((change) => ({ ...manifest, jobs: [{ ...job, ...change }] })),
     { ...manifest, jobs: [job, job] },
   ]) assert.throws(() => resolveManifest(invalid, path.resolve("jobs.json")));
+});
+
+test("installed runtime supplies a browser and bundler modules without project installs", async (t) => {
+  const f = await fixture(t, { ...manifest, browserExecutable: undefined });
+  const runtime = { ...fakeRuntime(), runtimeRoot: path.join(f.root, "managed-runtime") };
+  await mkdir(runtime.runtimeRoot);
+  await writeFile(path.join(runtime.runtimeRoot, "browser.json"), JSON.stringify({
+    version: supportedVersion, browserExecutable: f.browser,
+  }));
+  const open = runtime.openBrowser;
+  runtime.openBrowser = (name, options) => open(options);
+  const result = await renderJobs(f.file, runtime);
+  assert.equal(result.status, "complete");
+  assert.equal(result.runtimeRoot, runtime.runtimeRoot);
+  assert.equal(runtime.calls.find(([name]) => name === "open")[1].browserExecutable, f.browser);
+  const override = runtime.calls.find(([name]) => name === "bundle")[1].webpackOverride;
+  const config = override({ resolve: { modules: ["node_modules"], alias: { react: "pinned-react" } } });
+  assert.deepEqual(config.resolve.modules, ["node_modules", path.join(runtime.runtimeRoot, "node_modules")]);
+  assert.equal(config.resolve.alias.react, "pinned-react");
+});
+
+test("browser records fail explicitly when missing, mismatched or not absolute", async (t) => {
+  const f = await fixture(t);
+  const runtime = { runtimeRoot: f.root };
+  await assert.rejects(resolveBrowser({}, runtime), /Cannot read installed browser record/);
+  for (const record of [
+    { version: "wrong", browserExecutable: f.browser },
+    { version: supportedVersion, browserExecutable: "relative-browser" },
+  ]) {
+    await writeFile(path.join(f.root, "browser.json"), JSON.stringify(record));
+    await assert.rejects(resolveBrowser({}, runtime), /Invalid installed browser record/);
+  }
+  assert.equal(await resolveBrowser({ browserExecutable: f.browser }, runtime), f.browser);
+  assert.deepEqual(runtimeWebpackOverride(f.root)({}).resolve.modules, ["node_modules", path.join(f.root, "node_modules")]);
+});
+
+test("an explicitly selected runtime never falls back past a missing or wrong package", async (t) => {
+  const f = await fixture(t);
+  const root = path.join(f.root, "runtime");
+  await mkdir(path.join(root, "node_modules", "remotion"), { recursive: true });
+  await assert.rejects(loadRuntime(f.root, root), /Cannot load remotion/);
+  await writeFile(path.join(root, "node_modules", "remotion", "package.json"), JSON.stringify({ version: "4.0.540" }));
+  await assert.rejects(loadRuntime(f.root, root), /Expected remotion 4.0.539, found 4.0.540/);
 });
 
 test("a batch shares one browser and one bundle while passing distinct props", async (t) => {

@@ -32,7 +32,7 @@ Keep production provenance in this record, not in the film. Never add stock disc
 
 Read [the component catalog](references/components.md) when selecting visuals. Start with the chosen Motionite example and helpers, then select existing components for gaps. Keep a thin React composition and use props for content, assets, styling and timing. Reuse the code across unrelated subjects. Write a new component only when the approved visual behavior is missing.
 
-Install only selected, version-pinned production dependencies in the external production workspace, after updating its manifest. Preserve licenses and notices when copying source. Do not install every catalog entry, adopt another library's production agent, or write a new universal scene language.
+Reuse the installer's pinned demo runtime for standard Remotion, React, media, preview and TypeScript dependencies. Install only additional selected, version-pinned production dependencies in the external production workspace, after updating its manifest. Preserve licenses and notices when copying source. Do not install every catalog entry, adopt another library's production agent, or write a new universal scene language.
 
 Use `useCurrentFrame()` and deterministic calculations for Remotion animation. Static React/SVG components can be useful as-is. Timer-driven, CSS-transition and live-state animation needs a frame-driven adapter. A simulated terminal or chat is illustration, not proof of execution.
 
@@ -46,7 +46,7 @@ Use separate output locations and browser sessions for independent operations. A
 
 Build one complete previewable composition containing the recorded media, authored scenes and actual soundtrack. Use the existing Motionite/Remotion Player or Studio route for moving review before encoding. Selected native stills support that review, rather than becoming a separate prerequisite phase. Do not build an overlay-image export and per-frame FFmpeg compositing loop for ordinary footage, crops, highlights or transitions. Final media assembly and unchanged-audio muxing remain valid FFmpeg uses.
 
-Use [the batch renderer](scripts/render-jobs.mjs) for Remotion 4.0.539. It resolves packages from the production root, not this skill. Pin `remotion`, `@remotion/bundler` and `@remotion/renderer` to that exact version in the production manifest. For footage, prefer `Video` from `@remotion/media`, pinned to the same version, with the error/fallback contract in the component catalog. The Motionite example already pins this Remotion version. The version guard protects the measured browser-shutdown path and bundled-FFmpeg capability probe, which use version-specific renderer internals.
+Use [the batch renderer](scripts/render-jobs.mjs) for Remotion 4.0.539. The installer prepares a reusable runtime in `~/.promptlings/runtimes/remotion-4.0.539` (under the user home on every OS), including React, TypeScript, the Remotion CLI/Player, bundler, renderer, media and matching Headless Shell. The helper uses a production project's existing Remotion packages when present, otherwise the installed runtime. An explicit `runtimeRoot` selects another package root. Existing mismatched or incomplete project packages fail instead of silently switching versions. For footage, prefer `Video` from `@remotion/media` with the error/fallback contract in the component catalog. Pin project-local Remotion packages to 4.0.539 when using them. The version guard protects the measured browser-shutdown path and bundled-FFmpeg capability probe, which use version-specific renderer internals.
 
 Use a job manifest instead of writing another rendering wrapper. If the helper cannot express a required output, record the exact missing capability or observed failure before choosing another execution path. A preference for transparent intermediate frames is not itself a requirement when the complete composition can render the intended picture.
 
@@ -55,7 +55,6 @@ Run `node "<skill directory>/scripts/render-jobs.mjs" "<production directory>/jo
 ```json
 {
   "root": ".",
-  "browserExecutable": "browser/chrome",
   "hardwareAcceleration": "auto",
   "jobs": [
     {
@@ -75,11 +74,13 @@ Run `node "<skill directory>/scripts/render-jobs.mjs" "<production directory>/jo
 
 Each job requires exactly one `entryPoint` or `serveUrl` (an existing local bundle directory or HTTP(S) URL). Omit `output` for a stills-only review. Native dimensions and frame rate are mandatory checks, never scaling requests. The helper uses H.264 and scale 1. Mastering, cue verification and encoded-output review remain required by the selected production route.
 
-Prepare the approved browser once in the external production workspace. Prefer the production Remotion version's pinned Chrome Headless Shell, not an arbitrary Playwright Chrome. Remotion 4.0.539 uses Headless Shell 157.0.8080.0. Reuse it when present. If missing, acquire it through the production toolchain's browser setup at demo-production time, not during `npx promptlings` installation. Replace the example's `browserExecutable` with its actual path, relative to `root` or absolute. This required path prevents implicit downloads, upgrades and browser-cache lookup in the caller's repository. Keep the verified browser identity in the production record. The pinned public `openBrowser()` does not forward an `onBrowserDownload` option, so a callback alone cannot enforce this boundary.
+Omit `browserExecutable` to use the installer's `browser.json` record, which identifies the prepared browser by absolute path and Remotion version. For an explicit `runtimeRoot`, that record lives in the selected runtime. Otherwise it lives in the installed runtime, even when packages are project-local. Remotion 4.0.539 uses Headless Shell 157.0.8080.0. An explicit `browserExecutable`, relative to `root` or absolute, overrides the record. Browser preparation runs during `install`/`tools` and reuses a matching cached browser. Rendering never downloads one. If the record, executable or runtime is missing, rerun `npx promptlings tools`, or supply an already prepared runtime/browser. Keep the verified identity in the production record.
+
+The managed runtime is installer-owned. Keep compositions, assets, bundle caches and renders in the external production workspace, not in that runtime. The helper extends bundler module lookup with the selected runtime while preserving production-local dependencies and Remotion's React aliases. For an upstream project that requires its own CLI configuration, keep its version-pinned dependency manifest and use that configured workflow rather than adding packages to the shared runtime.
 
 ### Runtime defaults and bounded tuning
 
-The installer does not install CUDA, GPU drivers or a render-specific GPU stack. The renderer uses the production Remotion packages' bundled FFmpeg and the machine's existing capabilities. Browser graphics, video decoding and final encoding are separate decisions.
+The installer provides the standard rendering packages and browser, not CUDA, GPU drivers or a render-specific GPU stack. The renderer uses the selected Remotion packages' bundled FFmpeg and the machine's existing capabilities. Browser graphics, video decoding and final encoding are separate decisions.
 
 | Manifest setting | Default and override |
 | --- | --- |

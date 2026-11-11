@@ -103,7 +103,10 @@ briefing or running fixed-count review loops.
 
 The installer fetches [Motionite](https://github.com/nxrskyaa/motionite) from the
 upstream revision in [the tool pins](lib/pins.js), just like other external skills.
-Its source and assets are not vendored here. Production dependencies and media
+Its source and assets are not vendored here. Demo installation also prepares a
+reusable version-pinned Remotion/React runtime, media component and matching
+Headless Shell. `--no-demo` skips these. GPU support is detected at render time
+without installing CUDA or drivers. Additional production dependencies and media
 belong in an external production workspace. Measure complete draft turnaround
 separately from rendering time.
 
