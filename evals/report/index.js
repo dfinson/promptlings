@@ -97,9 +97,10 @@ function plannedNFor(a, b, planned, options) {
   return declared.length ? Math.max(...declared) : planned.length;
 }
 
-// The power-derived minimum (suite analysis.minPairedN); the planned count when none is declared.
-function minPairedNFor(a, b, plannedN, options) {
+// The power-derived minimum (stage or suite analysis.minPairedN); the planned count when none is declared.
+function minPairedNFor(a, b, plannedN, options, stage) {
   if (Number.isInteger(options.minPairedN)) return options.minPairedN;
+  if (Number.isInteger(stage?.minPairedN)) return stage.minPairedN;
   const declared = [a.run.context?.minPairedN, b.run.context?.minPairedN].filter(Number.isInteger);
   return declared.length ? Math.max(...declared) : plannedN;
 }
@@ -199,6 +200,9 @@ export function buildReport(inputs, options = {}) {
   const guardrail = options.guardrail ?? metricsDecl.guardrail ?? [];
   const higherIsBetter = { ...(metricsDecl.higherIsBetter ?? {}), ...(options.higherIsBetter ?? {}) };
   if (!primary.length) throw new Error('Report needs at least one primary metric');
+  // Per-stage analysis ({ verdict, minPairedN }), e.g. ReviewBench stages.<name>.analysis.
+  const stage = options.stageAnalysis ?? options.analysis ?? runs[0].context?.stageAnalysis ?? null;
+  const verdictIssued = stage?.verdict !== false;
 
   const arms = collectArms(runs);
   const comparisons = choosePairs(arms, options).map(([ka, kb]) => {
@@ -209,7 +213,7 @@ export function buildReport(inputs, options = {}) {
     const undeclared = differences.filter((d) => !d.declared);
     const planned = plannedTasksFor(a, b, options);
     const plannedN = plannedNFor(a, b, planned, options);
-    const minPairedN = minPairedNFor(a, b, plannedN, options);
+    const minPairedN = minPairedNFor(a, b, plannedN, options, stage);
     const { kept, dropped } = pairTasks(a, b, planned);
     const keep = new Set(kept);
     const metricRows = [...new Set([...primary, ...secondary, ...guardrail])].map((metric) => ({
@@ -240,7 +244,10 @@ export function buildReport(inputs, options = {}) {
       const worseSide = row.higherIsBetter ? row.ci[1] < 0 : row.ci[0] > 0;
       if (row.role === 'guardrail') row.guardrailFlag = Number.isFinite(row.ci[0]) && worseSide;
       if (row.role !== 'primary') continue;
-      if (c.pairing.shortfall > 0) {
+      if (!verdictIssued) {
+        row.verdict = null;
+        row.verdictNote = 'verdict not issued at this stage';
+      } else if (c.pairing.shortfall > 0) {
         row.verdict = null;
         row.verdictNote = `${c.pairing.kept} tasks paired, below the minimum paired n of ${c.pairing.minPairedN} (planned ${c.pairing.plannedN}), shortfall ${c.pairing.shortfall}; no verdict`;
       } else if (Number.isFinite(row.p)) family.push(row);
@@ -277,6 +284,7 @@ export function buildReport(inputs, options = {}) {
       seed,
     },
     metrics: { primary, secondary, guardrail, higherIsBetter },
+    stage: { analysis: stage, verdictIssued },
     arms: armSummaries,
     comparisons,
     disclosures: { sameModel },
@@ -297,6 +305,7 @@ export function renderMarkdown(report, { outDir } = {}) {
   lines.push(`Statistics: ${report.statistics.interval}; ${report.statistics.multiplicity}; ${report.statistics.repeats}; ${report.statistics.invalidated}; ${report.statistics.pairing}.`, '');
 
   lines.push('## Comparisons', '');
+  if (!report.stage.verdictIssued) lines.push('Verdict not issued at this stage: intervals are reported without verdicts.', '');
   for (const c of report.comparisons) {
     lines.push(`### ${c.b} vs ${c.a}`, '');
     if (c.confounded) {

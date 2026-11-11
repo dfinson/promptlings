@@ -10,6 +10,7 @@ import { buildScores, mergeScoreEntries, metricsFromScorers, writeScores } from 
  * suite is the loaded suite document (object) handed to adapters as ctx.suite and to
  * adapter.buildPrompt; suiteName defaults to suite.name. When scoreRun is true and the adapter
  * exports scoreRun, or scoreRun is a function, its { entries, rejected } are merged into scores.json.
+ * stageAnalysis (alias analysis) is the stage's { verdict, minPairedN }; it is recorded for the report.
  */
 export async function runHarness({
   suiteName,
@@ -32,7 +33,9 @@ export async function runHarness({
   env,
   metrics,
   plannedN,
-  minPairedN = suite?.analysis?.minPairedN,
+  stageAnalysis,
+  analysis,
+  minPairedN,
   scoreRun,
   scoreRunOptions = {},
   context = {},
@@ -40,6 +43,8 @@ export async function runHarness({
   if (!runDir) throw new Error('runHarness needs runDir');
   const root = path.resolve(runDir);
   fs.mkdirSync(root, { recursive: true });
+  const stage = stageAnalysis ?? analysis ?? null;
+  const minN = minPairedN ?? stage?.minPairedN ?? suite?.analysis?.minPairedN;
   const name = suiteName ?? (suite && typeof suite === 'object' ? suite.name : undefined);
   const ctx = { artifactRoot, runDir: root, suite };
   const adapter = adapterModule ? await import(pathToFileURL(path.resolve(adapterModule)).href) : null;
@@ -66,7 +71,7 @@ export async function runHarness({
     runDir: root,
     runId,
     promptfooResults: summary.results,
-    context: { suite: name, prompt: config.prompts[0].raw, repeats, graders, plannedTasks, plannedN: plannedN ?? plannedTasks.length, ...(Number.isInteger(minPairedN) ? { minPairedN } : {}), ...context },
+    context: { suite: name, prompt: config.prompts[0].raw, repeats, graders, plannedTasks, plannedN: plannedN ?? plannedTasks.length, ...(Number.isInteger(minN) ? { minPairedN: minN } : {}), ...(stage ? { stageAnalysis: stage } : {}), ...context },
     arms,
     metrics: { ...metricsFromScorers(scorers), ...metrics },
   });

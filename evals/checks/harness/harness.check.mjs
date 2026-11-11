@@ -108,6 +108,7 @@ test('harness passes ctx to adapter hooks, uses buildPrompt, accepts a runTrial-
     artifactRoot,
     metrics: { primary: ['grounded_recall'], guardrail: ['grounded_precision'] },
     scoreRun: true,
+    stageAnalysis: { verdict: false, minPairedN: 3 },
     repeats: 2,
   });
   if (saved !== undefined) process.env.FAKE_TRIAL_STATUS = saved;
@@ -130,7 +131,8 @@ test('harness passes ctx to adapter hooks, uses buildPrompt, accepts a runTrial-
   const onDisk = JSON.parse(fs.readFileSync(path.join(runDir, 'scores.json'), 'utf8'));
   assert.deepEqual(onDisk.trials, scores.trials);
   assert.deepEqual(scores.context.plannedTasks, ['owner_repo_1-aaaaaaaa', 'owner_repo_2-bbbbbbbb']);
-  assert.equal(scores.context.minPairedN, 2, 'the suite minimum is recorded for the report');
+  assert.equal(scores.context.minPairedN, 3, 'the stage minimum overrides the suite minimum');
+  assert.deepEqual(scores.context.stageAnalysis, { verdict: false, minPairedN: 3 }, 'the stage analysis is recorded for the report');
   const trial = (task, arm, repeat) => scores.trials.find((t) => t.task === task && t.arm === arm && t.repeat === repeat);
   const scored = trial('owner_repo_1-aaaaaaaa', 'promptlings', 1);
   assert.equal(scored.judge, 'scored');
@@ -144,6 +146,8 @@ test('harness passes ctx to adapter hooks, uses buildPrompt, accepts a runTrial-
   const [c] = report.comparisons;
   assert.equal(c.pairing.kept, 1);
   assert.deepEqual(c.pairing.dropped.map((d) => [d.task, d.reasons[0].reason]), [['owner_repo_2-bbbbbbbb', 'absent from judge output']]);
-  assert.equal(c.pairing.shortfall, 1);
-  assert.equal(c.metrics.find((m) => m.metric === 'grounded_recall').verdict, null);
+  assert.equal(c.pairing.shortfall, 2);
+  const recall = c.metrics.find((m) => m.metric === 'grounded_recall');
+  assert.equal(recall.verdict, null);
+  assert.equal(recall.verdictNote, 'verdict not issued at this stage', 'the recorded stage withholds the verdict');
 });

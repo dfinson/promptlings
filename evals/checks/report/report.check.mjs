@@ -204,6 +204,19 @@ test('report drops tasks with missing pairs, counts kept and dropped, and refuse
   assert.equal(belowMin.pairing.shortfall, 1);
   assert.equal(belowMin.metrics.find((m) => m.metric === 'recall').verdict, null);
 
+  // Per-stage analysis (stages.<name>.analysis): its minimum applies and verdict: false withholds verdicts.
+  const stageMin = buildReport(judged, { baseline: 'stock', stageAnalysis: { verdict: true, minPairedN: 17 } }).comparisons[0];
+  assert.equal(stageMin.pairing.minPairedN, 17);
+  assert.equal(stageMin.metrics.find((m) => m.metric === 'recall').verdict, 'better');
+  const pilot = buildReport({ ...judged, context: { ...judged.context, stageAnalysis: { verdict: false, minPairedN: 17 } } }, { baseline: 'stock' });
+  assert.equal(pilot.stage.verdictIssued, false);
+  const pilotRecall = pilot.comparisons[0].metrics.find((m) => m.metric === 'recall');
+  assert.equal(pilotRecall.verdict, null);
+  assert.equal(pilotRecall.verdictNote, 'verdict not issued at this stage');
+  assert.ok(Number.isFinite(pilotRecall.ci[0]) && Number.isFinite(pilotRecall.ci[1]), 'intervals are still reported');
+  assert.match(renderMarkdown(pilot), /Verdict not issued at this stage/);
+  assert.equal(buildReport(judged, { baseline: 'stock', analysis: { verdict: false } }).comparisons[0].metrics.find((m) => m.metric === 'recall').verdict, null);
+
   const rejected = mergeScoreEntries(doc, { entries: entries.filter((e) => e.arm !== 'nitcracker'), rejected: [{ arm: 'nitcracker', repeat: '0', variant: 'primary', reason: 'verification failed' }] });
   const none = buildReport(rejected, { baseline: 'stock' }).comparisons[0];
   assert.equal(none.pairing.kept, 0);
