@@ -112,9 +112,15 @@ test('leakage: generated CLI args for every ReviewBench arm allow shell together
   }
   const { buildArgs } = await import(pathToFileURL(runnerPath).href);
   const suite = loadSuite();
-  for (const arm of suite.arms) {
-    assert.deepEqual(arm.tools.allow, ['write', 'shell'], arm.id);
+  for (const suiteArm of suite.arms) {
+    assert.deepEqual(suiteArm.tools.allow, ['write', 'shell'], suiteArm.id);
+    // The runner sets plugin.path after fetching the pinned checkout; buildArgs refuses a plugin arm without it.
+    const pluginPath = suiteArm.plugin ? scratch(t) : null;
+    const arm = suiteArm.plugin ? { ...suiteArm, plugin: { ...suiteArm.plugin, path: pluginPath } } : suiteArm;
     const { args } = buildArgs({ prompt: 'p', arm, limits: arm.limits, trialDir: scratch(t) });
+    const pluginDirs = args.flatMap((a, i) => (a === '--plugin-dir' ? [args[i + 1]] : a.startsWith('--plugin-dir=') ? [a.slice('--plugin-dir='.length)] : []));
+    if (arm.id === 'hve-code-review') assert.deepEqual(pluginDirs, [pluginPath], `${arm.id} passes its prepared checkout once`);
+    else assert.deepEqual(pluginDirs, [], `${arm.id} passes no --plugin-dir`);
     assert.ok(args.includes('--allow-tool=shell'), `${arm.id} allows shell`);
     assert.ok(!args.some((a) => a.startsWith('--allow-tool=shell(')), `${arm.id} has no narrowed shell allow`);
     assert.ok(args.includes('--sandbox'), `${arm.id} runs sandboxed`);
