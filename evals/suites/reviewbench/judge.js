@@ -75,7 +75,7 @@ export async function judgeArm({
   runDir,
   artifactRoot,
   arm,
-  repeat = 1,
+  repeat = 0,
   candidates,
   judge,
   variant = 'primary',

@@ -207,5 +207,7 @@ test('judge: scoreRun judges each arm from collected candidates and reports the 
   });
   assert.deepEqual(rejected, []);
   assert.deepEqual([...new Set(entries.map((e) => e.variant))], ['primary', 'exclude-producers']);
+  assert.deepEqual([...new Set(entries.map((e) => e.repeat))], [0]);
+  for (const variant of ['primary', 'exclude-producers']) assert.ok(existsSync(join(runDir, 'judge', 'stock', 'r0', variant, 'verified.json')), variant);
   assert.equal(entries.length, 6);
 });

@@ -233,7 +233,8 @@ export function gatherCandidates(runDir) {
         const file = join(trialsDir, task, arm, repeat, 'candidate.json');
         if (!existsSync(file)) continue;
         const key = `${arm}\u0000${repeat}`;
-        if (!groups.has(key)) groups.set(key, { arm, repeat, candidates: [] });
+        // Directory names are the runner's repeat index (0-based); keep it numeric for score joins.
+        if (!groups.has(key)) groups.set(key, { arm, repeat: /^\d+$/.test(repeat) ? Number(repeat) : repeat, candidates: [] });
         groups.get(key).candidates.push(JSON.parse(readFileSync(file, 'utf8')));
       }
     }
