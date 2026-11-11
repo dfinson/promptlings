@@ -158,6 +158,22 @@ test('report refuses a verdict on confounded arms', async () => {
   assert.ok(cross.comparisons[0].confoundedBy.includes('run.datasetPin'));
 });
 
+test('report counts a resolvedRef difference as declared when ref is declared', async () => {
+  const { buildReport } = await load('report/index.js');
+  const doc = scoresDoc(
+    [...trialsFor('stock'), ...trialsFor('candidate', { effect: 0.3 })],
+    [arm('stock', { resolvedRef: 'aaaa111' }), arm('candidate', { ref: 'dfinson/review-agent', resolvedRef: 'bbbb222' })],
+  );
+  const declaredRef = buildReport(doc, { baseline: 'stock' }).comparisons[0];
+  assert.equal(declaredRef.confounded, false);
+  assert.deepEqual(declaredRef.differences.filter((d) => d.field.endsWith('Ref') || d.field === 'arm.ref').map((d) => [d.field, d.declared]), [['arm.ref', true], ['arm.resolvedRef', true]]);
+  assert.equal(declaredRef.metrics.find((m) => m.metric === 'recall').verdict, 'better');
+
+  const refUndeclared = buildReport(doc, { baseline: 'stock', declaredDifferences: ['id', 'label', 'selection', 'agent'] }).comparisons[0];
+  assert.equal(refUndeclared.confounded, true);
+  assert.deepEqual(refUndeclared.confoundedBy, ['arm.ref', 'arm.resolvedRef']);
+});
+
 test('report drops tasks with missing pairs, counts kept and dropped, and refuses a verdict below the minimum paired n', async () => {
   const { buildReport, renderMarkdown } = await load('report/index.js');
   const { mergeScoreEntries } = await load('scoring/scores.js');

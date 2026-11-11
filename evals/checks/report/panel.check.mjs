@@ -343,8 +343,91 @@ test('panel default grading goes through the tool-less Copilot grader for each m
     assert.ok(path.resolve(call.home).startsWith(path.resolve(evidenceDir, call.model)));
   }
   for (const model of PANEL) {
-    const dirs = fs.readdirSync(path.join(evidenceDir, model));
+    const dirs = fs.readdirSync(path.join(evidenceDir, model)).filter((d) => d.startsWith('grade-'));
     assert.equal(dirs.length, 2);
     for (const d of dirs) assert.equal(JSON.parse(fs.readFileSync(path.join(evidenceDir, model, d, 'grade.json'), 'utf8')).toolCalls, 0);
   }
+});
+
+test('panel re-asks an unparsable answer once, keeps every raw answer and records a failure only after the retry', async () => {
+  const { runPanel, JSON_ONLY_REMINDER } = await load('scoring/panel.js');
+  const runner = await import(new URL('./fake-panel-runner.mjs', import.meta.url).href);
+  runner.calls.length = 0;
+  runner.unparsableFirst.add('grok-4.7');
+  runner.unparsableAlways.add('gpt-6.1-terra');
+  const evidenceDir = scratch('panel-retry');
+  const items = [
+    { id: 'item-0001', kind: 'golden', source: {}, content: { file: 'a.js', lines: '1', finding: 'off by one' } },
+    { id: 'item-0002', kind: 'unmatched', source: {}, content: { file: 'b.js', lines: '2', finding: 'maybe a leak' } },
+  ];
+  const saved = process.env.COPILOT_GITHUB_TOKEN;
+  process.env.COPILOT_GITHUB_TOKEN = 'ghu_fakePanelToken0123456789';
+  let panel;
+  try {
+    panel = await runPanel({ items, panelists: PANEL, graderConfig: { runnerModule: fakePanelRunner }, evidenceDir });
+  } finally {
+    runner.unparsableFirst.clear();
+    runner.unparsableAlways.clear();
+    if (saved === undefined) delete process.env.COPILOT_GITHUB_TOKEN;
+    else process.env.COPILOT_GITHUB_TOKEN = saved;
+  }
+  const callsFor = (model) => runner.calls.filter((c) => c.model === model);
+  assert.equal(callsFor('claude-opus-5.5').length, 2, 'a parsable answer is not re-asked');
+  assert.equal(callsFor('grok-4.7').length, 4);
+  assert.equal(callsFor('gpt-6.1-terra').length, 4, 'one retry only');
+  const [first, retry] = callsFor('grok-4.7');
+  assert.equal(retry.prompt, `${first.prompt}\n${JSON_ONLY_REMINDER}`, 'the retry repeats the same blind prompt plus the reminder');
+
+  for (const it of items) {
+    const grok = panel.annotations.find((a) => a.item === it.id && a.panelist === 'grok-4.7');
+    assert.ok(grok, `${it.id} grok annotated after its retry`);
+    assert.equal(grok.answers.length, 2);
+    const gpt = panel.failures.find((f) => f.item === it.id && f.panelist === 'gpt-6.1-terra');
+    assert.match(gpt.reason, /unparsable after retry: panelist answer has no JSON object; then panelist answer has no JSON object/);
+    assert.equal(gpt.answers.length, 2);
+    assert.ok(!panel.failures.some((f) => f.item === it.id && f.panelist === 'grok-4.7'));
+  }
+  assert.equal(panel.answers.length, 10);
+  const grokFirst = panel.answers.find((a) => a.panelist === 'grok-4.7' && a.kind === 'golden' && a.attempt === 1);
+  assert.match(grokFirst.error, /no JSON object/);
+  assert.equal(fs.readFileSync(path.join(evidenceDir, grokFirst.file), 'utf8'), 'These findings look like logic problems in a single hunk.');
+  const perItem = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'grok-4.7', 'items', 'item-0001.json'), 'utf8'));
+  assert.deepEqual(perItem.attempts.map((a) => [a.attempt, a.error === null]), [[1, false], [2, true]]);
+  assert.ok(perItem.outcome.labels.defect_class);
+  for (const a of perItem.attempts) assert.ok(fs.existsSync(path.join(evidenceDir, a.file)), a.file);
+  const gptItem = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'gpt-6.1-terra', 'items', 'item-0002.json'), 'utf8'));
+  assert.match(gptItem.outcome.failure, /unparsable after retry/);
+  assert.equal(gptItem.attempts.length, 2);
+});
+
+test('panel excludes errored and invalidated trials from behaviour features and per-arm aggregates', async () => {
+  const { trialFeatures, collectFeatures } = await load('scoring/behaviour.js');
+  const { runPanelAnalysis } = await load('report/panel.js');
+  const { runDir, goldenDir } = fixture();
+  const recordAt = (task, arm, r) => path.join(runDir, 'trials', task, arm, String(r), 'trial.json');
+  const patch = (file, change) => writeJson(file, { ...JSON.parse(fs.readFileSync(file, 'utf8')), ...change });
+  patch(recordAt('pr-1', 'the-nitcracker', 1), { status: 'errored', reason: 'Copilot exited 1.' });
+  patch(recordAt('pr-2', 'the-nitcracker', 1), { status: 'errored', reason: 'Copilot exited 1.' });
+  patch(recordAt('pr-3', 'plain-review', 1), { invalidated: true, reason: 'fetched the benchmark PR page' });
+
+  const errored = trialFeatures(path.dirname(recordAt('pr-1', 'the-nitcracker', 1)));
+  assert.deepEqual(errored, { available: false, excluded: true, status: 'errored', reason: 'Copilot exited 1.' });
+  assert.equal(collectFeatures(runDir).filter((f) => f.excluded).length, 3);
+
+  const { report, outDir } = await runPanelAnalysis({ runDir, goldenDir, arms: ARMS, aliases: ['Nitcracker'], grade: scriptedGrade(), resamples: 500 });
+  assert.deepEqual(
+    Object.fromEntries(ARMS.map((a) => [a, [report.features[a].trials, report.features[a].excluded, report.features[a].excludedByStatus]])),
+    { 'plain-review': [11, 1, { invalidated: 1 }], 'the-nitcracker': [10, 2, { errored: 2 }] },
+  );
+  assert.equal(report.features['the-nitcracker'].toolCalls, 5, 'excluded trials do not pull the mean toward zero');
+  assert.equal(report.excludedTrials['the-nitcracker'].count, 2);
+  assert.deepEqual(report.excludedTrials['plain-review'].byStatus, { invalidated: 1 });
+  assert.deepEqual(report.items, { total: 27, golden: 12, unmatched: 15 }, 'findings from excluded trials are not panel items');
+  const [all] = report.views;
+  assert.equal(all.unmatched['the-nitcracker'].trials, 10);
+  assert.equal(all.unmatched['plain-review'].trials, 11);
+  assert.equal(all.unmatched['plain-review'].total, 5);
+  const md = fs.readFileSync(path.join(outDir, 'report.md'), 'utf8');
+  assert.match(md, /\| the-nitcracker \| 10 \| 2 \(errored 2\) \|/);
+  assert.match(md, /Judged trials excluded from panel aggregates \(not completed or invalidated\): plain-review 1 \(invalidated 1\); the-nitcracker 2 \(errored 2\)\./);
 });

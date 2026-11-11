@@ -1,6 +1,11 @@
 // In-process stand-in for runCopilotOnce used by the panel checks. Each call is recorded; the
 // answer labels every item in the prompt with the first label of each dimension the prompt lists.
+// Models in unparsableFirst answer in prose unless the prompt carries the JSON-only reminder;
+// models in unparsableAlways always answer in prose.
 export const calls = [];
+export const unparsableFirst = new Set();
+export const unparsableAlways = new Set();
+const REMINDER = 'Reminder: reply with only the JSON object';
 
 function valueOf(args, flag) {
   const i = args.indexOf(flag);
@@ -16,10 +21,13 @@ function answerFor(prompt) {
 export async function runCopilotOnce({ home, cwd, args, env }) {
   if (args.includes('--version')) return { exitCode: 0, stdout: 'GitHub Copilot CLI 9.9.9-fake\n', stderr: '', home };
   const prompt = valueOf(args, '-p') ?? '';
-  calls.push({ home, cwd, args, model: valueOf(args, '--model'), prompt, env: { COPILOT_HOME: env.COPILOT_HOME, HOME: env.HOME, USERPROFILE: env.USERPROFILE } });
+  const model = valueOf(args, '--model');
+  calls.push({ home, cwd, args, model, prompt, env: { COPILOT_HOME: env.COPILOT_HOME, HOME: env.HOME, USERPROFILE: env.USERPROFILE } });
+  const prose = unparsableAlways.has(model) || (unparsableFirst.has(model) && !prompt.includes(REMINDER));
+  const content = prose ? 'These findings look like logic problems in a single hunk.' : JSON.stringify(answerFor(prompt));
   const events = [
     { type: 'user.message', data: { content: prompt } },
-    { type: 'assistant.message', data: { content: JSON.stringify(answerFor(prompt)), toolRequests: [] } },
+    { type: 'assistant.message', data: { content, toolRequests: [] } },
     { type: 'result', exitCode: 0 },
   ];
   return { exitCode: 0, stdout: `${events.map((e) => JSON.stringify(e)).join('\n')}\n`, stderr: '', home };
