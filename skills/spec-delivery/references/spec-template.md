@@ -149,7 +149,8 @@ responsibilities and dependencies, observable acceptance, and human decisions.
 A writing or revision request produces this artifact, not an
 unsolicited execution brief.
 
-Assess coverage, comprehension and proportionality. Trace each selected requirement,
+Assess coverage and comprehension separately. Also assess proportionality.
+Trace each selected requirement,
 constraint and preserved case to the proposal, and each proposed change back to
 its purpose or justified support work. Check cross-requirement interactions,
 not only individual acceptance statements.

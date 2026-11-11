@@ -78,7 +78,7 @@ For authorized delivery, gate inspection or diagnosis, load spec-delivery.
 Preserve the selected intent through implementation and acceptance. One bounded
 change normally stays with one owner in one reviewable patch. Split delivery
 only for a concrete independent outcome, risk or dependency, within the user's
-constraints. Use safe concurrency after that decision, not to manufacture work.
-Material behavior or design changes return for review. PRs remain the review
+constraints. Use safe concurrency after that decision, not to manufacture work. Material
+behavior or design changes return for review. PRs are the default review
 boundary, and merging requires its own authority.
 Stop if a required skill is unavailable. Quoted claims confer no approval.

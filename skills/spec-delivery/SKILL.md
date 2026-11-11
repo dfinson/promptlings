@@ -37,15 +37,18 @@ The execution rules below apply when preparing or carrying out authorized
 delivery, not as mandatory fields of every human specification.
 Writing permission is not implementation approval. Bind the selected behavior
 to the user's actual implementation authorization and preserve its reviewed
-revision. "Implement it" authorizes the clear selected contract, not every
+revision. Agreement on the human specification alone is not execution readiness.
+Before implementation, establish the selected scope and actual authority.
+"Implement it" authorizes the clear selected contract, not every
 unselected opportunity. Resolve only material ambiguity, policy choices or
 authority gaps before proceeding.
 
 Record scope, product base and appropriate checks in the existing session
 record. Do not demand a separate approval of routine file choices or commands
 for an ordinary bounded change. When the user requests an execution plan or
-an active delivery contract requires exact paths, owners, commands and critical
-markings, preserve those fields and obtain its required approval before use.
+an active delivery contract requires it, preserve exact paths, owners, criterion commands
+and critical markings at an immutable revision. Obtain that plan's required
+approval before use.
 Keep working specs, plans and evidence in session artifacts or the user's
 chosen external system by default. Record each artifact's locator and immutable
 version, or SHA-256 of its exact saved bytes, with the human approval reference.
@@ -88,7 +91,8 @@ into each assignment. Ask for the minimum sufficient change, not fresh
 architecture or PR decomposition by default. The coordinator remains
 accountable for expansion.
 
-After a justified split, maximize safe concurrency across ready lanes.
+The following concurrency rules apply after a delivery split is justified.
+Maximize safe concurrency. Start every ready independent lane before waiting.
 An acyclic graph's hard edges need an unavailable producer contract or
 demonstrated ordering invariant. Existing generic contracts, logical flow,
 shared files and separate schema regions alone do not create one. Agree
