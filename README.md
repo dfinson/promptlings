@@ -96,14 +96,19 @@ explicitly selected, and real capture for demonstrated behavior.
 
 The [production skill](skills/technical-demo-production/SKILL.md) retains approved
 inputs, selects existing components, overlaps independent preparation and reuses
-unchanged media. Its version-checked renderer batches native-resolution review
-frames and video jobs through one browser. Writing and narration use the
+unchanged media. Its Markdown guidance preserves the measured media/browser
+settings, native-resolution rendering, bundle reuse and process-lifecycle lessons,
+using upstream tools rather than a bundled rendering framework. Writing and narration use the
 reasoning-first skills. Revisions address specific defects instead of restarting
 briefing or running fixed-count review loops.
 
 The installer fetches [Motionite](https://github.com/nxrskyaa/motionite) from the
 upstream revision in [the tool pins](lib/pins.js), just like other external skills.
-Its source and assets are not vendored here. Production dependencies and media
+Its source and assets are not vendored here. Demo installation also prepares a
+reusable version-pinned Remotion/React runtime, media component and matching
+Headless Shell through Remotion's own CLI. `--no-demo` skips these. The producing
+agent checks GPU support at render time without installing CUDA or drivers.
+Additional production dependencies and media
 belong in an external production workspace. Measure complete draft turnaround
 separately from rendering time.
 

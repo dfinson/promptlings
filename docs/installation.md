@@ -113,7 +113,7 @@ execution is restricted.
 | Basic Memory | uv tool, published memory skills, MCP registration, and user-login startup |
 | Playwright | Global npm application, published skill, and Chrome browser |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
-| Technical Demo | Pinned upstream Motionite skill through the external-skills installer, plus bundled writing/capture companions and `technical-demo-production` with a native-resolution batch renderer. Remotion packages and selected third-party components are installed separately in the external production workspace |
+| Technical Demo | Pinned upstream Motionite skill and Markdown production/writing/capture guidance. A reusable user-local runtime includes Remotion 4.0.539 (CLI, Player, bundler, renderer and media), React, TypeScript and matching Chrome Headless Shell |
 | Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
 | Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the frontend-design and HyperFrames skills, and the pinned experience toolkit (esbuild, Shiki, Magic Move, Flubber, Rough.js, D3, dagre, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs. Under `npx promptlings publish`, the default selection leaves the agent out, and naming it with `--agents` fails |
 
@@ -139,7 +139,7 @@ pinned package dependencies.
 | `--memory-port 8123` | Use a different Basic Memory port |
 | `--no-playwright` | Skip Playwright CLI, its browser, and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` | Skip HyperFrames, media binaries, and skills |
-| `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, Motionite, LibreOffice, Poppler, and diff2html |
+| `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, Motionite, the Remotion runtime and Headless Shell, LibreOffice, Poppler, and diff2html |
 | `--no-skills` | Skip external published skills, not bundled Promptlings skills |
 | `--no-readside` | Skip the global memory read-side rule |
 | `--list` | List agent names and exit |
@@ -165,9 +165,23 @@ selected. `install` and `tools` fetch Motionite from the revision pinned in
 or `--no-skills` skips it. `publish` supplies only our agent and
 [production support](../skills/technical-demo-production/SKILL.md), so it assumes
 the upstream toolchain is already installed. No Motionite checkout is bundled in
-this package. Production npm dependencies and generated media stay outside this
-repository and installed skills. The batch renderer currently requires Remotion,
-renderer and bundler 4.0.539. Runtime and asset licenses remain separate.
+this package.
+
+With demo tools enabled, installation also prepares
+`~/.promptlings/runtimes/remotion-4.0.539` under the user's home directory on every
+OS. Exact package pins live in [`lib/pins.js`](../lib/pins.js).
+Matching packages and the browser cache are reused on subsequent installs.
+Remotion's own CLI prepares Headless Shell with `browser ensure`. `--no-demo`
+skips both packages and browser, while `--no-skills` only skips upstream skills.
+CUDA and GPU drivers are never installed.
+
+The producing agent uses upstream CLI/configuration or public APIs from its external
+workspace. The production skill explains explicit package/browser resolution,
+version matching, measured rendering defaults, reuse, cancellation and output
+inspection. It does not ship a custom renderer, job format or process supervisor.
+Additional project dependencies, captures, bundles and generated media stay outside
+the managed runtime, repository and installed skills. Runtime and asset licenses
+remain separate.
 
 Experiment Director and its `ab-testing` routing and `comparative-evaluation`
 method skills are discovered through the same publication path. To select only
