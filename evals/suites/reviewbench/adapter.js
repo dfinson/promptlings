@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +8,7 @@ import { ensureDataset } from './dataset.js';
 import { loadCorpus, resolveSplit, toTask, prKey } from './tasks.js';
 import { applyLeakage, scanTrial } from '../../scoring/leakage.js';
 import { judgeArm, judgePreflight, preparePiDir, scoreEntries } from './judge.js';
+import { qualifyTrial } from './qualify.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const SUITE_PATH = join(HERE, 'suite.yaml');
@@ -34,10 +36,22 @@ export function listTasks(split, ctx = {}) {
   return resolveSplit(split, suite.splits, loadCorpus(dir)).map((e) => toTask(e, split));
 }
 
+/** The arm's declared host preamble with task commits filled in, or null when the arm has none. */
+export function armPreamble(task, arm, suite = loadSuite()) {
+  const template = suite.arms?.find((a) => a.id === arm.id)?.promptPreamble ?? arm.promptPreamble;
+  if (!template) return null;
+  for (const [key, value] of [['base_sha', task?.base], ['head_sha', task?.head]]) {
+    if (template.includes(`{{${key}}}`) && !/^[0-9a-f]{40}$/.test(value ?? '')) throw new Error(`arm ${arm.id} preamble needs the task's ${key}`);
+  }
+  return template.replaceAll('{{base_sha}}', task?.base).replaceAll('{{head_sha}}', task?.head).trim();
+}
+
 export function buildPrompt(task, arm, suite = loadSuite()) {
   const request = suite.reviewRequests?.[arm.id] ?? suite.reviewRequests?.default;
   if (!request) throw new Error(`suite.yaml has no review request for arm ${arm.id}`);
-  return suite.prompt.replaceAll('{{review_request}}', request.trim()).replaceAll('{{pr_dir}}', PR_DIR);
+  const shared = suite.prompt.replaceAll('{{review_request}}', request.trim()).replaceAll('{{pr_dir}}', PR_DIR);
+  const preamble = armPreamble(task, arm, suite);
+  return preamble ? `${preamble}\n\n${shared}` : shared;
 }
 
 function git(args, cwd) {
@@ -109,7 +123,9 @@ export function materialize(task, workspace, ctx = {}) {
   const meta = { repo: task.repo, pr_number: task.prNumber, base: task.base, head: task.head, base_branch: BASE_BRANCH, title: task.title, body: task.body };
   writeFileSync(join(prDir, 'pr.json'), `${JSON.stringify(meta, null, 2)}\n`);
   writeFileSync(join(prDir, 'diff.patch'), git(['diff', '--no-color', `${BASE_BRANCH}...${HEAD_BRANCH}`], workspace));
-  appendFileSync(join(workspace, '.git', 'info', 'exclude'), `\n/${PR_DIR}/\n`);
+  // .copilot-tracking/ is excluded so an agent's own working artifacts (hve-core's
+  // pr-reference.xml and review folders) never show up as untracked changes under review.
+  appendFileSync(join(workspace, '.git', 'info', 'exclude'), `\n/${PR_DIR}/\n/.copilot-tracking/\n`);
   return { workspace, base: BASE_BRANCH, head: HEAD_BRANCH, baseSha: task.base, headSha: task.head };
 }
 
@@ -183,19 +199,30 @@ export function collect(trialRecord, task, ctx = {}) {
   const trialDir = trialDirOf(trialRecord, ctx);
   const scan = scanTrial(trialRecord);
   const audited = applyLeakage(trialRecord, scan);
-  const base = { trialDir, leakage: audited.leakage };
-  if (audited.status === 'invalidated') {
-    return { ...base, status: 'invalidated', invalidated: true, reason: audited.reason };
-  }
-  if (trialRecord.status !== 'completed') {
-    return { ...base, status: trialRecord.status, invalidated: false, reason: trialRecord.reason ?? `trial ${trialRecord.status}` };
-  }
   const armId = armIdOf(trialRecord, ctx) ?? trialDir.split(/[\\/]/).at(-2);
+  const suite = ctx.suite ?? loadSuite();
+  const armConfig = suite.arms?.find((a) => a.id === armId) ?? ctx.arm ?? null;
   const workspace = ctx.workspace ?? join(trialDir, 'workspace');
   const findingsPath = join(workspace, PR_DIR, 'findings.json');
+  const base = { trialDir, leakage: audited.leakage };
+  if (armConfig?.promptPreamble) {
+    // Evidence for the report's disclosure: the exact preamble this trial was given.
+    const preamble = armPreamble(task, armConfig, suite);
+    base.promptPreamble = { text: preamble, sha256: createHash('sha256').update(preamble).digest('hex') };
+  }
+  const qualification = (findingsSource) =>
+    armConfig?.qualificationChecks?.length ? { qualification: qualifyTrial({ record: trialRecord, trialDir, armConfig, findingsSource, findingsPath }) } : {};
+  if (audited.status === 'invalidated') {
+    return { ...base, ...qualification(null), status: 'invalidated', invalidated: true, reason: audited.reason };
+  }
+  if (trialRecord.status !== 'completed') {
+    return { ...base, ...qualification(null), status: trialRecord.status, invalidated: false, reason: trialRecord.reason ?? `trial ${trialRecord.status}` };
+  }
   let raw;
   let source;
   try {
+    // Only the contract path or the final answer is read; other workspace files (for example
+    // hve-core's .copilot-tracking/pr/pr-reference.xml or perspective findings) are never findings.
     if (existsSync(findingsPath)) {
       raw = JSON.parse(readFileSync(findingsPath, 'utf8'));
       source = findingsPath;
@@ -209,6 +236,7 @@ export function collect(trialRecord, task, ctx = {}) {
     writeFileSync(candidatePath, `${JSON.stringify(candidate, null, 2)}\n`);
     return {
       ...base,
+      ...qualification(source),
       status: 'completed',
       invalidated: false,
       candidatePath,
@@ -218,7 +246,7 @@ export function collect(trialRecord, task, ctx = {}) {
       prKey: prKey(candidate.pr),
     };
   } catch (err) {
-    return { ...base, status: 'errored', invalidated: false, reason: `findings: ${err.message}` };
+    return { ...base, ...qualification(source ?? null), status: 'errored', invalidated: false, reason: `findings: ${err.message}` };
   }
 }
 

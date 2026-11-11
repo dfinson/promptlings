@@ -39,7 +39,8 @@ splits:
     keysSha256: sha256:462d9deaad0569dab442dcbf69d4aa89fdaa35438bf94985fa21f27ec89cdb85
 
 # Shared prompt; {{review_request}} is the arm's entry in reviewRequests. Arms differ only in
-# that request (declared below) and their install and agent flags.
+# that request (declared below), their install, plugin and agent flags, and the one declared
+# promptPreamble on hve-code-review.
 prompt: |
   {{review_request}}
 
@@ -149,24 +150,55 @@ arms:
     sandbox: true
     customInstructions: false
     limits: { maxAiCredits: 1500 }
+  # Spec Amendment 3: Microsoft hve-core's Code Review orchestrator as an external comparator.
+  # No Promptlings install; the runner fetches the pinned commit once per run, verifies it and
+  # passes --plugin-dir. The agent is human-gated unless an automation host declares its hidden
+  # workflow mode, so this arm's prompt is the shared prompt preceded by promptPreamble. That
+  # preamble is the only prompt difference between arms; the report discloses it (analysis.disclosures).
+  - id: hve-code-review
+    ref: null
+    selection: null
+    agent: Code Review
+    plugin: { repo: microsoft/hve-core, commit: 299c0b68741d9bc08106b132043724c23166e2a4 }
+    external: { name: hve-core, version: 3.2.2, license: MIT }
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 5000 }
+    # {{base_sha}} and {{head_sha}} are the task's base and head commits.
+    promptPreamble: |
+      Host declaration: this session runs under an automation host that declares workflow
+      autonomy mode for the Code Review agent. Do not pause for human input; skip human scope
+      confirmation, perspective and depth selection and the walk-back loop.
+      Review target: branch_diff, base ref `review-base` (commit {{base_sha}}) to head ref
+      `pr-head`, the current HEAD (commit {{head_sha}}).
+      Review profile: standard.
+      Output contract: defer output to this host. The host's output contract is the findings
+      file and final JSON block described below; report every accepted finding there in that shape.
+    # Recorded in collected.json for qualification; see qualify.js.
+    qualificationChecks: [agent-ran, workflow-mode, skill-read, perspectives, findings-file]
 
 # reasoningEffort is fixed for every arm in qualification and recorded in run.json.
 # Stage ceilings are 1.5x planned cost including judging (spec lane 8). The pilot is three
 # runs sharing the pilot ceiling; the repeat block is a separate run so its trials are a
-# second, independent run of the same PRs.
+# second, independent run of the same PRs. Amendment 3 adds hve-code-review to qualification,
+# the pilot main block and confirmation (3, 25 and 60 trials); those ceilings scale with trial
+# count: qualification 19000 x 15/12, pilot 155625 x 125/100, confirmation 374000 x 300/240.
 stages:
   qualification:
     split: qualification
-    arms: [stock, nitcracker, sparring-partner, ensemble]
+    arms: [stock, nitcracker, sparring-partner, ensemble, hve-code-review]
     repeats: 1
-    maxAiCredits: 19000
+    maxAiCredits: 23750
     analysis: { verdict: false }
   pilot:
     split: test
-    arms: [stock, nitcracker, sparring-partner, ensemble]
+    arms: [stock, nitcracker, sparring-partner, ensemble, hve-code-review]
     repeats: 1
     ceilingGroup: pilot
-    maxAiCredits: 155625
+    maxAiCredits: 194532
     analysis: { verdict: false }
   pilot-repeat:
     split: repeat
@@ -184,19 +216,22 @@ stages:
     analysis: { verdict: false }
   confirmation:
     split: confirmation
-    arms: [stock, nitcracker, sparring-partner, ensemble]
+    arms: [stock, nitcracker, sparring-partner, ensemble, hve-code-review]
     repeats: 1
-    maxAiCredits: 374000
-    # Spec power calculation: per-PR recall SD 0.22, 10-point difference.
-    analysis: { verdict: true, minPairedN: 51 }
+    maxAiCredits: 467500
+    # Spec power calculation (Amendment 4): Holm over four comparisons, alpha 0.05/4
+    # (two-sided z 2.50), power 0.80 (z 0.84), per-PR recall SD 0.22, 10-point difference:
+    # n = ((2.50 + 0.84) x 0.22 / 0.10)^2, about 54. The 60-PR confirmation set is unchanged.
+    analysis: { verdict: true, minPairedN: 54 }
 
 limits:
   timeoutMs: 5400000
   maxAiCredits: 1500
+  # The pilot group ceiling is the sum of its three blocks (194532 + 22200 + 28125).
   stageCeilings:
-    qualification: 19000
-    pilot: 206000
-    confirmation: 374000
+    qualification: 23750
+    pilot: 244857
+    confirmation: 467500
 
 repeats: 1
 concurrency: 4
@@ -213,16 +248,27 @@ judge:
 
 analysis:
   primaryMetric: grounded_recall
+  # Amendment 4: four primary comparisons against stock, Holm-corrected at family-wise 5%.
   comparisons:
     - [nitcracker, stock]
     - [sparring-partner, stock]
     - [ensemble, stock]
+    - [hve-code-review, stock]
   multipleComparisons: holm
   familywiseAlpha: 0.05
   interval: paired-bootstrap-by-pr
   guardrail: grounded_precision
   secondary: [augmented_recall, augmented_precision]
   revisionComparison: [nitcracker, previous]
+  disclosures:
+    - arm: hve-code-review
+      kind: prompt-preamble
+      text: >-
+        The hve-code-review arm's prompt is the shared task prompt preceded by a declared host
+        preamble (workflow autonomy mode, review target branch_diff from the task's base commit
+        to HEAD, profile standard, output in the task's findings contract). It is the only
+        prompt difference between arms; the exact text is arms[hve-code-review].promptPreamble
+        and each trial's prompt.txt.
 
 scorers:
   - id: grounded_recall

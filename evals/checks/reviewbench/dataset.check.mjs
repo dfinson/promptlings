@@ -13,7 +13,7 @@ import {
   verifyDataset,
 } from '../../suites/reviewbench/dataset.js';
 import { keysHash, prKey, resolveSplit } from '../../suites/reviewbench/tasks.js';
-import { buildPrompt, listTasks, loadSuite, materialize } from '../../suites/reviewbench/adapter.js';
+import { armPreamble, buildPrompt, listTasks, loadSuite, materialize } from '../../suites/reviewbench/adapter.js';
 
 const GIT_ID = ['-c', 'user.name=evals', '-c', 'user.email=evals@example.invalid', '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false'];
 const git = (cwd, ...args) => execFileSync('git', [...GIT_ID, ...args], { cwd, encoding: 'utf8' }).trim();
@@ -161,18 +161,32 @@ test('dataset: splits resolve with sizes enforced and sampled draws frozen by ke
   assert.throws(() => resolveSplit('test', { test: { source: 'test', size: 25 } }, corpus), /expects 25/);
 });
 
-test('dataset: suite.yaml declares the frozen splits, five arms and three stages', () => {
+test('dataset: suite.yaml declares the frozen splits, six arms and three stages', () => {
   const suite = loadSuite();
-  assert.deepEqual(suite.arms.map((a) => a.id), ['stock', 'nitcracker', 'sparring-partner', 'ensemble', 'previous']);
+  assert.deepEqual(suite.arms.map((a) => a.id), ['stock', 'nitcracker', 'sparring-partner', 'ensemble', 'previous', 'hve-code-review']);
   assert.ok(suite.arms.every((a) => a.model === 'gpt-6.1-sol' && a.sandbox === true));
   assert.deepEqual(Object.fromEntries(suite.arms.map((a) => [a.id, a.limits.maxAiCredits])), {
-    stock: 1000, nitcracker: 1500, 'sparring-partner': 1500, ensemble: 5000, previous: 1500,
+    stock: 1000, nitcracker: 1500, 'sparring-partner': 1500, ensemble: 5000, previous: 1500, 'hve-code-review': 5000,
   });
   assert.equal(suite.arms.find((a) => a.id === 'ensemble').agent, null);
+  const hve = suite.arms.find((a) => a.id === 'hve-code-review');
+  assert.deepEqual(hve.plugin, { repo: 'microsoft/hve-core', commit: '299c0b68741d9bc08106b132043724c23166e2a4' });
+  assert.equal(hve.agent, 'Code Review');
+  assert.equal(hve.ref, null);
+  assert.equal(hve.selection, null);
+  assert.deepEqual(hve.tools, suite.arms.find((a) => a.id === 'stock').tools);
+  assert.ok(suite.arms.filter((a) => a.id !== 'hve-code-review').every((a) => !a.plugin && !a.promptPreamble));
   assert.equal(suite.splits.confirmation.sample.size, 60);
   assert.match(suite.splits.confirmation.keysSha256, /^sha256:[0-9a-f]{64}$/);
-  assert.equal(suite.stages.qualification.arms.length, 4);
-  assert.deepEqual(suite.stages.confirmation.analysis, { verdict: true, minPairedN: 51 });
+  for (const s of ['qualification', 'pilot', 'confirmation']) assert.ok(suite.stages[s].arms.includes('hve-code-review'), s);
+  assert.equal(suite.stages.qualification.arms.length, 5);
+  assert.deepEqual(suite.stages.confirmation.analysis, { verdict: true, minPairedN: 54 });
+  assert.equal(suite.analysis.multipleComparisons, 'holm');
+  assert.deepEqual(suite.analysis.comparisons.map(([a, b]) => `${a}>${b}`).sort(), ['ensemble>stock', 'hve-code-review>stock', 'nitcracker>stock', 'sparring-partner>stock']);
+  assert.equal(suite.limits.stageCeilings.qualification, suite.stages.qualification.maxAiCredits);
+  assert.equal(suite.limits.stageCeilings.confirmation, suite.stages.confirmation.maxAiCredits);
+  const pilotGroup = Object.values(suite.stages).filter((st) => st.ceilingGroup === 'pilot').reduce((n, st) => n + st.maxAiCredits, 0);
+  assert.equal(suite.limits.stageCeilings.pilot, pilotGroup);
   for (const s of ['qualification', 'pilot', 'pilot-repeat', 'pilot-previous']) assert.deepEqual(suite.stages[s].analysis, { verdict: false }, s);
   assert.deepEqual(suite.judge, { ...suite.judge, provider: 'github-copilot', model: 'claude-sonnet-5' });
   for (const arm of suite.arms) {
@@ -182,6 +196,17 @@ test('dataset: suite.yaml declares the frozen splits, five arms and three stages
   }
   assert.match(buildPrompt({}, { id: 'ensemble' }, suite), /^Run the review ensemble/);
   assert.match(buildPrompt({}, { id: 'stock' }, suite), /^Review the changes on this branch/);
+  const task = { base: 'a'.repeat(40), head: 'b'.repeat(40) };
+  const stockPrompt = buildPrompt(task, { id: 'stock' }, suite);
+  const hvePrompt = buildPrompt(task, { id: 'hve-code-review' }, suite);
+  const preamble = armPreamble(task, { id: 'hve-code-review' }, suite);
+  assert.match(preamble, /workflow\s+autonomy mode/);
+  assert.match(preamble, /branch_diff/);
+  assert.match(preamble, /standard/);
+  assert.ok(preamble.includes(task.base) && preamble.includes(task.head));
+  assert.equal(hvePrompt, `${preamble}\n\n${stockPrompt}`, 'the preamble is the only prompt difference');
+  assert.equal(armPreamble(task, { id: 'stock' }, suite), null);
+  assert.throws(() => armPreamble({}, { id: 'hve-code-review' }, suite), /base|head/);
 });
 
 test('dataset: materialize checks out the PR head with history and no remote, offline from a mirror', (t) => {
@@ -210,6 +235,8 @@ test('dataset: materialize checks out the PR head with history and no remote, of
   assert.equal(meta.head, head);
   assert.ok(!JSON.stringify(meta).includes('/pull/'), 'no PR URL is written');
   assert.match(readFileSync(join(workspace, '.reviewbench', 'diff.patch'), 'utf8'), /\+export const a = 2;/);
-  assert.equal(git(workspace, 'status', '--porcelain'), '', 'PR files are excluded from status');
+  mkdirSync(join(workspace, '.copilot-tracking', 'pr'), { recursive: true });
+  writeFileSync(join(workspace, '.copilot-tracking', 'pr', 'pr-reference.xml'), '<pr/>');
+  assert.equal(git(workspace, 'status', '--porcelain'), '', 'PR files and hve-core tracking files are excluded from status');
   assert.ok(existsSync(join(root, 'artifacts', 'datasets', 'reviewbench-repos', 'acme_widgets.git')));
 });

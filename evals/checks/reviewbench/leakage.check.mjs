@@ -176,3 +176,98 @@ test('leakage: collect on an audited trial writes the judge candidate', (t) => {
   assert.deepEqual(candidate.pr, { repo: TASK.repo, pr_number: 1, base: TASK.base, head: TASK.head });
   assert.deepEqual(candidate.findings, [{ producer: 'stock', file: 'src/app.js', start_line: 3, end_line: 3, message: 'null check missing' }]);
 });
+
+const HVE = 'hve-code-review';
+const HVE_COMMIT = '299c0b68741d9bc08106b132043724c23166e2a4';
+
+function hveTrial(t, events, { findings, extraFiles = {}, flags = ['--agent', 'Code Review'], plugin = { repo: 'microsoft/hve-core', commit: HVE_COMMIT, name: 'hve-core', version: '3.2.2' } } = {}) {
+  const trialDir = join(scratch(t), 'trials', 'acme_widgets_1-bbbbbbbb', HVE, '0');
+  const workspace = join(trialDir, 'workspace');
+  mkdirSync(join(workspace, PR_DIR), { recursive: true });
+  const eventsPath = join(trialDir, 'events.jsonl');
+  writeFileSync(eventsPath, `${events.map((e) => JSON.stringify(e)).join('\n')}\n`);
+  if (findings) writeFileSync(join(workspace, PR_DIR, 'findings.json'), JSON.stringify(findings));
+  for (const [rel, body] of Object.entries(extraFiles)) {
+    mkdirSync(join(workspace, rel, '..'), { recursive: true });
+    writeFileSync(join(workspace, rel), body);
+  }
+  return { trialDir, workspace, record: { status: 'completed', arm: HVE, trialDir, eventsPath, wallMs: 900, flags, plugin } };
+}
+
+function call(id, toolName, args, success = true) {
+  return [
+    { type: 'tool.execution_start', data: { toolCallId: id, toolName, arguments: args } },
+    { type: 'tool.execution_complete', data: { toolCallId: id, success, ...(success ? {} : { error: { code: 'denied', message: 'Permission denied' } }) } },
+  ];
+}
+
+const HVE_GOOD = [
+  ...call('s1', 'skill', { skill: 'code-review' }),
+  ...call('v1', 'view', { path: 'C:\\p\\.github\\skills\\coding-standards\\code-review\\references\\perspectives.md' }),
+  ...call('g1', 'powershell', { command: 'git --no-pager diff review-base...HEAD' }),
+  { type: 'subagent.started', data: { agentName: 'Code Review Functional', agentType: 'Code Review Functional' } },
+  { type: 'subagent.started', data: { agentName: 'Code Review Security', agentType: 'Code Review Security' } },
+  ...call('w1', 'create', { path: '.reviewbench/findings.json', file_text: '{}' }),
+];
+const HVE_FINDINGS = { findings: [{ file: 'src/app.js', start_line: 3, message: 'null check missing' }] };
+
+test('leakage: hve-core tracking files are never read as findings', (t) => {
+  const extraFiles = {
+    '.copilot-tracking/pr/pr-reference.xml': '<pr><file path="src/app.js"/></pr>',
+    '.copilot-tracking/reviews/code-reviews/pr-head/functional-findings.json': JSON.stringify(HVE_FINDINGS),
+  };
+  const missing = hveTrial(t, HVE_GOOD, { extraFiles });
+  const out = collect(missing.record, TASK);
+  assert.equal(out.status, 'errored');
+  assert.match(out.reason, /no findings file/);
+  assert.equal(out.qualification.checks['findings-file'].pass, false);
+
+  const present = hveTrial(t, HVE_GOOD, { extraFiles, findings: HVE_FINDINGS });
+  const ok = collect(present.record, TASK);
+  assert.equal(ok.status, 'completed', ok.reason);
+  assert.equal(ok.findingsSource, join(present.workspace, PR_DIR, 'findings.json'));
+});
+
+test('leakage: hve qualification passes a workflow-mode trial and records the preamble', (t) => {
+  const { record } = hveTrial(t, HVE_GOOD, { findings: HVE_FINDINGS });
+  const out = collect(record, TASK);
+  assert.equal(out.status, 'completed', out.reason);
+  assert.equal(out.qualification.passed, true, JSON.stringify(out.qualification.checks));
+  assert.deepEqual(Object.keys(out.qualification.checks), ['agent-ran', 'workflow-mode', 'skill-read', 'perspectives', 'findings-file']);
+  assert.equal(out.qualification.checks.perspectives.mode, 'dispatched');
+  assert.match(out.promptPreamble.text, /workflow\s+autonomy mode/);
+  assert.ok(out.promptPreamble.text.includes(TASK.base));
+  assert.match(out.promptPreamble.sha256, /^[0-9a-f]{64}$/);
+  const stock = collect(trial(t, BENIGN, { findings: HVE_FINDINGS }).record, TASK);
+  assert.equal(stock.promptPreamble, undefined);
+  assert.equal(stock.qualification, undefined);
+});
+
+test('leakage: hve qualification detects inlined perspectives', (t) => {
+  const events = [
+    ...HVE_GOOD.filter((e) => e.type !== 'subagent.started'),
+    ...call('w2', 'create', { path: '.copilot-tracking/reviews/code-reviews/pr-head/functional-findings.json', file_text: '[]' }),
+  ];
+  const out = collect(hveTrial(t, events, { findings: HVE_FINDINGS }).record, TASK);
+  assert.equal(out.qualification.checks.perspectives.mode, 'inlined');
+  assert.equal(out.qualification.passed, true);
+});
+
+test('leakage: hve qualification fails on ask_user, a refused skill read, missing perspectives or a wrong plugin', (t) => {
+  const cases = {
+    'workflow-mode': [...HVE_GOOD, ...call('a1', 'ask_user', { question: 'Which profile?' })],
+    'skill-read': [...HVE_GOOD, ...call('v2', 'view', { path: 'C:\\p\\.github\\skills\\coding-standards\\code-review\\SKILL.md' }, false)],
+    perspectives: HVE_GOOD.filter((e) => e.type !== 'subagent.started'),
+  };
+  for (const [check, events] of Object.entries(cases)) {
+    const out = collect(hveTrial(t, events, { findings: HVE_FINDINGS }).record, TASK);
+    assert.equal(out.qualification.passed, false, check);
+    assert.equal(out.qualification.checks[check].pass, false, check);
+  }
+  const paused = [...HVE_GOOD, { type: 'assistant.message', data: { content: 'Confirm before dispatch: standard profile?' } }];
+  assert.equal(collect(hveTrial(t, paused, { findings: HVE_FINDINGS }).record, TASK).qualification.checks['workflow-mode'].pass, false);
+  const wrongPlugin = hveTrial(t, HVE_GOOD, { findings: HVE_FINDINGS, plugin: { repo: 'microsoft/hve-core', commit: 'c'.repeat(40), version: '3.2.2' } });
+  assert.equal(collect(wrongPlugin.record, TASK).qualification.checks['agent-ran'].pass, false);
+  const noAgent = hveTrial(t, HVE_GOOD, { findings: HVE_FINDINGS, flags: [] });
+  assert.equal(collect(noAgent.record, TASK).qualification.checks['agent-ran'].pass, false);
+});
