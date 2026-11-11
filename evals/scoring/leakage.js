@@ -3,8 +3,9 @@ import { existsSync, readFileSync } from 'node:fs';
 /**
  * Transcript audit for benchmark leakage. A trial whose tool calls reach PR pages, PR or issue
  * comments, commits on the upstream host, or the benchmark's own golden data is invalidated.
- * Only tool-call arguments are scanned (not tool output or model prose), so reading a URL in
- * the diff does not count; issuing a request for it does.
+ * Tool-call arguments are scanned (not tool output or model prose), so reading a URL in the diff
+ * does not count; issuing a request for it does. Text rules apply to tools that can run commands
+ * or reach the network; local file tools are exempt because writing text contacts nothing.
  */
 
 const GITHUB_WEB = /github\.com\/[\w.-]+\/[\w.-]+\/(?:pull|pulls|issues|commit|commits|compare)\b/i;
@@ -15,6 +16,12 @@ const HTTP_CLIENT = /(?:^|[\s;&|(`"'])(?:curl|wget|iwr|irm|invoke-webrequest|inv
 const GIT_REMOTE = /\bgit\s+(?:[\w.-]+\s+)*?(?:fetch|pull|ls-remote|clone)\s+[^\n]*https?:\/\//i;
 const WEB_TOOL = /^(?:web_fetch|fetch|web_search|search_web|webfetch|bing_search|browser_\w+)$/i;
 const MCP_PR_TOOL = /(?:^|[-_.])(?:github|gh)[-_.].*(?:pull|issue|comment|review|commit)/i;
+/**
+ * Tools that only read or write local files or report status. Their arguments are file content
+ * or patterns, so text naming `gh pr` or a PR URL contacts nothing. Shell tools and any tool not
+ * listed here (which may run commands or reach the network) are still scanned.
+ */
+export const LOCAL_FILE_TOOL = /^(?:apply_patch|create|edit|view|str_replace_editor|str_replace_based_edit_tool|str_replace|insert|write|write_file|create_file|read|read_file|multi_edit|glob|grep|rg|ls|list_dir|list_directory|find_files|search_files|report_intent|task_complete|update_todo|todo_write)$/i;
 
 export const RULES = [
   { id: 'github-pr-page', re: GITHUB_WEB, why: 'requests a GitHub PR, issue, commit or compare page' },
@@ -31,9 +38,11 @@ function stringify(value) {
 
 /** Classifies one tool call. Returns matching rule ids with reasons. */
 export function classifyCall(toolName, args) {
-  const text = stringify(args);
   const hits = [];
-  for (const rule of RULES) if (rule.re.test(text)) hits.push({ rule: rule.id, why: rule.why });
+  if (!LOCAL_FILE_TOOL.test(toolName ?? '')) {
+    const text = stringify(args);
+    for (const rule of RULES) if (rule.re.test(text)) hits.push({ rule: rule.id, why: rule.why });
+  }
   if (WEB_TOOL.test(toolName ?? '')) hits.push({ rule: 'web-tool', why: `uses the ${toolName} web tool` });
   if (MCP_PR_TOOL.test(toolName ?? '')) hits.push({ rule: 'github-mcp', why: `uses the ${toolName} GitHub tool` });
   return hits;

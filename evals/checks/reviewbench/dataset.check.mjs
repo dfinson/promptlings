@@ -176,6 +176,7 @@ test('dataset: suite.yaml declares the frozen splits, five arms and three stages
   for (const s of ['qualification', 'pilot', 'pilot-repeat', 'pilot-previous']) assert.deepEqual(suite.stages[s].analysis, { verdict: false }, s);
   assert.deepEqual(suite.judge, { ...suite.judge, provider: 'github-copilot', model: 'claude-sonnet-5' });
   for (const arm of suite.arms) {
+    assert.deepEqual(arm.tools.allow, ['write', 'shell'], `${arm.id} allows write and all shell commands`);
     for (const denied of ['web_fetch', 'web_search', 'shell(gh:*)', 'shell(curl:*)']) assert.ok(arm.tools.deny.includes(denied), `${arm.id} denies ${denied}`);
     assert.ok(arm.tools.denyUrl.includes('github.com'));
   }

@@ -77,9 +77,12 @@ arms:
     model: gpt-6.1-sol
     reasoningEffort: high
     tools: &noLeakTools
+      # Spec Amendment 2: the broad `shell` allow lets reviewers read and run local tooling
+      # (rb-qual-1 had 2 to 29 policy refusals per trial under shell(git:*)). Every deny entry
+      # below still wins over it, and the transcript audit still invalidates leaks.
       allow:
         - write
-        - shell(git:*)
+        - shell
       deny:
         - web_fetch
         - web_search

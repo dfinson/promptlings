@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { prKey } from './tasks.js';
@@ -14,18 +14,99 @@ const ENV_ALLOW = ['PATH', 'Path', 'SystemRoot', 'SYSTEMROOT', 'ComSpec', 'PATHE
 export function judgeEnv(piDir, source = process.env) {
   const env = {};
   for (const k of ENV_ALLOW) if (source[k] !== undefined) env[k] = source[k];
-  if (!source.COPILOT_GITHUB_TOKEN) throw new Error('COPILOT_GITHUB_TOKEN is required for the github-copilot judge');
-  env.COPILOT_GITHUB_TOKEN = source.COPILOT_GITHUB_TOKEN;
+  env.COPILOT_GITHUB_TOKEN = judgeToken(source);
   env.PI_CODING_AGENT_DIR = piDir;
   return env;
 }
 
-/** Run-local pi directory holding the models.json that adds the judge model to the github-copilot provider. */
-export function preparePiDir(runDir, template = PI_MODELS_TEMPLATE) {
+export const COPILOT_USER_URL = 'https://api.github.com/copilot_internal/user';
+
+function judgeToken(env) {
+  if (!env.COPILOT_GITHUB_TOKEN) throw new Error('COPILOT_GITHUB_TOKEN is required for the github-copilot judge');
+  return env.COPILOT_GITHUB_TOKEN;
+}
+
+/**
+ * The Copilot API host differs by account (individual, business, enterprise), and pi's default
+ * host answers 401 for accounts served elsewhere. The account's own host is endpoints.api.
+ */
+export async function resolveCopilotApiBase(token, fetchImpl = fetch) {
+  let res;
+  try {
+    res = await fetchImpl(COPILOT_USER_URL, {
+      headers: { Authorization: `token ${token}`, Accept: 'application/json', 'User-Agent': 'promptlings-evals' },
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (err) {
+    throw new Error(`cannot resolve the judge's Copilot API endpoint: ${COPILOT_USER_URL} failed: ${err.message}`);
+  }
+  if (!res.ok) throw new Error(`cannot resolve the judge's Copilot API endpoint: ${COPILOT_USER_URL} returned ${res.status}`);
+  const api = (await res.json())?.endpoints?.api;
+  if (typeof api !== 'string' || !/^https:\/\/[^\s/]+/.test(api)) {
+    throw new Error(`cannot resolve the judge's Copilot API endpoint: ${COPILOT_USER_URL} has no https endpoints.api`);
+  }
+  return api.replace(/\/+$/, '');
+}
+
+/**
+ * Run-local pi directory holding the models.json that adds the judge model to the github-copilot
+ * provider, with the provider baseUrl set to the judge token's own Copilot API host.
+ */
+export async function preparePiDir(runDir, { env = process.env, fetchImpl = fetch, template = PI_MODELS_TEMPLATE } = {}) {
+  const baseUrl = await resolveCopilotApiBase(judgeToken(env), fetchImpl);
+  const models = JSON.parse(readFileSync(template, 'utf8'));
+  models.providers['github-copilot'].baseUrl = baseUrl;
   const piDir = join(runDir, 'judge', 'pi-agent');
   mkdirSync(piDir, { recursive: true });
-  copyFileSync(template, join(piDir, 'models.json'));
-  return piDir;
+  writeFileSync(join(piDir, 'models.json'), `${JSON.stringify(models, null, 2)}\n`);
+  return { piDir, baseUrl };
+}
+
+/**
+ * One minimal judge-model call, made the way pi's anthropic-messages provider calls Copilot
+ * (Bearer token, POST <baseUrl>/v1/messages, the model's headers). Run it before any trial so a
+ * judge that cannot answer fails the stage before trial credits are spent.
+ */
+export async function judgePreflight({ runDir, judge, env = process.env, fetchImpl = fetch, template = PI_MODELS_TEMPLATE }) {
+  if (judge?.provider !== 'github-copilot') throw new Error(`judge preflight supports the github-copilot provider, not ${judge?.provider}`);
+  const { piDir, baseUrl } = await preparePiDir(runDir, { env, fetchImpl, template });
+  const models = JSON.parse(readFileSync(join(piDir, 'models.json'), 'utf8'));
+  const model = models.providers['github-copilot'].models.find((m) => m.id === judge.model);
+  if (!model) throw new Error(`judge preflight: ${judge.model} is not in the run-local models.json`);
+  if (model.api !== 'anthropic-messages') throw new Error(`judge preflight: unsupported api ${model.api} for ${judge.model}`);
+  const url = `${baseUrl}/v1/messages`;
+  let res;
+  let body;
+  try {
+    res = await fetchImpl(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+        'anthropic-version': '2023-06-01',
+        authorization: `Bearer ${judgeToken(env)}`,
+        'X-Initiator': 'user',
+        'Openai-Intent': 'conversation-edits',
+        ...(model.headers ?? {}),
+      },
+      body: JSON.stringify({ model: judge.model, max_tokens: 16, messages: [{ role: 'user', content: 'Reply with OK.' }] }),
+      signal: AbortSignal.timeout(120_000),
+    });
+    body = await res.text();
+  } catch (err) {
+    throw new Error(`judge preflight: ${judge.model} at ${url} failed: ${err.message}`);
+  }
+  if (!res.ok) throw new Error(`judge preflight: ${judge.model} at ${url} returned ${res.status}: ${body.slice(0, 300)}`);
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    throw new Error(`judge preflight: ${judge.model} at ${url} returned a non-JSON body: ${body.slice(0, 300)}`);
+  }
+  if (!Array.isArray(parsed?.content)) throw new Error(`judge preflight: ${judge.model} at ${url} returned no message content`);
+  const record = { status: 'ok', provider: judge.provider, model: judge.model, baseUrl, at: new Date().toISOString() };
+  writeFileSync(join(runDir, 'judge', 'preflight.json'), `${JSON.stringify(record, null, 2)}\n`);
+  return { ...record, piDir };
 }
 
 export function judgeDir(runDir, arm, repeat, variant = 'primary') {
@@ -82,11 +163,13 @@ export async function judgeArm({
   excludeProducers = [],
   env = process.env,
   runner = run,
+  fetchImpl = fetch,
+  piDir,
 }) {
   const dir = judgeDir(runDir, arm, repeat, variant);
   const { candDir, keys } = writeCandidates(dir, candidates);
   const output = join(dir, 'results.json');
-  const piDir = preparePiDir(runDir);
+  piDir ??= (await preparePiDir(runDir, { env, fetchImpl })).piDir;
   await ensureJudgeDependencies(datasetDir, runner);
   // `npm run judge` is `tsx scripts/eval/eval.ts`; calling tsx directly avoids a shell, so
   // paths with spaces stay single arguments on Windows.

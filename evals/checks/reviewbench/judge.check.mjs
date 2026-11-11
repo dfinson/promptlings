@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { JudgeRejectedError, verifyJudgeRun } from '../../suites/reviewbench/metrics.js';
-import { judgeArm, judgeEnv, preparePiDir, scoreEntries } from '../../suites/reviewbench/judge.js';
-import { gatherCandidates, scoreRun } from '../../suites/reviewbench/adapter.js';
+import { judgeArm, judgeEnv, judgePreflight, PI_MODELS_TEMPLATE, preparePiDir, scoreEntries } from '../../suites/reviewbench/judge.js';
+import { gatherCandidates, preflight, scoreRun } from '../../suites/reviewbench/adapter.js';
 
 // Fixtures are synthetic (no ReviewBench data). results.json in each variant was produced by
 // ReviewBench's own scorer.ts and exclude-producers.ts at the pinned commit, so these checks
@@ -94,9 +94,24 @@ test('judge: rejects a run with missing details', (t) => {
   assert.throws(() => verify(run.resultsPath), /details missing/);
 });
 
-test('judge: env passes only the Copilot token and the run-local pi directory', (t) => {
+/** Offline stand-in for fetch: copilot_internal/user answers with endpoints.api; model calls go to onModel. */
+function fakeFetch(opts = {}) {
+  const { userStatus = 200, onModel, calls = [] } = opts;
+  const api = 'api' in opts ? opts.api : 'https://api.example-tenant.githubcopilot.com';
+  return async (url, init = {}) => {
+    calls.push({ url, init });
+    if (url === 'https://api.github.com/copilot_internal/user') {
+      const body = api === undefined ? { endpoints: {} } : { endpoints: { api } };
+      return new Response(JSON.stringify(body), { status: userStatus });
+    }
+    if (onModel) return onModel(url, init);
+    throw new Error(`unexpected fetch ${url}`);
+  };
+}
+
+test('judge: env passes only the Copilot token and the run-local pi directory', async (t) => {
   const runDir = tmp(t);
-  const piDir = preparePiDir(runDir);
+  const { piDir } = await preparePiDir(runDir, { env: { COPILOT_GITHUB_TOKEN: 'tok' }, fetchImpl: fakeFetch() });
   const models = JSON.parse(readFileSync(join(piDir, 'models.json'), 'utf8'));
   const sonnet = models.providers['github-copilot'].models.find((m) => m.id === 'claude-sonnet-5');
   assert.equal(sonnet.api, 'anthropic-messages');
@@ -106,6 +121,58 @@ test('judge: env passes only the Copilot token and the run-local pi directory', 
   assert.equal(env.PI_CODING_AGENT_DIR, piDir);
   for (const key of ['ANTHROPIC_API_KEY', 'OPENAI_API_KEY', 'COPILOT_PROVIDER_BASE_URL']) assert.equal(env[key], undefined);
   assert.throws(() => judgeEnv(piDir, { PATH: 'p' }), /COPILOT_GITHUB_TOKEN/);
+});
+
+test('judge: the run-local models.json points the github-copilot provider at the token account endpoints.api', async (t) => {
+  const calls = [];
+  const runDir = tmp(t);
+  const { piDir, baseUrl } = await preparePiDir(runDir, { env: { COPILOT_GITHUB_TOKEN: 'gho_x' }, fetchImpl: fakeFetch({ api: 'https://api.enterprise.githubcopilot.com/', calls }) });
+  assert.equal(baseUrl, 'https://api.enterprise.githubcopilot.com');
+  assert.equal(calls[0].init.headers.Authorization, 'token gho_x');
+  const models = JSON.parse(readFileSync(join(piDir, 'models.json'), 'utf8'));
+  assert.equal(models.providers['github-copilot'].baseUrl, 'https://api.enterprise.githubcopilot.com');
+  assert.ok(models.providers['github-copilot'].models.some((m) => m.id === 'claude-sonnet-5'));
+  const template = JSON.parse(readFileSync(PI_MODELS_TEMPLATE, 'utf8'));
+  assert.equal(template.providers['github-copilot'].baseUrl, undefined, 'the endpoint is resolved per account, never hard-coded');
+});
+
+test('judge: an unresolvable Copilot endpoint stops the judge instead of falling back to a default host', async (t) => {
+  const env = { COPILOT_GITHUB_TOKEN: 'tok' };
+  await assert.rejects(preparePiDir(tmp(t), { env, fetchImpl: fakeFetch({ userStatus: 401 }) }), /copilot_internal\/user returned 401/);
+  await assert.rejects(preparePiDir(tmp(t), { env, fetchImpl: fakeFetch({ api: undefined }) }), /no https endpoints\.api/);
+  await assert.rejects(preparePiDir(tmp(t), { env, fetchImpl: fakeFetch({ api: 'http://plain.example' }) }), /no https endpoints\.api/);
+  await assert.rejects(preparePiDir(tmp(t), { env: {}, fetchImpl: fakeFetch() }), /COPILOT_GITHUB_TOKEN/);
+});
+
+test('judge: preflight makes one minimal model call at the resolved endpoint and records it', async (t) => {
+  const runDir = tmp(t);
+  const calls = [];
+  const onModel = async () => new Response(JSON.stringify({ content: [{ type: 'text', text: 'OK' }] }), { status: 200 });
+  const result = await preflight({ judge: JUDGE }, { runDir, env: { COPILOT_GITHUB_TOKEN: 'gho_x' }, fetchImpl: fakeFetch({ api: 'https://api.enterprise.githubcopilot.com', onModel, calls }) });
+  assert.equal(result.status, 'ok');
+  assert.equal(calls.length, 2);
+  const call = calls[1];
+  assert.equal(call.url, 'https://api.enterprise.githubcopilot.com/v1/messages');
+  assert.equal(call.init.method, 'POST');
+  assert.equal(call.init.headers.authorization, 'Bearer gho_x');
+  assert.equal(call.init.headers['Copilot-Integration-Id'], 'vscode-chat');
+  const body = JSON.parse(call.init.body);
+  assert.equal(body.model, 'claude-sonnet-5');
+  assert.ok(body.max_tokens <= 16);
+  const record = JSON.parse(readFileSync(join(runDir, 'judge', 'preflight.json'), 'utf8'));
+  assert.deepEqual([record.status, record.model, record.baseUrl], ['ok', 'claude-sonnet-5', 'https://api.enterprise.githubcopilot.com']);
+});
+
+test('judge: preflight fails the stage when the judge model does not answer', async (t) => {
+  const env = { COPILOT_GITHUB_TOKEN: 'tok' };
+  const status = (code, text) => async () => new Response(text, { status: code });
+  await assert.rejects(judgePreflight({ runDir: tmp(t), judge: JUDGE, env, fetchImpl: fakeFetch({ onModel: status(401, 'unauthorized') }) }), /returned 401: unauthorized/);
+  await assert.rejects(judgePreflight({ runDir: tmp(t), judge: JUDGE, env, fetchImpl: fakeFetch({ onModel: status(200, '<html>') }) }), /non-JSON/);
+  await assert.rejects(judgePreflight({ runDir: tmp(t), judge: JUDGE, env, fetchImpl: fakeFetch({ onModel: async () => { throw new Error('ECONNRESET'); } }) }), /failed: ECONNRESET/);
+  await assert.rejects(judgePreflight({ runDir: tmp(t), judge: { ...JUDGE, model: 'not-configured' }, env, fetchImpl: fakeFetch() }), /not in the run-local models\.json/);
+  const runDir = tmp(t);
+  await assert.rejects(judgePreflight({ runDir, judge: JUDGE, env, fetchImpl: fakeFetch({ userStatus: 401 }) }), /copilot_internal\/user returned 401/);
+  assert.equal(existsSync(join(runDir, 'judge', 'preflight.json')), false);
 });
 
 /** A stand-in for `npm run judge` that copies a fixture run to --output and records its arguments. */
@@ -141,7 +208,7 @@ test('judge: judgeArm runs the pinned judge with claude-sonnet-5 and records a v
   const calls = [];
   const result = await judgeArm({
     datasetDir: judgeDataset(root), runDir: join(root, 'run'), artifactRoot: join(root, 'art'), arm: 'stock', repeat: 0,
-    candidates, judge: JUDGE, env: { PATH: 'p', COPILOT_GITHUB_TOKEN: 'tok' }, runner: fakeJudge('primary', calls),
+    candidates, judge: JUDGE, env: { PATH: 'p', COPILOT_GITHUB_TOKEN: 'tok' }, fetchImpl: fakeFetch(), runner: fakeJudge('primary', calls),
   });
   const args = calls[0].args;
   assert.equal(calls[0].cmd, process.execPath);
@@ -151,6 +218,8 @@ test('judge: judgeArm runs the pinned judge with claude-sonnet-5 and records a v
   assert.equal(args[args.indexOf('--provider') + 1], 'github-copilot');
   assert.ok(args.includes('--strict'));
   assert.ok(args[args.indexOf('--repo-dir') + 1].startsWith(join(root, 'art')));
+  const piModels = JSON.parse(readFileSync(join(calls[0].env.PI_CODING_AGENT_DIR, 'models.json'), 'utf8'));
+  assert.equal(piModels.providers['github-copilot'].baseUrl, 'https://api.example-tenant.githubcopilot.com');
   assert.equal(JSON.parse(readFileSync(join(result.dir, 'verified.json'), 'utf8')).status, 'verified');
   assert.ok(existsSync(join(result.dir, 'candidates', `${KEYS[0]}.json`)));
   const scores = scoreEntries({ arm: 'stock', repeat: 0, perPr: result.perPr });
@@ -164,7 +233,7 @@ test('judge: judgeArm rejects and records a run whose aggregate does not reprodu
   await assert.rejects(
     judgeArm({
       datasetDir: judgeDataset(root), runDir: join(root, 'run'), artifactRoot: join(root, 'art'), arm: 'stock', repeat: 0,
-      candidates, judge: JUDGE, env: { COPILOT_GITHUB_TOKEN: 'tok' }, runner: fakeJudge('primary', [], tamper),
+      candidates, judge: JUDGE, env: { COPILOT_GITHUB_TOKEN: 'tok' }, fetchImpl: fakeFetch(), runner: fakeJudge('primary', [], tamper),
     }),
     JudgeRejectedError,
   );
@@ -179,7 +248,7 @@ test('judge: judgeArm rejects a run that silently skipped a candidate PR', async
   await assert.rejects(
     judgeArm({
       datasetDir: judgeDataset(root), runDir: join(root, 'run'), artifactRoot: join(root, 'art'), arm: 'stock', repeat: 0,
-      candidates: [...candidates, extra], judge: JUDGE, env: { COPILOT_GITHUB_TOKEN: 'tok' }, runner: fakeJudge('primary', []),
+      candidates: [...candidates, extra], judge: JUDGE, env: { COPILOT_GITHUB_TOKEN: 'tok' }, fetchImpl: fakeFetch(), runner: fakeJudge('primary', []),
     }),
     /skipped 1 candidate PRs/,
   );
@@ -202,7 +271,7 @@ test('judge: scoreRun judges each arm from collected candidates and reports the 
   const dataset = judgeDataset(root);
   const suite = { judge: { ...JUDGE, diagnosticExcludeProducers: ['ccr:'] } };
   const { entries, rejected } = await scoreRun({
-    runDir, suite, diagnostic: true, runner, env: { COPILOT_GITHUB_TOKEN: 'tok' }, artifactRoot: join(root, 'art'),
+    runDir, suite, diagnostic: true, runner, env: { COPILOT_GITHUB_TOKEN: 'tok' }, fetchImpl: fakeFetch(), artifactRoot: join(root, 'art'),
     datasetDir: dataset,
   });
   assert.deepEqual(rejected, []);

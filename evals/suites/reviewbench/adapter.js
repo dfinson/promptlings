@@ -6,7 +6,7 @@ import { parse as parseYaml } from 'yaml';
 import { ensureDataset } from './dataset.js';
 import { loadCorpus, resolveSplit, toTask, prKey } from './tasks.js';
 import { applyLeakage, scanTrial } from '../../scoring/leakage.js';
-import { judgeArm, scoreEntries } from './judge.js';
+import { judgeArm, judgePreflight, preparePiDir, scoreEntries } from './judge.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const SUITE_PATH = join(HERE, 'suite.yaml');
@@ -247,10 +247,11 @@ export function gatherCandidates(runDir) {
  * With diagnostic set, also judges with the suite's excluded producer prefixes and labels the
  * entries as that variant; they are reported beside the primary result, never instead of it.
  */
-export async function scoreRun({ runDir, suite = loadSuite(), diagnostic = false, runner, env, datasetDir, ...ctx }) {
+export async function scoreRun({ runDir, suite = loadSuite(), diagnostic = false, runner, env = process.env, fetchImpl, datasetDir, ...ctx }) {
   // datasetDir is for offline checks; runs resolve and verify the pinned dataset.
   const dir = datasetDir ?? datasetFor(ctx).dir;
   const artifactRoot = artifactRootOf(ctx);
+  const { piDir } = await preparePiDir(runDir, { env, ...(fetchImpl ? { fetchImpl } : {}) });
   const entries = [];
   const rejected = [];
   const variants = [{ variant: 'primary', excludeProducers: [] }];
@@ -258,7 +259,7 @@ export async function scoreRun({ runDir, suite = loadSuite(), diagnostic = false
   for (const { arm, repeat, candidates } of gatherCandidates(runDir).values()) {
     for (const v of variants) {
       try {
-        const result = await judgeArm({ datasetDir: dir, runDir, artifactRoot, arm, repeat, candidates, judge: suite.judge, ...v, runner, env });
+        const result = await judgeArm({ datasetDir: dir, runDir, artifactRoot, arm, repeat, candidates, judge: suite.judge, ...v, runner, env, piDir });
         entries.push(...scoreEntries({ arm, repeat, variant: v.variant, perPr: result.perPr }));
       } catch (err) {
         rejected.push({ arm, repeat, variant: v.variant, reason: err.message });
@@ -266,4 +267,14 @@ export async function scoreRun({ runDir, suite = loadSuite(), diagnostic = false
     }
   }
   return { entries, rejected };
+}
+
+/**
+ * Judge preflight for core's bin/eval.js: call before any trial of a stage. It resolves the
+ * judge token's Copilot API host and makes one minimal judge-model call; a rejection means the
+ * stage must stop before trial credits are spent.
+ */
+export async function preflight(suite = loadSuite(), ctx = {}) {
+  if (!ctx.runDir) throw new Error('preflight needs ctx.runDir');
+  return judgePreflight({ runDir: ctx.runDir, judge: suite.judge, env: ctx.env ?? process.env, ...(ctx.fetchImpl ? { fetchImpl: ctx.fetchImpl } : {}) });
 }

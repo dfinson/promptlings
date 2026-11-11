@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { applyLeakage, classifyCall, scanTrial } from '../../scoring/leakage.js';
-import { collect, PR_DIR } from '../../suites/reviewbench/adapter.js';
+import { collect, loadSuite, PR_DIR } from '../../suites/reviewbench/adapter.js';
 
 const TASK = { repo: 'acme/widgets', prNumber: 1, base: 'a'.repeat(40), head: 'b'.repeat(40) };
 
@@ -74,6 +75,55 @@ test('leakage: a call the permission layer denied is a warning, not an invalidat
   assert.equal(scan.invalidated, false);
   assert.equal(scan.warnings.length, 2);
   assert.ok(scan.warnings.every((w) => w.startsWith('denied: ')));
+});
+
+test('leakage: writing findings that mention gh pr or a PR URL with a file tool does not invalidate; running gh pr in a shell still does', (t) => {
+  const patch = [
+    '*** Begin Patch',
+    '*** Add File: .reviewbench/findings.json',
+    '+{"findings": [{"file": "main.go", "start_line": 9, "message": "the extension shells out to `gh pr view` without --repo"}]}',
+    '*** Add File: .reviewbench/review-evidence.txt',
+    '+PR: 32',
+    '+Source: https://github.com/o/r/pull/1',
+    '*** End Patch',
+  ].join('\n');
+  const written = [
+    { toolName: 'apply_patch', args: patch },
+    { toolName: 'create', args: { path: '.reviewbench/notes.md', file_text: 'see gh pr view 1 and https://github.com/o/r/pull/1' } },
+    { toolName: 'edit', args: { path: 'notes.md', old_str: 'x', new_str: 'gh api repos/o/r/pulls/1/comments' } },
+  ];
+  const scan = scanTrial({ eventsPath: writeEvents(scratch(t), [...BENIGN, ...written]) });
+  assert.equal(scan.invalidated, false, scan.reasons.join('\n'));
+  for (const { toolName, args } of written) assert.deepEqual(classifyCall(toolName, args), [], toolName);
+
+  const shell = scanTrial({ eventsPath: writeEvents(scratch(t), [...BENIGN, ...written, { toolName: 'powershell', args: { command: 'gh pr view 1' } }]) });
+  assert.equal(shell.invalidated, true);
+  assert.equal(shell.reasons.length, 1);
+  assert.match(shell.reasons[0], /^powershell runs gh/);
+  assert.ok(classifyCall('bash', { command: 'gh pr view 1' }).some((h) => h.rule === 'gh-cli'));
+  assert.ok(classifyCall('some_new_tool', { input: 'gh pr view 1' }).some((h) => h.rule === 'gh-cli'), 'unknown tools are still scanned');
+});
+
+test('leakage: generated CLI args for every ReviewBench arm allow shell together with every deny-tool and deny-url entry', async (t) => {
+  const runnerPath = fileURLToPath(new URL('../../runner/index.js', import.meta.url));
+  if (!existsSync(runnerPath)) {
+    t.skip('core runner (evals/runner/index.js) is not in this tree');
+    return;
+  }
+  const { buildArgs } = await import(pathToFileURL(runnerPath).href);
+  const suite = loadSuite();
+  for (const arm of suite.arms) {
+    assert.deepEqual(arm.tools.allow, ['write', 'shell'], arm.id);
+    const { args } = buildArgs({ prompt: 'p', arm, limits: arm.limits, trialDir: scratch(t) });
+    assert.ok(args.includes('--allow-tool=shell'), `${arm.id} allows shell`);
+    assert.ok(!args.some((a) => a.startsWith('--allow-tool=shell(')), `${arm.id} has no narrowed shell allow`);
+    assert.ok(args.includes('--sandbox'), `${arm.id} runs sandboxed`);
+    for (const d of ['web_fetch', 'web_search', 'github-mcp-server', 'shell(gh:*)', 'shell(curl:*)', 'shell(git fetch:*)']) assert.ok(arm.tools.deny.includes(d), `${arm.id} keeps deny ${d}`);
+    for (const d of arm.tools.deny) assert.ok(args.includes(`--deny-tool=${d}`), `${arm.id} passes --deny-tool=${d}`);
+    for (const u of arm.tools.denyUrl) assert.ok(args.includes(`--deny-url=${u}`), `${arm.id} passes --deny-url=${u}`);
+    assert.equal(args.filter((a) => a.startsWith('--deny-tool=')).length, arm.tools.deny.length);
+    assert.equal(args.filter((a) => a.startsWith('--deny-url=')).length, arm.tools.denyUrl.length);
+  }
 });
 
 test('leakage: a call with no recorded outcome counts as executed', (t) => {
