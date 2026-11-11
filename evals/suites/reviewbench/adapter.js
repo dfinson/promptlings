@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
@@ -305,4 +305,97 @@ export async function scoreRun({ runDir, suite = loadSuite(), diagnostic = false
 export async function preflight(suite = loadSuite(), ctx = {}) {
   if (!ctx.runDir) throw new Error('preflight needs ctx.runDir');
   return judgePreflight({ runDir: ctx.runDir, judge: suite.judge, env: ctx.env ?? process.env, ...(ctx.fetchImpl ? { fetchImpl: ctx.fetchImpl } : {}) });
+}
+
+// Unquotes a path git printed in C style ("a/caf\303\251.txt"): octal escapes are UTF-8 bytes.
+function gitPath(raw) {
+  if (!raw.startsWith('"')) return raw;
+  const bytes = [];
+  const body = raw.slice(1, -1);
+  const simple = { n: 10, t: 9, r: 13, a: 7, b: 8, f: 12, v: 11, '"': 34, '\\': 92 };
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] !== '\\') {
+      bytes.push(...Buffer.from(body[i]));
+    } else if (/[0-7]/.test(body[i + 1])) {
+      bytes.push(parseInt(body.slice(i + 1, i + 4), 8));
+      i += 3;
+    } else {
+      bytes.push(simple[body[i + 1]] ?? body.charCodeAt(i + 1));
+      i += 1;
+    }
+  }
+  return Buffer.from(bytes).toString('utf8');
+}
+
+/** Changed file paths (post-change names; deleted files keep their old name) in a git diff. */
+export function diffFiles(patch) {
+  const files = new Set();
+  for (const block of patch.split(/^diff --git /m).slice(1)) {
+    // git ends ---/+++ names that contain spaces with a tab.
+    const line = (re) => block.match(re)?.[1]?.replace(/\t$/, '');
+    const plus = line(/^\+\+\+ (.+)$/m);
+    const minus = line(/^--- (.+)$/m);
+    const renamed = line(/^rename to (.+)$/m);
+    let path;
+    if (plus && plus !== '/dev/null') path = gitPath(plus).replace(/^b\//, '');
+    else if (renamed) path = gitPath(renamed);
+    else if (minus && minus !== '/dev/null') path = gitPath(minus).replace(/^a\//, '');
+    else {
+      // Mode-only or binary change without ---/+++ lines: the header is "a/<p> b/<p>".
+      const header = block.split('\n')[0];
+      const quoted = header.match(/^"a\/(?:[^"\\]|\\.)*" ("b\/(?:[^"\\]|\\.)*")$/);
+      path = quoted ? gitPath(quoted[1]).slice(2) : header.slice(header.length / 2 + 1).replace(/^b\//, '');
+    }
+    files.add(path);
+  }
+  return [...files];
+}
+
+function findPatch(runDir, taskId) {
+  // Core's layout is <runDir>/workspaces/<task>/<arm>/<repeat>; collect's default is <trialDir>/workspace.
+  const roots = [join(runDir, 'workspaces', taskId), join(runDir, 'trials', taskId)];
+  for (const root of roots) {
+    if (!existsSync(root)) continue;
+    for (const arm of readdirSync(root).sort()) {
+      const armDir = join(root, arm);
+      if (!statSync(armDir).isDirectory()) continue;
+      for (const repeat of readdirSync(armDir).sort()) {
+        for (const ws of [join(armDir, repeat), join(armDir, repeat, 'workspace')]) {
+          const patch = join(ws, PR_DIR, 'diff.patch');
+          if (existsSync(patch)) return patch;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Inputs for the classification panel (#100's runPanelAnalysis). goldenDir holds upstream
+ * golden files named <pr_key>.json, which is also the task id and trial directory name.
+ * diffFilesFor(task) takes a task id or task and returns the PR's changed file paths from the
+ * diff materialize wrote; a task with no materialized diff throws rather than skipping the split.
+ */
+export function panelInputs(runDir, suite = loadSuite(), ctx = {}) {
+  const panel = suite.panel ?? {};
+  const datasetDir = ctx.datasetDir ?? datasetFor(ctx).dir;
+  const taxonomyPath = panel.taxonomy ? join(HERE, panel.taxonomy) : null;
+  const cache = new Map();
+  return {
+    goldenDir: join(datasetDir, 'golden'),
+    taxonomyPath,
+    taxonomy: taxonomyPath ? JSON.parse(readFileSync(taxonomyPath, 'utf8')) : null,
+    namedInAdvance: panel.namedInAdvance ?? [],
+    requireFrozen: (stage) => panel.requireFrozen?.[stage] === true,
+    diffFilesFor(task) {
+      const id = typeof task === 'string' ? task : task?.id;
+      if (!id) throw new Error('diffFilesFor needs a task id');
+      if (!cache.has(id)) {
+        const patch = findPatch(runDir, id);
+        if (!patch) throw new Error(`no materialized diff for ${id} under ${runDir}`);
+        cache.set(id, diffFiles(readFileSync(patch, 'utf8')));
+      }
+      return cache.get(id);
+    },
+  };
 }

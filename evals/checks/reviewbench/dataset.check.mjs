@@ -13,7 +13,7 @@ import {
   verifyDataset,
 } from '../../suites/reviewbench/dataset.js';
 import { keysHash, prKey, resolveSplit } from '../../suites/reviewbench/tasks.js';
-import { armPreamble, buildPrompt, listTasks, loadSuite, materialize } from '../../suites/reviewbench/adapter.js';
+import { armPreamble, buildPrompt, diffFiles, listTasks, loadSuite, materialize, panelInputs } from '../../suites/reviewbench/adapter.js';
 
 const GIT_ID = ['-c', 'user.name=evals', '-c', 'user.email=evals@example.invalid', '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false'];
 const git = (cwd, ...args) => execFileSync('git', [...GIT_ID, ...args], { cwd, encoding: 'utf8' }).trim();
@@ -239,4 +239,54 @@ test('dataset: materialize checks out the PR head with history and no remote, of
   writeFileSync(join(workspace, '.copilot-tracking', 'pr', 'pr-reference.xml'), '<pr/>');
   assert.equal(git(workspace, 'status', '--porcelain'), '', 'PR files and hve-core tracking files are excluded from status');
   assert.ok(existsSync(join(root, 'artifacts', 'datasets', 'reviewbench-repos', 'acme_widgets.git')));
+});
+
+test('dataset: suite.yaml declares the panel with #100 default taxonomy, unfrozen, frozen-only for confirmation', () => {
+  const suite = loadSuite();
+  const inputs = panelInputs('unused', suite, { datasetDir: join('d', 'rb') });
+  assert.equal(inputs.goldenDir, join('d', 'rb', 'golden'));
+  assert.deepEqual(inputs.namedInAdvance, []);
+  assert.deepEqual(inputs.taxonomy, {
+    version: 'v1-pilot',
+    frozen: false,
+    golden: {
+      defect_class: ['logic', 'error-handling', 'concurrency', 'security', 'api-contract', 'data-persistence', 'tests', 'performance', 'documentation', 'maintainability'],
+      locality: ['single-hunk', 'single-file', 'cross-file', 'outside-diff'],
+      detection: ['diff', 'unchanged-code', 'execution', 'history-conventions'],
+    },
+    unmatched: { verdict: ['real-missing-from-golden', 'plausible-unverifiable', 'wrong'] },
+  });
+  assert.deepEqual(Object.keys(suite.stages).filter((st) => inputs.requireFrozen(st)), ['confirmation']);
+});
+
+test('dataset: panelInputs diffFilesFor returns the changed paths from the materialized diff', (t) => {
+  const root = tmp(t);
+  const repo = join(root, 'repo');
+  git(root, 'init', '-q', '-b', 'main', repo);
+  git(repo, 'config', 'core.quotepath', 'true');
+  mkdirSync(join(repo, 'src'));
+  for (const [f, body] of [['src/app.js', 'a\n'], ['old.txt', 'same content kept for rename detection\n'], ['gone.md', 'bye\n'], ['run.sh', 'echo\n']]) writeFileSync(join(repo, f), body);
+  git(repo, 'add', '-A');
+  git(repo, 'commit', '-q', '-m', 'base');
+  writeFileSync(join(repo, 'src/app.js'), 'b\n');
+  writeFileSync(join(repo, 'with space.js'), 'x\n');
+  writeFileSync(join(repo, 'caf\u00e9.txt'), 'y\n');
+  git(repo, 'rm', '-q', 'gone.md');
+  git(repo, 'mv', 'old.txt', 'new.txt');
+  git(repo, 'add', '-A');
+  git(repo, 'update-index', '--chmod=+x', 'run.sh');
+  git(repo, 'commit', '-q', '-m', 'change');
+  const patch = execFileSync('git', ['diff', '--no-color', 'HEAD~1...HEAD'], { cwd: repo, encoding: 'utf8' });
+  const expected = ['caf\u00e9.txt', 'gone.md', 'new.txt', 'run.sh', 'src/app.js', 'with space.js'];
+  assert.deepEqual(diffFiles(patch).sort(), expected);
+
+  const runDir = join(root, 'run');
+  const id = 'acme_widgets_9-bbbbbbbb';
+  const prDir = join(runDir, 'workspaces', id, 'stock', '0', '.reviewbench');
+  mkdirSync(prDir, { recursive: true });
+  writeFileSync(join(prDir, 'diff.patch'), patch);
+  const inputs = panelInputs(runDir, loadSuite(), { datasetDir: root });
+  assert.deepEqual(inputs.diffFilesFor(id).sort(), expected);
+  assert.deepEqual(inputs.diffFilesFor({ id }).sort(), expected);
+  assert.throws(() => inputs.diffFilesFor('acme_widgets_10-cccccccc'), /no materialized diff/);
 });

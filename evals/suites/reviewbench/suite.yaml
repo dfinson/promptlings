@@ -292,3 +292,16 @@ license:
   code: MIT
   data: not stated by ReviewBench; local benchmark use approved by the maintainer decision recorded in datasets.lock
   redistribution: none; corpus, golden data and mirrors stay under EVALS_ARTIFACT_ROOT, never in Git
+
+# Classification panel (#100's runPanelAnalysis). The taxonomy is #100's default dimensions,
+# shipped unfrozen as v1-pilot; it is frozen after the pilot by user decision, and a
+# confirmation stage refuses an unfrozen taxonomy. Paths are relative to this directory.
+panel:
+  taxonomy: taxonomy.json
+  namedInAdvance: []
+  requireFrozen:
+    qualification: false
+    pilot: false
+    pilot-repeat: false
+    pilot-previous: false
+    confirmation: true
