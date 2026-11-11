@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import CopilotGraderProvider, { MAX_PROMPT_CHARS } from '../providers/copilot-grader.js';
+import { trialExclusion } from './behaviour.js';
 import { mulberry32 } from './stats.js';
 
 export const PANEL_MODELS = ['claude-opus-5.5', 'grok-4.7', 'gpt-6.1-terra'];
@@ -73,6 +74,12 @@ export function loadJudged({ runDir, goldenDir, variant = 'primary', arms } = {}
   const trials = [];
   const catches = [];
   const unmatched = [];
+  const excluded = [];
+  // A judged entry counts only when its trial record (when present) is completed and not invalidated.
+  const exclusionFor = (task, arm, repeat) => {
+    const file = path.join(runDir, 'trials', task, arm, String(repeat), 'trial.json');
+    return fs.existsSync(file) ? trialExclusion(readJson(file)) : null;
+  };
   const armIds = arms ?? fs.readdirSync(judgeRoot).filter((d) => fs.statSync(path.join(judgeRoot, d)).isDirectory()).sort();
   for (const arm of armIds) {
     const armDir = path.join(judgeRoot, arm);
@@ -88,6 +95,11 @@ export function loadJudged({ runDir, goldenDir, variant = 'primary', arms } = {}
       if (fs.existsSync(verified) && readJson(verified).status !== 'verified') continue;
       for (const pr of readJson(details)) {
         const task = pr.pr_key;
+        const unusable = exclusionFor(task, arm, repeat);
+        if (unusable) {
+          excluded.push({ task, arm, repeat, ...unusable });
+          continue;
+        }
         const g = goldenFor(task);
         trials.push({ task, arm, repeat });
         (pr.candidate_findings ?? []).forEach((f, index) => {
@@ -109,7 +121,7 @@ export function loadJudged({ runDir, goldenDir, variant = 'primary', arms } = {}
       if (f.tp_fp === 'tp') goldenItems.push({ task, goldenIndex, file: f.file, start_line: f.start_line, end_line: f.end_line, message: f.message ?? '', severity: f.severity ?? null });
     });
   }
-  return { variant, arms: armIds, tasks, trials, golden: goldenItems, catches, unmatched };
+  return { variant, arms: armIds, tasks, trials, golden: goldenItems, catches, unmatched, excluded };
 }
 
 function escapeRegex(s) {
@@ -246,9 +258,14 @@ export function defaultGrade({ graderConfig = {}, evidenceDir } = {}) {
   };
 }
 
+export const JSON_ONLY_REMINDER = 'Reminder: reply with only the JSON object described above, with no other text.';
+
 /**
  * Sends every item to every panelist. Each (item, panelist) pair ends with either an annotation
- * whose labels all belong to the taxonomy, or an explicit failure record with its reason.
+ * whose labels all belong to the taxonomy, or an explicit failure record with its reason. An
+ * unparsable answer is re-asked once with the same prompt plus JSON_ONLY_REMINDER. Every raw answer
+ * is kept in panel.answers and, with evidenceDir, written to <evidenceDir>/<panelist>/answers/ with
+ * a per-item attempt record in <evidenceDir>/<panelist>/items/<item>.json.
  */
 export async function runPanel({
   items,
@@ -272,19 +289,61 @@ export async function runPanel({
   const annotations = [];
   const failures = [];
   const prompts = [];
+  const answers = [];
+  const writeEvidence = (model, relative, content) => {
+    if (!evidenceDir) return null;
+    const file = path.join(evidenceDir, model, relative);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, typeof content === 'string' ? content : `${JSON.stringify(content, null, 2)}\n`);
+    return path.relative(evidenceDir, file).split(path.sep).join('/');
+  };
   for (const [p, model] of panelists.entries()) {
     for (const kind of ['golden', 'unmatched']) {
       const pool = shuffle(items.filter((it) => it.kind === kind), seed + 7919 * (p + 1));
       const dims = dimensionsFor(taxonomy, kind);
-      for (const batch of batches(kind, pool, taxonomy, { maxChars, maxItems })) {
+      for (const [b, batch] of batches(kind, pool, taxonomy, { maxChars, maxItems }).entries()) {
         const prompt = assertBlind(buildPanelPrompt(kind, batch, taxonomy), names);
-        const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
-        prompts.push({ panelist: model, kind, items: batch.map((it) => it.id), sha256: promptHash, text: prompt });
-        let returned;
-        try {
-          returned = parseAnnotations(await grade(model, prompt));
-        } catch (err) {
-          for (const it of batch) failures.push({ item: it.id, panelist: model, reason: `panelist call failed: ${err.message}` });
+        prompts.push({ panelist: model, kind, items: batch.map((it) => it.id), sha256: crypto.createHash('sha256').update(prompt).digest('hex'), text: prompt });
+        const attempts = [];
+        let returned = null;
+        let outcome = null;
+        for (const attempt of [1, 2]) {
+          const asked = attempt === 1 ? prompt : assertBlind(`${prompt}\n${JSON_ONLY_REMINDER}`, names);
+          const record = { id: `${model}/${kind}-b${String(b + 1).padStart(2, '0')}-a${attempt}`, panelist: model, kind, batch: b + 1, attempt, items: batch.map((it) => it.id), promptSha256: crypto.createHash('sha256').update(asked).digest('hex'), text: null, error: null, file: null };
+          answers.push(record);
+          attempts.push(record);
+          let raw;
+          try {
+            raw = await grade(model, asked);
+          } catch (err) {
+            record.error = `panelist call failed: ${err.message}`;
+            outcome = attempt === 1 ? record.error : `panelist answer unparsable (${attempts[0].error}); retry ${record.error}`;
+            break;
+          }
+          record.text = String(raw ?? '');
+          record.file = writeEvidence(model, `answers/${kind}-b${String(b + 1).padStart(2, '0')}-a${attempt}.txt`, record.text);
+          try {
+            returned = parseAnnotations(raw);
+            break;
+          } catch (err) {
+            record.error = err.message;
+            outcome = attempt === 1 ? null : `panelist answer unparsable after retry: ${attempts.map((a) => a.error).join('; then ')}`;
+          }
+        }
+        const answerIds = attempts.map((a) => a.id);
+        const finish = (it, result) => {
+          if (result.reason) failures.push({ item: it.id, panelist: model, reason: result.reason, answers: answerIds });
+          else annotations.push({ item: it.id, panelist: model, labels: result.labels, answers: answerIds });
+          writeEvidence(model, `items/${it.id}.json`, {
+            item: it.id,
+            panelist: model,
+            kind,
+            attempts: attempts.map(({ id, attempt, promptSha256, file, error }) => ({ id, attempt, promptSha256, file, error })),
+            outcome: result.reason ? { failure: result.reason } : { labels: result.labels },
+          });
+        };
+        if (!returned) {
+          for (const it of batch) finish(it, { reason: outcome });
           continue;
         }
         const byId = new Map();
@@ -292,20 +351,20 @@ export async function runPanel({
         for (const it of batch) {
           const a = byId.get(it.id);
           if (!a) {
-            failures.push({ item: it.id, panelist: model, reason: 'no annotation returned for this item' });
+            finish(it, { reason: 'no annotation returned for this item' });
             continue;
           }
           const bad = dims.filter((d) => !taxonomy[kind][d].includes(a[d]));
           if (bad.length) {
-            failures.push({ item: it.id, panelist: model, reason: `labels outside taxonomy ${taxonomy.version}: ${bad.map((d) => `${d}=${JSON.stringify(a[d] ?? null)}`).join(', ')}` });
+            finish(it, { reason: `labels outside taxonomy ${taxonomy.version}: ${bad.map((d) => `${d}=${JSON.stringify(a[d] ?? null)}`).join(', ')}` });
             continue;
           }
-          annotations.push({ item: it.id, panelist: model, labels: Object.fromEntries(dims.map((d) => [d, a[d]])) });
+          finish(it, { labels: Object.fromEntries(dims.map((d) => [d, a[d]])) });
         }
       }
     }
   }
-  return { taxonomy: { version: taxonomy.version, frozen: taxonomy.frozen === true, dimensions: { golden: taxonomy.golden, unmatched: taxonomy.unmatched } }, panelists, sharedFamily: panelists.includes(SHARED_FAMILY_PANELIST) ? SHARED_FAMILY_PANELIST : null, items, annotations, failures, prompts };
+  return { taxonomy: { version: taxonomy.version, frozen: taxonomy.frozen === true, dimensions: { golden: taxonomy.golden, unmatched: taxonomy.unmatched } }, panelists, sharedFamily: panelists.includes(SHARED_FAMILY_PANELIST) ? SHARED_FAMILY_PANELIST : null, items, annotations, failures, prompts, answers };
 }
 
 /** Item and panelist pairs with neither an annotation nor a failure record. */

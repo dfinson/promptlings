@@ -59,14 +59,24 @@ function tokenCount(usage) {
   return ['input', 'cache_read', 'cache_write', 'output'].reduce((sum, k) => sum + (d[k]?.tokenCount ?? 0), 0);
 }
 
+/** Why a trial record is left out of behaviour and panel aggregates; null for a completed, valid trial. */
+export function trialExclusion(record) {
+  if (record?.invalidated || record?.status === 'invalidated') return { status: 'invalidated', reason: record.reason ?? null };
+  if (record?.status !== 'completed') return { status: record?.status ?? 'unknown', reason: record?.reason ?? null };
+  return null;
+}
+
 /**
  * Counts one trial's behaviour. diffFiles lists the PR's changed paths (repository-relative); when
- * absent, reads are counted but not split by diff membership.
+ * absent, reads are counted but not split by diff membership. Trials that are not completed, or are
+ * invalidated, are excluded rather than counted as zero.
  */
 export function trialFeatures(trialDir, { diffFiles } = {}) {
   const recordPath = path.join(trialDir, 'trial.json');
   if (!fs.existsSync(recordPath)) return { available: false, reason: 'no trial.json' };
   const record = JSON.parse(fs.readFileSync(recordPath, 'utf8'));
+  const unusable = trialExclusion(record);
+  if (unusable) return { available: false, excluded: true, ...unusable };
   const resolve = (p) => (p ? (path.isAbsolute(p) ? p : path.join(trialDir, p)) : null);
   const events = readEvents(resolve(record.sessionEventsPath)) ?? readEvents(resolve(record.eventsPath)) ?? readEvents(path.join(trialDir, 'events.jsonl'));
   if (!events) return { available: false, reason: 'no transcript events' };

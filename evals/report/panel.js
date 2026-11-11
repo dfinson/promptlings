@@ -150,7 +150,10 @@ function featureProfiles(features, arms) {
   const perArm = {};
   for (const arm of arms) {
     const rows = usable.filter((f) => f.arm === arm);
-    perArm[arm] = { trials: rows.length, unavailable: features.filter((f) => f.arm === arm && !f.available).length };
+    const excluded = features.filter((f) => f.arm === arm && f.excluded);
+    const byStatus = {};
+    for (const f of excluded) byStatus[f.status] = (byStatus[f.status] ?? 0) + 1;
+    perArm[arm] = { trials: rows.length, excluded: excluded.length, excludedByStatus: byStatus, unavailable: features.filter((f) => f.arm === arm && !f.available && !f.excluded).length };
     for (const name of FEATURES) {
       const values = rows.map((r) => r[name]).filter((v) => Number.isFinite(v));
       perArm[arm][name] = values.length ? mean(values) : null;
@@ -214,6 +217,18 @@ function analysisView({ panel, judged, features, pairs, namedInAdvance, handLabe
   };
 }
 
+/** Judged entries left out of every per-arm panel aggregate because their trial is unusable. */
+function excludedTrials(judged) {
+  const out = Object.fromEntries(judged.arms.map((a) => [a, { count: 0, byStatus: {}, trials: [] }]));
+  for (const t of judged.excluded ?? []) {
+    out[t.arm] ??= { count: 0, byStatus: {}, trials: [] };
+    out[t.arm].count += 1;
+    out[t.arm].byStatus[t.status] = (out[t.arm].byStatus[t.status] ?? 0) + 1;
+    out[t.arm].trials.push({ task: t.task, repeat: t.repeat, status: t.status, reason: t.reason });
+  }
+  return out;
+}
+
 export function buildPanelReport({ panel, judged, features = [], comparisons, baseline, namedInAdvance = [], handLabels = null, resamples = DEFAULT_RESAMPLES, seed = 20251111 }) {
   const gaps = coverageGaps(panel);
   if (gaps.length) throw new Error(`Panel coverage is incomplete: ${gaps.length} item and panelist pair(s) have neither an annotation nor a failure record`);
@@ -235,6 +250,7 @@ export function buildPanelReport({ panel, judged, features = [], comparisons, ba
     handLabels: handLabels ? { provided: Object.keys(handLabels).length } : { provided: 0, note: `maintainer hand-label sample of ${HAND_LABEL_SAMPLE_SIZE} items pending` },
     comparisons: pairs,
     features: featureProfiles(features, judged.arms),
+    excludedTrials: excludedTrials(judged),
     views,
   };
 }
@@ -255,8 +271,16 @@ export function renderPanelMarkdown(report) {
   out.push(`Items: ${report.items.golden} golden, ${report.items.unmatched} unmatched. Failure records: ${report.failures.length}.`);
   out.push(`Maintainer hand labels: ${report.handLabels.provided}${report.handLabels.note ? ` (${report.handLabels.note})` : ''}.`, '');
   const arms = Object.keys(report.features);
-  out.push('## Behaviour features (mean per trial)', '', `| Arm | Trials | ${FEATURES.join(' | ')} |`, `|---|---|${FEATURES.map(() => '---').join('|')}|`);
-  for (const arm of arms) out.push(`| ${arm} | ${report.features[arm].trials} | ${FEATURES.map((f) => fmt(report.features[arm][f], 1)).join(' | ')} |`);
+  const statusText = (byStatus) => Object.entries(byStatus).map(([s, n]) => `${s} ${n}`).join(', ');
+  out.push('## Behaviour features (mean per trial)', '', 'Only trials that completed and were not invalidated are counted; the Excluded column gives the rest.', '', `| Arm | Trials | Excluded | ${FEATURES.join(' | ')} |`, `|---|---|---|${FEATURES.map(() => '---').join('|')}|`);
+  for (const arm of arms) {
+    const f = report.features[arm];
+    out.push(`| ${arm} | ${f.trials} | ${f.excluded ?? 0}${f.excluded ? ` (${statusText(f.excludedByStatus)})` : ''} | ${FEATURES.map((name) => fmt(f[name], 1)).join(' | ')} |`);
+  }
+  const judgedOut = Object.entries(report.excludedTrials ?? {}).filter(([, e]) => e.count);
+  out.push('', judgedOut.length
+    ? `Judged trials excluded from panel aggregates (not completed or invalidated): ${judgedOut.map(([arm, e]) => `${arm} ${e.count} (${statusText(e.byStatus)})`).join('; ')}.`
+    : 'Judged trials excluded from panel aggregates (not completed or invalidated): none.');
   out.push('');
   for (const view of report.views) {
     out.push(`## View: ${view.name}`, '', '### Agreement', '', '| Items | Dimension | Krippendorff alpha | Disputed share |', '|---|---|---|---|');

@@ -7,6 +7,12 @@ export const DEFAULT_DECLARED_DIFFERENCES = ['id', 'label', 'ref', 'selection', 
 // Separate runs are comparable only when these match.
 export const CROSS_RUN_KEYS = ['suite', 'datasetPin', 'prompt', 'judge'];
 const PROCESS_KEYS = ['wallMs', 'nanoAiu', 'tokens', 'toolCalls', 'subagents'];
+// Fields derived from another arm field: a difference is declared when its source field is.
+export const DERIVED_FIELDS = { resolvedRef: 'ref' };
+
+function isDeclared(key, declared) {
+  return declared.includes(key) || (DERIVED_FIELDS[key] !== undefined && declared.includes(DERIVED_FIELDS[key]));
+}
 
 function stable(value) {
   if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
@@ -44,7 +50,7 @@ function configDifferences(a, b, declared) {
   const keys = new Set([...Object.keys(a.config), ...Object.keys(b.config)]);
   for (const key of [...keys].sort()) {
     if (stable(a.config[key]) === stable(b.config[key])) continue;
-    diffs.push({ field: `arm.${key}`, a: a.config[key] ?? null, b: b.config[key] ?? null, declared: declared.includes(key) });
+    diffs.push({ field: `arm.${key}`, a: a.config[key] ?? null, b: b.config[key] ?? null, declared: isDeclared(key, declared) });
   }
   const versions = (arm) => [...new Set(arm.trials.map((t) => t.cliVersion).filter(Boolean))].sort();
   if (stable(versions(a)) !== stable(versions(b))) {
