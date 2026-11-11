@@ -221,6 +221,38 @@ function finalMessage(events) {
   return message;
 }
 
+// Signs that the sandbox or the operating system refused a tool call the CLI had already permitted. Such a
+// trial measures the environment, not the agent. Policy refusals of commands outside the arm's allowance
+// (error code "denied") are agent behaviour and are not matched.
+const toolDenialPatterns = [
+  /may be caused by the active sandbox policy/i,
+  /\bsandbox\b[^\n.]{0,40}\b(?:denied|blocked|refused)\b/i,
+  /unable to access '[^'\n]+': Permission denied/i,
+  /The specified drive root "[^"\n]*\\AC\\Temp\\?" either does not exist/i,
+];
+const outputDenialPattern = /\bsandbox\b[^\n.]{0,40}\b(?:denied|blocked|refused)\b/i;
+
+function denialExcerpt(text, patterns) {
+  const lines = text.split(/\r?\n/);
+  const line = lines.find((l) => patterns.some((p) => p.test(l))) ?? lines[0];
+  return line.trim().slice(0, 300);
+}
+
+export function environmentDenials(events, message) {
+  const found = [];
+  for (const event of events) {
+    if (event?.type !== "tool.execution_complete" || event.data?.error?.code === "denied") continue;
+    const text = [event.data?.result?.content, event.data?.error?.message].filter((t) => typeof t === "string").join("\n");
+    if (toolDenialPatterns.some((p) => p.test(text))) {
+      found.push({ source: "session", toolCallId: event.data?.toolCallId ?? null, excerpt: denialExcerpt(text, toolDenialPatterns.slice(1)) });
+    }
+  }
+  if (typeof message === "string" && outputDenialPattern.test(message)) {
+    found.push({ source: "output", toolCallId: null, excerpt: denialExcerpt(message, [outputDenialPattern]) });
+  }
+  return found;
+}
+
 /**
  * Runs one isolated trial. `env` carries only trial-specific additions such as COPILOT_GITHUB_TOKEN
  * and EVALS_COPILOT_BIN; parent credentials are never inherited.
@@ -354,7 +386,16 @@ function finishTrial({ record, result, built, paths, prompt, token, workspace, b
     record.status = "completed";
   }
 
+  record.environmentDenials = environmentDenials(sessionEvents.length ? sessionEvents : events, message);
+  if (record.environmentDenials.length) {
+    const [first] = record.environmentDenials;
+    record.status = "invalidated";
+    record.invalidated = true;
+    record.reason = `Environment denial (${first.source}${first.toolCallId ? ` ${first.toolCallId}` : ""}): ${first.excerpt}`;
+  }
+
   if (leaks.length) {
+    delete record.invalidated;
     record.status = "errored";
     record.reason = `${tokenVariable} appeared in stored evidence and was replaced with ${redaction} in: ${leaks.join(", ")}`;
     record.tokenLeak = true;
@@ -368,6 +409,7 @@ export function markInvalidated(trialDir, reason) {
   const file = join(trialDir, "trial.json");
   const record = JSON.parse(readFileSync(file, "utf8"));
   record.status = "invalidated";
+  record.invalidated = true;
   record.reason = reason;
   writeFileSync(file, `${JSON.stringify(record, null, 2)}\n`);
   return record;
