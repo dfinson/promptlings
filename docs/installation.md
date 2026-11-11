@@ -113,7 +113,7 @@ execution is restricted.
 | Basic Memory | uv tool, published memory skills, MCP registration, and user-login startup |
 | Playwright | Global npm application, published skill, and Chrome browser |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
-| Technical Demo | Pinned upstream Motionite skill, bundled writing/capture companions and a native-resolution batch renderer. A reusable user-local runtime includes Remotion 4.0.539 (CLI, Player, bundler, renderer and media), React, TypeScript and matching Chrome Headless Shell |
+| Technical Demo | Pinned upstream Motionite skill and Markdown production/writing/capture guidance. A reusable user-local runtime includes Remotion 4.0.539 (CLI, Player, bundler, renderer and media), React, TypeScript and matching Chrome Headless Shell |
 | Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
 | Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the frontend-design and HyperFrames skills, and the pinned experience toolkit (esbuild, Shiki, Magic Move, Flubber, Rough.js, D3, dagre, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs. Under `npx promptlings publish`, the default selection leaves the agent out, and naming it with `--agents` fails |
 
@@ -169,20 +169,19 @@ this package.
 
 With demo tools enabled, installation also prepares
 `~/.promptlings/runtimes/remotion-4.0.539` under the user's home directory on every
-OS. Exact package pins are shared between the installer and renderer in
-[`demo-runtime.mjs`](../skills/technical-demo-production/scripts/demo-runtime.mjs).
+OS. Exact package pins live in [`lib/pins.js`](../lib/pins.js).
 Matching packages and the browser cache are reused on subsequent installs.
-`browser.json` records the prepared executable and runtime version. `--no-demo`
+Remotion's own CLI prepares Headless Shell with `browser ensure`. `--no-demo`
 skips both packages and browser, while `--no-skills` only skips upstream skills.
 CUDA and GPU drivers are never installed.
 
-The batch renderer can consume this runtime from an external production workspace
-without installing another copy. Existing project-local Remotion packages remain
-supported and version-checked. Optional `runtimeRoot` and `browserExecutable`
-manifest fields select explicit alternatives. Missing setup fails with a repair
-instruction rather than downloading during a render. Additional project dependencies,
-captures, bundles and generated media stay outside the managed runtime, repository
-and installed skills. Runtime and asset licenses remain separate.
+The producing agent uses upstream CLI/configuration or public APIs from its external
+workspace. The production skill explains explicit package/browser resolution,
+version matching, measured rendering defaults, reuse, cancellation and output
+inspection. It does not ship a custom renderer, job format or process supervisor.
+Additional project dependencies, captures, bundles and generated media stay outside
+the managed runtime, repository and installed skills. Runtime and asset licenses
+remain separate.
 
 Experiment Director and its `ab-testing` routing and `comparative-evaluation`
 method skills are discovered through the same publication path. To select only

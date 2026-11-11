@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
-import { dpkgInstalled, externalSkillSources, installDemoRuntime, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
+import { dpkgInstalled, externalSkillSources, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
 import { deps, installMemory } from "../lib/memory.js";
 import { capture, packageBin, quoteForCmd, runBuffered, which } from "../lib/run.js";
@@ -245,85 +245,6 @@ test("global npm installs only missing or differently versioned pins", (t) => {
   assert.deepEqual(npmMissing(root, ["@scope/pkg@1.2.3", "plain@2.0.1", "absent@1.0.0", "broken@1.0.0"]),
     ["plain@2.0.1", "absent@1.0.0", "broken@1.0.0"]);
   assert.deepEqual(npmMissing(root, ["@scope/pkg@1.2.3", "plain@2.0.0"]), []);
-});
-
-test("demo runtime installation is pinned, reusable and repairs missing packages", (t) => {
-  const root = join(temporary(t), "runtime with spaces");
-  const calls = [];
-  const runner = (command, args, options) => {
-    calls.push({ command, args, cwd: options.cwd });
-    assert.equal(options.cwd, root);
-    if (command !== "npm") return;
-    const manifest = JSON.parse(readFileSync(join(root, "package.json")));
-    assert.deepEqual(manifest.dependencies, pins.demoDependencies);
-    for (const [name, version] of Object.entries(manifest.dependencies)) {
-      mkdirSync(join(root, "node_modules", name), { recursive: true });
-      writeFileSync(join(root, "node_modules", name, "package.json"), JSON.stringify({ name, version }));
-    }
-  };
-  installDemoRuntime({ demo: true }, { root, runner });
-  assert.equal(calls.filter(({ command }) => command === "npm").length, 1);
-  assert.ok(calls[1].args[0].endsWith("prepare-browser.mjs"));
-  installDemoRuntime({ demo: true }, { root, runner });
-  assert.equal(calls.filter(({ command }) => command === "npm").length, 1);
-  rmSync(join(root, "node_modules", "@remotion", "media", "package.json"));
-  installDemoRuntime({ demo: true }, { root, runner });
-  assert.equal(calls.filter(({ command }) => command === "npm").length, 2);
-  assert.equal(calls.filter(({ command }) => command === process.execPath).length, 3);
-});
-
-test("no-demo skips runtime setup without creating directories", (t) => {
-  const root = join(temporary(t), "unused");
-  const options = parseArgs(["tools", "--no-demo"], [...discoverAgents().keys()]);
-  installDemoRuntime(options, { root, runner: () => assert.fail("Unexpected setup") });
-  assert.equal(existsSync(root), false);
-});
-
-test("demo runtime setup preserves unrelated manifests and surfaces installation failures", (t) => {
-  const root = temporary(t);
-  const manifest = join(root, "package.json");
-  writeFileSync(manifest, '{"name":"user-project"}');
-  assert.throws(() => installDemoRuntime({ demo: true }, { root }), /unrelated runtime manifest/);
-  assert.equal(readFileSync(manifest, "utf8"), '{"name":"user-project"}');
-  rmSync(manifest);
-  assert.throws(() => installDemoRuntime({ demo: true }, {
-    root, runner: () => { throw new Error("npm unavailable"); },
-  }), /npm unavailable/);
-  assert.throws(() => installDemoRuntime({ demo: true }, { root, runner: () => {} }), /packages missing or mismatched/);
-});
-
-test("browser preparation records the executable and reuses an existing browser", (t) => {
-  const root = temporary(t);
-  const renderer = join(root, "node_modules", "@remotion", "renderer");
-  mkdirSync(renderer, { recursive: true });
-  writeFileSync(join(root, "package.json"), '{"name":"browser-fixture"}');
-  writeFileSync(join(renderer, "package.json"), JSON.stringify({ version: pins.demoDependencies.remotion, main: "index.cjs" }));
-  writeFileSync(join(renderer, "index.cjs"), `
-const fs = require('node:fs');
-const path = require('node:path');
-exports.ensureBrowser = async (options) => {
-  if (options.chromeMode !== 'headless-shell') throw Error('Wrong browser mode');
-  const file = path.join(process.cwd(), 'browser-fixture');
-  if (!fs.existsSync(file)) {
-    fs.writeFileSync(file, 'browser');
-    fs.appendFileSync('downloads', 'download\\n');
-  }
-  return {path: file};
-};
-`);
-  const script = join(packageRoot, "skills", "technical-demo-production", "scripts", "prepare-browser.mjs");
-  for (let count = 0; count < 2; count++) {
-    const result = spawnSync(process.execPath, [script], { cwd: root, encoding: "utf8" });
-    assert.equal(result.status, 0, result.stderr);
-  }
-  assert.equal(readFileSync(join(root, "downloads"), "utf8"), "download\n");
-  assert.deepEqual(JSON.parse(readFileSync(join(root, "browser.json"))), {
-    version: pins.demoDependencies.remotion, browserExecutable: realpathSync(join(root, "browser-fixture")),
-  });
-  writeFileSync(join(renderer, "index.cjs"), "exports.ensureBrowser = async () => { throw Error('download failed'); };");
-  const failed = spawnSync(process.execPath, [script], { cwd: root, encoding: "utf8" });
-  assert.notEqual(failed.status, 0);
-  assert.match(failed.stderr, /download failed/);
 });
 
 test("native package selection skips commands that are already present", () => {
