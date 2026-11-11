@@ -157,29 +157,35 @@ stages:
     arms: [stock, nitcracker, sparring-partner, ensemble]
     repeats: 1
     maxAiCredits: 19000
+    analysis: { verdict: false }
   pilot:
     split: test
     arms: [stock, nitcracker, sparring-partner, ensemble]
     repeats: 1
     ceilingGroup: pilot
     maxAiCredits: 155625
+    analysis: { verdict: false }
   pilot-repeat:
     split: repeat
     arms: [stock, nitcracker, sparring-partner]
     repeats: 1
     ceilingGroup: pilot
     maxAiCredits: 22200
+    analysis: { verdict: false }
   pilot-previous:
     split: test
     arms: [previous]
     repeats: 1
     ceilingGroup: pilot
     maxAiCredits: 28125
+    analysis: { verdict: false }
   confirmation:
     split: confirmation
     arms: [stock, nitcracker, sparring-partner, ensemble]
     repeats: 1
     maxAiCredits: 374000
+    # Spec power calculation: per-PR recall SD 0.22, 10-point difference.
+    analysis: { verdict: true, minPairedN: 51 }
 
 limits:
   timeoutMs: 5400000

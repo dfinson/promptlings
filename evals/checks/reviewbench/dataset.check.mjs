@@ -172,6 +172,8 @@ test('dataset: suite.yaml declares the frozen splits, five arms and three stages
   assert.equal(suite.splits.confirmation.sample.size, 60);
   assert.match(suite.splits.confirmation.keysSha256, /^sha256:[0-9a-f]{64}$/);
   assert.equal(suite.stages.qualification.arms.length, 4);
+  assert.deepEqual(suite.stages.confirmation.analysis, { verdict: true, minPairedN: 51 });
+  for (const s of ['qualification', 'pilot', 'pilot-repeat', 'pilot-previous']) assert.deepEqual(suite.stages[s].analysis, { verdict: false }, s);
   assert.deepEqual(suite.judge, { ...suite.judge, provider: 'github-copilot', model: 'claude-sonnet-5' });
   for (const arm of suite.arms) {
     for (const denied of ['web_fetch', 'web_search', 'shell(gh:*)', 'shell(curl:*)']) assert.ok(arm.tools.deny.includes(denied), `${arm.id} denies ${denied}`);
