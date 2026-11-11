@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Offline stand-in for the Copilot CLI used by the evals checks. It never contacts a service.
-// Prompt directives: FAKE:LEAK_TOKEN, FAKE:SLEEP=<ms>, FAKE:EXIT=<code>, FAKE:NO_OUTPUT, FAKE:CAP.
+// Prompt directives: FAKE:LEAK_TOKEN, FAKE:SLEEP=<ms>, FAKE:EXIT=<code>, FAKE:NO_OUTPUT, FAKE:CAP, FAKE:NO_USAGE.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -65,7 +65,7 @@ const finish = () => {
   if (prompt.includes("FAKE:CAP")) process.stderr.write("Session limit reached: max-ai-credits exhausted.\n");
 
   const usageFile = option("--usage-output-file");
-  if (usageFile) writeFileSync(usageFile, `${JSON.stringify({ totalNanoAiu: prompt.includes("FAKE:CAP") ? 999e9 : 1.5e9, tokenDetails: { input: { tokenCount: 40 }, output: { tokenCount: 2 } } })}\n`);
+  if (usageFile && !prompt.includes("FAKE:NO_USAGE")) writeFileSync(usageFile, `${JSON.stringify({ totalNanoAiu: prompt.includes("FAKE:CAP") ? 999e9 : 1.5e9, tokenDetails: { input: { tokenCount: 40 }, output: { tokenCount: 2 } } })}\n`);
   const share = option("--share");
   if (share) writeFileSync(share, `# Fake transcript\n\n${prompt}${leak}\n`);
   const logDir = option("--log-dir");

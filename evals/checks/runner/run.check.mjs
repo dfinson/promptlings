@@ -56,6 +56,38 @@ test("ceiling: stages sharing a ceilingGroup count spend from earlier runs in th
   assert.equal(second.budget.group.priorSpent, 81.5);
 });
 
+test("ceiling: trials that never launch Copilot charge nothing and release their reservation", async () => {
+  const root = tempDir("ceiling-unlaunched");
+  const suitesRoot = makeFixtureSuite(root, { repeats: 3, ceiling: 100, maxAiCredits: 40 });
+  const run = await withParentEnv({ EVALS_COPILOT_BIN: join(root, "missing-copilot.mjs") }, () =>
+    runSuite({ suite: "fixture", stage: "smoke", artifactRoot: join(root, "artifacts"), suitesRoot, runId: "unlaunched", env: { COPILOT_GITHUB_TOKEN: testToken } }));
+  assert.equal(run.trials.length, 3, "a reservation held by an unlaunched trial must not block later trials");
+  assert.equal(run.stoppedByCeiling, false);
+  assert.ok(run.trials.every((t) => t.status === "errored" && t.creditsCharged === 0 && t.creditsEstimated === false));
+  assert.equal(run.budget.spent, 0);
+  assert.equal(run.budget.estimatedTrials, 0);
+});
+
+test("ceiling: a launched trial without usage data charges its full cap and is flagged as estimated", async () => {
+  const root = tempDir("ceiling-no-usage");
+  const suitesRoot = makeFixtureSuite(root, { repeats: 1, ceiling: 100, maxAiCredits: 40, prompt: "FAKE:NO_USAGE {{title}}" });
+  const run = await fixtureRun(root, suitesRoot, { stage: "smoke", runId: "no-usage" });
+  assert.equal(run.trials.length, 1);
+  assert.equal(run.trials[0].aiCredits, null);
+  assert.equal(run.trials[0].creditsCharged, 40);
+  assert.equal(run.trials[0].creditsEstimated, true);
+  assert.equal(run.budget.spent, 40);
+  assert.equal(run.budget.estimatedTrials, 1);
+});
+
+test("ceiling: a launched trial with usage charges its derived credits, not its cap", async () => {
+  const root = tempDir("ceiling-usage");
+  const suitesRoot = makeFixtureSuite(root, { repeats: 2, ceiling: 100, maxAiCredits: 40 });
+  const run = await fixtureRun(root, suitesRoot, { stage: "smoke", runId: "usage" });
+  assert.deepEqual(run.trials.map((t) => [t.status, t.creditsCharged, t.creditsEstimated]), [["completed", 1.5, false], ["completed", 1.5, false]]);
+  assert.equal(run.budget.spent, 3);
+});
+
 test("refs: an arm on the previous ref is refused without --previous-ref", async () => {
   const root = tempDir("refs");
   const suitesRoot = makeFixtureSuite(root, { arms: [stockArm, { ...stockArm, id: "previous", ref: "previous", selection: { agents: [], skills: [] } }] });

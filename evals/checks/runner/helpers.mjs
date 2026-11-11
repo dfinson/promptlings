@@ -74,7 +74,7 @@ export const stockArm = {
   customInstructions: true,
 };
 
-export function makeFixtureSuite(root, { repeats = 2, concurrency = 1, ceiling, maxAiCredits = 30, arms, extraYaml = [], extraAdapter = [] } = {}) {
+export function makeFixtureSuite(root, { repeats = 2, concurrency = 1, ceiling, maxAiCredits = 30, arms, prompt = "Solve {{title}} in {{workspace}}", extraYaml = [], extraAdapter = [] } = {}) {
   const dir = join(root, "suites", "fixture");
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(root, "suites", "package.json"), '{"type": "module"}\n');
@@ -90,7 +90,7 @@ export function makeFixtureSuite(root, { repeats = 2, concurrency = 1, ceiling, 
     "  smoke: {}",
     "arms:",
     armYaml.trimEnd(),
-    'prompt: "Solve {{title}} in {{workspace}}"',
+    `prompt: ${JSON.stringify(prompt)}`,
     "limits:",
     "  timeoutMs: 60000",
     `  maxAiCredits: ${maxAiCredits}`,

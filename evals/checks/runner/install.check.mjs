@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { parse } from "yaml";
 import { runTrial } from "../../runner/index.js";
+import * as install from "../../runner/install.js";
 import { fakeCopilot, stockArm, tempDir, testToken, treeDigest, withParentEnv } from "./helpers.mjs";
 import { mkdirSync } from "node:fs";
 
@@ -58,4 +60,43 @@ test("install: a Promptlings arm home records hashes of exactly the installed se
   assert.deepEqual(files.filter((f) => otherAgents.some((n) => f.includes(`/agents/${n}.`))), [], "unselected agents are not installed");
   const seen = JSON.parse(readFileSync(join(home, ".copilot", "fake-copilot-record.json"), "utf8"));
   assert.ok(seen.agents.some((a) => a.startsWith("sparring-partner")));
+});
+
+// Every selection form the runner accepts, plus every installing arm declared by a shipped suite.
+function selectionCases() {
+  const cases = [
+    ["absent", undefined],
+    ["null", null],
+    ["all", "all"],
+    ["review", "review"],
+    ["raw --review", "--review"],
+    ["raw --agents list", "--agents sparring-partner,the-nitcracker"],
+    ["agent list", "sparring-partner,the-nitcracker"],
+    ["array", ["--agents", "sparring-partner"]],
+  ].map(([label, selection]) => ({ label, arm: { id: label, ref: "HEAD", selection } }));
+  const suitesDir = join(repoRoot, "evals", "suites");
+  if (!existsSync(suitesDir)) return cases;
+  for (const entry of readdirSync(suitesDir, { withFileTypes: true })) {
+    const file = join(suitesDir, entry.name, "suite.yaml");
+    if (!entry.isDirectory() || !existsSync(file)) continue;
+    for (const arm of parse(readFileSync(file, "utf8")).arms ?? []) {
+      if (!install.isStockArm(arm)) cases.push({ label: `suite ${entry.name} arm ${arm.id}`, arm });
+    }
+  }
+  return cases;
+}
+
+test("install: every selection form and every shipped suite arm passes the installer's publish --dry-run", () => {
+  assert.deepEqual(install.selectionArgs("--review"), ["--review"]);
+  assert.deepEqual(install.selectionArgs("all"), [], "publish rejects --all because it includes an agent that needs dependencies");
+  for (const { label, arm } of selectionCases()) {
+    const { args, plan } = install.preflightInstall(arm);
+    assert.ok(!args.includes("--dry-run"), label);
+    assert.match(plan, /^Agents: .+$/m, `${label}: the installer printed an agent plan`);
+  }
+});
+
+test("install: a selection the installer rejects fails preflight with the arm and the installer's message", () => {
+  assert.throws(() => install.preflightInstall({ id: "bad", ref: "HEAD", selection: "--agents" }), /Arm bad selection "--agents" is rejected by the installer.*--agents requires a value/s);
+  assert.throws(() => install.preflightInstall({ id: "unknown", ref: "HEAD", selection: "no-such-agent" }), /Unknown agent: no-such-agent/);
 });
