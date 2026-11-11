@@ -212,6 +212,7 @@ export function buildPanelPrompt(kind, items, taxonomy) {
   const example = { id: items[0]?.id ?? 'item-0001', ...Object.fromEntries(Object.entries(dims).map(([d, l]) => [d, l[0]])) };
   return [
     'You are one member of an independent annotation panel. Answer from the text below only.',
+    'No tools, files, repository or network are available to you. Every input you need is inline below, so answer directly.',
     intro,
     `Taxonomy version ${taxonomy.version}. Label every item on these dimensions:`,
     ...schema,
@@ -236,11 +237,17 @@ function batches(kind, items, taxonomy, { maxChars, maxItems }) {
   return out;
 }
 
+const TOOL_INTENT = /\b(?:I'?ll|I will|let me|I need to|I'm going to)\s+(?:first\s+)?(?:inspect|read|open|check|look|view|examine|search|grep|run|fetch|review)\b/i;
+
 export function parseAnnotations(answer) {
   const text = String(answer ?? '').replace(/```(?:json)?/g, '');
   const start = text.indexOf('{');
   const end = text.lastIndexOf('}');
-  if (start < 0 || end <= start) throw new Error('panelist answer has no JSON object');
+  if (start < 0 || end <= start) {
+    throw new Error(TOOL_INTENT.test(text)
+      ? 'panelist answer announces tool use and has no JSON object'
+      : 'panelist answer has no JSON object');
+  }
   const parsed = JSON.parse(text.slice(start, end + 1));
   if (!Array.isArray(parsed.annotations)) throw new Error('panelist answer has no annotations array');
   return parsed.annotations;
@@ -258,7 +265,7 @@ export function defaultGrade({ graderConfig = {}, evidenceDir } = {}) {
   };
 }
 
-export const JSON_ONLY_REMINDER = 'Reminder: reply with only the JSON object described above, with no other text.';
+export const JSON_ONLY_REMINDER = 'Reminder: you have no tools and cannot read files. Do not announce, plan or attempt tool use. Every item is inline above. Reply now with only the JSON object described above, with no other text.';
 
 /**
  * Sends every item to every panelist. Each (item, panelist) pair ends with either an annotation
