@@ -5,8 +5,6 @@ import { join } from "node:path";
 import { hashTree } from "./evidence.js";
 import { artifactRoot, repoRoot } from "./paths.js";
 
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-
 function run(command, args, options) {
   const result = spawnSync(command, args, { encoding: "utf8", windowsHide: true, ...options });
   if (result.error) throw result.error;
@@ -41,7 +39,10 @@ export function prepareSource(ref, { root = artifactRoot() } = {}) {
     if (sameLock && existsSync(join(repoRoot, "node_modules"))) {
       symlinkSync(join(repoRoot, "node_modules"), join(staging, "node_modules"), "junction");
     } else {
-      run(npmCommand, ["ci", "--no-fund", "--no-audit", "--ignore-scripts"], { cwd: staging, shell: process.platform === "win32" });
+      const npmArgs = ["ci", "--no-fund", "--no-audit", "--ignore-scripts"];
+      // npm.cmd needs a shell on Windows; one fixed command string avoids passing arguments to it.
+      if (process.platform === "win32") run(`npm ${npmArgs.join(" ")}`, [], { cwd: staging, shell: true });
+      else run("npm", npmArgs, { cwd: staging });
     }
     writeFileSync(join(staging, ".ready"), `${sha}\n`);
     try {
