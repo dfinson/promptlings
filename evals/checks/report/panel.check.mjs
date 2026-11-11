@@ -400,6 +400,47 @@ test('panel re-asks an unparsable answer once, keeps every raw answer and record
   assert.equal(gptItem.attempts.length, 2);
 });
 
+test('panel tells panelists they have no tools and re-asks a tool-intent answer with a no-tool-announcement reminder', async () => {
+  const { runPanel, assertBlind, blindNames, JSON_ONLY_REMINDER } = await load('scoring/panel.js');
+  const runner = await import(new URL('./fake-panel-runner.mjs', import.meta.url).href);
+  runner.calls.length = 0;
+  runner.toolIntentFirst.add('grok-4.7');
+  runner.toolIntentAlways.add('gpt-6.1-terra');
+  const evidenceDir = scratch('panel-tool-intent');
+  const names = blindNames(ARMS);
+  const items = [
+    { id: 'item-0001', kind: 'unmatched', source: {}, content: { file: '.github/workflows/ci.yml', lines: '10-12', finding: 'schema header is wrong' } },
+  ];
+  const saved = process.env.COPILOT_GITHUB_TOKEN;
+  process.env.COPILOT_GITHUB_TOKEN = 'ghu_fakePanelToken0123456789';
+  let panel;
+  try {
+    panel = await runPanel({ items, panelists: PANEL, names, graderConfig: { runnerModule: fakePanelRunner }, evidenceDir });
+  } finally {
+    runner.toolIntentFirst.clear();
+    runner.toolIntentAlways.clear();
+    if (saved === undefined) delete process.env.COPILOT_GITHUB_TOKEN;
+    else process.env.COPILOT_GITHUB_TOKEN = saved;
+  }
+  const callsFor = (model) => runner.calls.filter((c) => c.model === model);
+  const [first, retry] = callsFor('grok-4.7');
+  assert.match(first.prompt, /No tools, files, repository or network are available/);
+  assert.match(first.prompt, /Every input you need is inline below/);
+  assert.match(JSON_ONLY_REMINDER, /Do not announce, plan or attempt tool use/);
+  assert.equal(callsFor('grok-4.7').length, 2, 'a tool-intent answer is re-asked once');
+  assert.equal(retry.prompt, `${first.prompt}\n${JSON_ONLY_REMINDER}`);
+  assert.equal(assertBlind(retry.prompt, names), retry.prompt, 'the retry prompt stays blind');
+  for (const name of names) assert.ok(!retry.prompt.includes(name));
+  assert.ok(panel.annotations.find((a) => a.item === 'item-0001' && a.panelist === 'grok-4.7'), 'grok answers after the stronger reminder');
+
+  assert.equal(callsFor('gpt-6.1-terra').length, 2, 'one retry only');
+  const failure = panel.failures.find((f) => f.item === 'item-0001' && f.panelist === 'gpt-6.1-terra');
+  assert.match(failure.reason, /unparsable after retry: panelist answer announces tool use and has no JSON object; then panelist answer announces tool use and has no JSON object/);
+  assert.equal(failure.answers.length, 2);
+  const retryAnswer = panel.answers.find((a) => a.panelist === 'gpt-6.1-terra' && a.attempt === 2);
+  assert.equal(fs.readFileSync(path.join(evidenceDir, retryAnswer.file), 'utf8'), runner.TOOL_INTENT);
+});
+
 test('panel excludes errored and invalidated trials from behaviour features and per-arm aggregates', async () => {
   const { trialFeatures, collectFeatures } = await load('scoring/behaviour.js');
   const { runPanelAnalysis } = await load('report/panel.js');

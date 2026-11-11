@@ -1,11 +1,16 @@
 // In-process stand-in for runCopilotOnce used by the panel checks. Each call is recorded; the
 // answer labels every item in the prompt with the first label of each dimension the prompt lists.
 // Models in unparsableFirst answer in prose unless the prompt carries the JSON-only reminder;
-// models in unparsableAlways always answer in prose.
+// models in unparsableAlways always answer in prose. Models in toolIntentFirst announce tool use
+// unless the prompt forbids announcing it; models in toolIntentAlways always announce it.
 export const calls = [];
 export const unparsableFirst = new Set();
 export const unparsableAlways = new Set();
-const REMINDER = 'Reminder: reply with only the JSON object';
+export const toolIntentFirst = new Set();
+export const toolIntentAlways = new Set();
+export const TOOL_INTENT = "I'll inspect the workflow file around the cited lines to judge whether these findings describe a real problem.";
+const REMINDER = '\nReminder:';
+const NO_TOOL_ANNOUNCEMENT = 'Do not announce, plan or attempt tool use';
 
 function valueOf(args, flag) {
   const i = args.indexOf(flag);
@@ -24,7 +29,9 @@ export async function runCopilotOnce({ home, cwd, args, env }) {
   const model = valueOf(args, '--model');
   calls.push({ home, cwd, args, model, prompt, env: { COPILOT_HOME: env.COPILOT_HOME, HOME: env.HOME, USERPROFILE: env.USERPROFILE } });
   const prose = unparsableAlways.has(model) || (unparsableFirst.has(model) && !prompt.includes(REMINDER));
-  const content = prose ? 'These findings look like logic problems in a single hunk.' : JSON.stringify(answerFor(prompt));
+  const toolIntent = toolIntentAlways.has(model) || (toolIntentFirst.has(model) && !prompt.includes(NO_TOOL_ANNOUNCEMENT));
+  const content = toolIntent ? TOOL_INTENT
+    : prose ? 'These findings look like logic problems in a single hunk.' : JSON.stringify(answerFor(prompt));
   const events = [
     { type: 'user.message', data: { content: prompt } },
     { type: 'assistant.message', data: { content, toolRequests: [] } },
