@@ -1,0 +1,29 @@
+// Maps a suite's `analysis` block (top level, overridden per stage by stages[name].analysis) to report options.
+// Suites list each comparison as [treatment, baseline]; the report takes [baseline, treatment].
+export function stageAnalysis(manifest, stageName) {
+  return manifest.stages?.[stageName]?.analysis;
+}
+
+// The stage's own analysis block (for example {verdict, minPairedN}) is passed unchanged as `analysis`;
+// planned n comes from the task list, not from minPairedN.
+export function reportOptions(manifest, stageName, armIds) {
+  const own = stageAnalysis(manifest, stageName);
+  const analysis = { ...(manifest.analysis ?? {}), ...(own ?? {}) };
+  const options = { ...analysis };
+  if (own) options.analysis = own;
+  if (Array.isArray(analysis.comparisons)) {
+    options.comparisons = analysis.comparisons
+      .map(([treatment, baseline]) => [baseline, treatment])
+      .filter((pair) => pair.every((id) => armIds.includes(id)));
+  }
+  if (!options.primary && analysis.primaryMetric) options.primary = [analysis.primaryMetric];
+  if (typeof analysis.guardrail === "string") options.guardrail = [analysis.guardrail];
+  if (typeof analysis.secondary === "string") options.secondary = [analysis.secondary];
+  if (options.alpha === undefined && analysis.familywiseAlpha !== undefined) options.alpha = analysis.familywiseAlpha;
+  return options;
+}
+
+/** A declared comparison list with no pair inside this stage means the stage has nothing to compare. */
+export function hasComparisons(options) {
+  return !Array.isArray(options.comparisons) || options.comparisons.length > 0;
+}
