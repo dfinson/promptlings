@@ -45,3 +45,11 @@ jobs:
           python-version: "3.12"
       - run: npm ci --no-fund --no-audit
       - run: npm test
+      - name: Prepare pinned native rendering runtime
+        env:
+          PROMPTLINGS_TEST_RUNTIME: ${{ runner.temp }}/promptlings-render-runtime
+        run: node --input-type=module -e "import {installDemoRuntime} from './lib/tools.js'; installDemoRuntime({demo:true}, {root:process.env.PROMPTLINGS_TEST_RUNTIME});"
+      - name: Verify native browser and encoder containment
+        env:
+          PROMPTLINGS_TEST_RUNTIME: ${{ runner.temp }}/promptlings-render-runtime
+        run: node --test tests/demo-renderer-native.test.js

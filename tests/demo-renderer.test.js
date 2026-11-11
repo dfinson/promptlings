@@ -119,7 +119,7 @@ test("an explicitly selected runtime never falls back past a missing or wrong pa
   await assert.rejects(loadRuntime(f.root, root), /Expected remotion 4.0.539, found 4.0.540/);
 });
 
-test("supervision stops late encoding descendants and releases their server before returning", async (t) => {
+async function assertDetachedCleanup(t, mode) {
   const f = await fixture(t);
   const backend = path.join(f.root, "backend.cjs");
   const script = path.join(f.root, "worker.cjs");
@@ -134,26 +134,32 @@ server.listen(0, '127.0.0.1', () => process.send({port:server.address().port}));
 `);
   await writeFile(script, `
 const {fork} = require('node:child_process');
-const backend = fork(${JSON.stringify(backend)}, [${JSON.stringify(writes)}]);
+const fs = require('node:fs');
+const backend = fork(${JSON.stringify(backend)}, [${JSON.stringify(writes)}], {detached:true, stdio:['ignore','ignore','ignore','ipc']});
 backend.on('message', ({port}) => {
-  process.send({type:'stalled', result:{
-    status:'failed', error:'Late mux stall', port, backendPid:backend.pid,
+  fs.writeFileSync(${JSON.stringify(path.join(f.root, "backend.json"))}, JSON.stringify({port,pid:backend.pid}));
+  if (${JSON.stringify(mode)} === 'crashed') return process.kill(process.pid, 'SIGKILL');
+  process.send({type:${mode === "stalled" ? "'stalled'" : "'result'"}, result:{
+    status:${mode === "stalled" ? "'failed'" : "'complete'"}, error:${mode === "stalled" ? "'Late mux stall'" : "undefined"}, port, backendPid:backend.pid,
     jobs:[{id:'Earlier',status:'complete'},{id:'Film',status:'failed',progress:{renderedFrames:60,encodedFrames:60,stage:'muxing'}}],
     bundles:[]
-  }});
+  }}, () => { if (${JSON.stringify(mode)} === 'complete-with-descendants') process.exit(0); });
 });
 `);
   const result = await superviseRender(script, f.file);
-  assert.equal(result.status, "failed");
-  assert.equal(result.error, "Late mux stall");
-  assert.equal(result.forcedTermination, true);
+  assert.equal(result.status, mode === "complete-with-descendants" ? "complete" : "failed");
+  if (mode === "stalled") {
+    assert.equal(result.error, "Late mux stall");
+    assert.equal(result.forcedTermination, true);
+    assert.equal(result.jobs[0].status, "complete");
+  }
   assert.equal(result.shutdownErrors, undefined);
-  assert.equal(result.jobs[0].status, "complete");
+  const { port } = JSON.parse(await readFile(path.join(f.root, "backend.json"), "utf8"));
   const content = await readFile(writes, "utf8");
   await delay(100);
   assert.equal(await readFile(writes, "utf8"), content);
   await new Promise((resolve, reject) => {
-    const socket = createConnection({ port: result.port, host: "127.0.0.1" });
+    const socket = createConnection({ port, host: "127.0.0.1" });
     socket.once("connect", () => { socket.destroy(); reject(new Error("Backend server still listening")); });
     socket.once("error", (error) => {
       if (error.code === "ECONNREFUSED") resolve();
@@ -161,7 +167,11 @@ backend.on('message', ({port}) => {
     });
   });
   assert.deepEqual(await f.result(), result);
-});
+}
+
+for (const mode of ["stalled", "crashed", "complete-with-descendants"]) {
+  test(`supervision releases detached descendants and their server when the worker is ${mode}`, (t) => assertDetachedCleanup(t, mode));
+}
 
 test("supervision retains successful results and fails unexpected worker exits", async (t) => {
   const f = await fixture(t);
