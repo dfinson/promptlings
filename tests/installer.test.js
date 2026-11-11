@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -318,7 +318,7 @@ exports.ensureBrowser = async (options) => {
   }
   assert.equal(readFileSync(join(root, "downloads"), "utf8"), "download\n");
   assert.deepEqual(JSON.parse(readFileSync(join(root, "browser.json"))), {
-    version: pins.demoDependencies.remotion, browserExecutable: join(root, "browser-fixture"),
+    version: pins.demoDependencies.remotion, browserExecutable: realpathSync(join(root, "browser-fixture")),
   });
   writeFileSync(join(renderer, "index.cjs"), "exports.ensureBrowser = async () => { throw Error('download failed'); };");
   const failed = spawnSync(process.execPath, [script], { cwd: root, encoding: "utf8" });

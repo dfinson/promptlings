@@ -78,6 +78,8 @@ Omit `browserExecutable` to use the installer's `browser.json` record, which ide
 
 The managed runtime is installer-owned. Keep compositions, assets, bundle caches and renders in the external production workspace, not in that runtime. The helper extends bundler module lookup with the selected runtime while preserving production-local dependencies and Remotion's React aliases. For an upstream project that requires its own CLI configuration, keep its version-pinned dependency manifest and use that configured workflow rather than adding packages to the shared runtime.
 
+Some add-ons, including `@remotion/transitions`, install `remotion` as a dependency without the renderer and bundler. For these projects, set `runtimeRoot` explicitly to the installed runtime rather than rerunning installation and expecting local-runtime selection to change. Keep those add-ons version-matched.
+
 ### Runtime defaults and bounded tuning
 
 The installer provides the standard rendering packages and browser, not CUDA, GPU drivers or a render-specific GPU stack. The renderer uses the selected Remotion packages' bundled FFmpeg and the machine's existing capabilities. Browser graphics, video decoding and final encoding are separate decisions.
@@ -99,6 +101,8 @@ Use a representative footage-and-overlay interval to tune only when performance 
 The defaults follow [Remotion's hardware support](https://www.remotion.dev/docs/hardware-acceleration), [Remotion 4 graphics guidance](https://www.remotion.dev/docs/gl-options), [Headless Shell guidance](https://www.remotion.dev/docs/miscellaneous/chrome-headless-shell) and [shared-memory capture support](https://www.remotion.dev/docs/shared-memory-capture). Verify these contracts again when updating the version pin.
 
 One invocation reuses a browser and bundles each entry point once. Video rendering prints frame/encoding counts and an elapsed-time heartbeat every five seconds, plus start and completion. Keep this output live. Never buffer it until exit or pipe only the last lines. The result file, beside the manifest as `jobs-result.json`, retains selected browser/graphics/encoder settings, fallback reasons, last progress, timings, bundle paths, completed jobs and errors, including shutdown failures. Failures exit nonzero. Read that result rather than rerunning a job to collect or reformat output.
+
+Production runs in one supervised worker process per batch, preserving browser/bundle reuse. On a video stall the supervisor terminates that worker's owned process tree and waits for exit before saving the failure result. This also covers late encoding/muxing, where Remotion 4.0.539's cancellation signal alone can reject the API call while native work continues. Forced termination is recorded explicitly. Interrupted output is not a completed film.
 
 The helper's programmatic `entryPoint` bundling does not load `remotion.config.ts`. For custom webpack aliases or other project bundling overrides, build through the configured Remotion CLI and pass that existing bundle as `serveUrl`. This also supports source-copy libraries whose imports depend on a configured alias.
 

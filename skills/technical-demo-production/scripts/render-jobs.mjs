@@ -3,8 +3,9 @@ import { createRequire } from "node:module";
 import { availableParallelism } from "node:os";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { defaultRuntimeRoot, supportedVersion } from "./demo-runtime.mjs";
+import { superviseRender } from "./render-supervisor.mjs";
 
 export { supportedVersion };
 
@@ -129,7 +130,7 @@ export async function loadRuntime(root, runtimeRoot) {
     let version;
     try { version = require(`${name}/package.json`).version; }
     catch (error) {
-      throw new Error(`Cannot load ${name} from ${runtimeRoot ?? root}. Run npx promptlings tools to install the demo runtime.`, { cause: error });
+      throw new Error(`Cannot load ${name} from ${runtimeRoot ?? root}. For an incomplete project-local runtime, set runtimeRoot to ${defaultRuntimeRoot()}. Run npx promptlings tools if that managed runtime is missing.`, { cause: error });
     }
     if (version !== supportedVersion) {
       throw new Error(`Expected ${name} ${supportedVersion}, found ${version}`);
@@ -165,6 +166,13 @@ export function runtimeWebpackOverride(runtimeRoot) {
 }
 
 export async function renderJobs(manifestPath, runtime) {
+  manifestPath = path.resolve(manifestPath);
+  // Injected runtimes are an in-process test seam. Production owns one worker tree per batch.
+  return runtime ? renderJobsInProcess(manifestPath, runtime)
+    : superviseRender(fileURLToPath(import.meta.url), manifestPath);
+}
+
+async function renderJobsInProcess(manifestPath, runtime) {
   manifestPath = path.resolve(manifestPath);
   const manifest = resolveManifest(JSON.parse(await readFile(manifestPath, "utf8")), manifestPath);
   const resultsPath = path.join(path.dirname(manifestPath), `${path.parse(manifestPath).name}-result.json`);
@@ -292,6 +300,10 @@ export async function renderJobs(manifestPath, runtime) {
           if (!stalled && Date.now() - lastAdvance >= manifest.stallTimeoutSeconds * 1000) {
             stalled = new Error(`No render or encoding progress for ${manifest.stallTimeoutSeconds}s`);
             console.error(stalled.message);
+            results.status = "failed";
+            results.error = stalled.message;
+            active.status = "failed";
+            process.send?.({ type: "stalled", result: results });
             cancellation.cancel();
           }
         }, Math.min(5000, manifest.stallTimeoutSeconds * 1000));
@@ -352,11 +364,20 @@ export async function renderJobs(manifestPath, runtime) {
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   try {
     if (!process.argv[2]) throw new Error("Usage: node render-jobs.mjs <manifest.json>");
-    const result = await renderJobs(process.argv[2]);
-    console.log(JSON.stringify(result, null, 2));
+    const worker = process.argv[3] === "--render-worker";
+    const result = worker ? await renderJobsInProcess(process.argv[2]) : await renderJobs(process.argv[2]);
+    if (worker) {
+      process.send?.({ type: "result", result });
+      process.disconnect?.();
+    }
+    if (!worker) console.log(JSON.stringify(result, null, 2));
     if (result.status !== "complete") process.exitCode = 1;
   } catch (error) {
     console.error(error);
+    if (process.argv[3] === "--render-worker") {
+      process.send?.({ type: "result", result: { status: "failed", error: error.message, jobs: [], bundles: [] } });
+      process.disconnect?.();
+    }
     process.exitCode = 1;
   }
 }

@@ -3,7 +3,10 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { createConnection } from "node:net";
+import { setTimeout as delay } from "node:timers/promises";
 import { defaultConcurrency, loadRuntime, probeHardwareEncoder, renderJobs, resolveBrowser, resolveManifest, runtimeWebpackOverride, supportedVersion } from "../skills/technical-demo-production/scripts/render-jobs.mjs";
+import { superviseRender } from "../skills/technical-demo-production/scripts/render-supervisor.mjs";
 
 const job = { id: "Film", entryPoint: "src/index.ts", width: 1920, height: 1080, fps: 30, output: "renders/film.mp4" };
 const manifest = { root: ".", browserExecutable: "browser/chrome", concurrency: 2, jobs: [job] };
@@ -114,6 +117,61 @@ test("an explicitly selected runtime never falls back past a missing or wrong pa
   await assert.rejects(loadRuntime(f.root, root), /Cannot load remotion/);
   await writeFile(path.join(root, "node_modules", "remotion", "package.json"), JSON.stringify({ version: "4.0.540" }));
   await assert.rejects(loadRuntime(f.root, root), /Expected remotion 4.0.539, found 4.0.540/);
+});
+
+test("supervision stops late encoding descendants and releases their server before returning", async (t) => {
+  const f = await fixture(t);
+  const backend = path.join(f.root, "backend.cjs");
+  const script = path.join(f.root, "worker.cjs");
+  const writes = path.join(f.root, "backend-output");
+  await writeFile(backend, `
+const fs = require('node:fs');
+const net = require('node:net');
+const server = net.createServer();
+fs.writeFileSync(process.argv[2], 'frame');
+setInterval(() => fs.appendFileSync(process.argv[2], 'mux'), 20);
+server.listen(0, '127.0.0.1', () => process.send({port:server.address().port}));
+`);
+  await writeFile(script, `
+const {fork} = require('node:child_process');
+const backend = fork(${JSON.stringify(backend)}, [${JSON.stringify(writes)}]);
+backend.on('message', ({port}) => {
+  process.send({type:'stalled', result:{
+    status:'failed', error:'Late mux stall', port, backendPid:backend.pid,
+    jobs:[{id:'Earlier',status:'complete'},{id:'Film',status:'failed',progress:{renderedFrames:60,encodedFrames:60,stage:'muxing'}}],
+    bundles:[]
+  }});
+});
+`);
+  const result = await superviseRender(script, f.file);
+  assert.equal(result.status, "failed");
+  assert.equal(result.error, "Late mux stall");
+  assert.equal(result.forcedTermination, true);
+  assert.equal(result.shutdownErrors, undefined);
+  assert.equal(result.jobs[0].status, "complete");
+  const content = await readFile(writes, "utf8");
+  await delay(100);
+  assert.equal(await readFile(writes, "utf8"), content);
+  await new Promise((resolve, reject) => {
+    const socket = createConnection({ port: result.port, host: "127.0.0.1" });
+    socket.once("connect", () => { socket.destroy(); reject(new Error("Backend server still listening")); });
+    socket.once("error", (error) => {
+      if (error.code === "ECONNREFUSED") resolve();
+      else reject(error);
+    });
+  });
+  assert.deepEqual(await f.result(), result);
+});
+
+test("supervision retains successful results and fails unexpected worker exits", async (t) => {
+  const f = await fixture(t);
+  const script = path.join(f.root, "worker.cjs");
+  await writeFile(script, "process.send({type:'result',result:{status:'complete',jobs:[{id:'Film',status:'complete'}]}});process.disconnect();");
+  assert.equal((await superviseRender(script, f.file)).status, "complete");
+  await writeFile(script, "process.exit(7);");
+  const result = await superviseRender(script, f.file);
+  assert.equal(result.status, "failed");
+  assert.match(result.error, /code 7/);
 });
 
 test("a batch shares one browser and one bundle while passing distinct props", async (t) => {
