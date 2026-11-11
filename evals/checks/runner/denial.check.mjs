@@ -42,3 +42,24 @@ test("denial: a policy refusal of a command outside the arm's allowance is score
   assert.equal(stored.status, "completed", stored.reason);
   assert.deepEqual(stored.environmentDenials, []);
 });
+
+test("denial: sandbox refusals of ancestor paths outside the workspace and home are warnings, even when the answer reports them", async () => {
+  const { stored } = await trial("denial-ancestor", "FAKE:ANCESTOR_DENIAL");
+  assert.equal(stored.status, "completed", stored.reason);
+  assert.deepEqual(stored.environmentDenials, []);
+  assert.ok(Array.isArray(stored.environmentWarnings), "trial.json lists environment warnings");
+  const views = stored.environmentWarnings.filter((w) => w.tool === "view");
+  assert.deepEqual(views.map((w) => w.toolCallId).sort(), ["call_view_parent", "call_view_root"]);
+  assert.ok(views.every((w) => /AGENTS\.md$/.test(w.target)));
+  assert.ok(stored.environmentWarnings.some((w) => w.source === "output"), "the answer's report of the denial is a warning");
+  assert.ok(stored.environmentWarnings.some((w) => w.source === "session" && w.toolCallId === "call_task"), "the subagent's report of the denial is a warning");
+});
+
+test("denial: a sandbox refusal of a workspace file invalidates the trial", async () => {
+  const { stored } = await trial("denial-workspace", "FAKE:WORKSPACE_DENIAL");
+  assert.equal(stored.status, "invalidated");
+  assert.equal(stored.environmentDenials.length, 1);
+  assert.equal(stored.environmentDenials[0].toolCallId, "call_view_ws");
+  assert.match(stored.environmentDenials[0].target, /README\.md$/);
+  assert.match(stored.reason, /readable paths/);
+});
