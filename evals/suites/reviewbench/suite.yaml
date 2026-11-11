@@ -1,0 +1,239 @@
+name: reviewbench
+description: >-
+  ReviewBench (review-bench/ReviewBench, MIT code) as the first public benchmark suite.
+  Each trial reviews one real pull request checked out at its head commit with history,
+  and writes findings in ReviewBench's candidate shape. The pinned ReviewBench judge
+  scores them through pi's github-copilot provider; per-PR metrics re-derived from
+  results.details.json must reproduce the judge's aggregate exactly or the run is rejected.
+
+taskSource:
+  type: dataset
+  lockKey: reviewbench
+
+# Splits resolve against the pinned corpus. A sampled split draws a seeded random subset of
+# its source over the sorted PR keys; keysSha256 freezes the draw, so a different draw fails.
+# `test` is the development split (qualification, pilot, tuning). `confirmation` is drawn from
+# the PRs outside it, frozen before the pilot, and never used for tuning.
+splits:
+  test:
+    source: test
+    size: 25
+  full:
+    source: full
+    size: 219
+  heldout:
+    source: full
+    exclude: [test]
+    size: 194
+  qualification:
+    source: test
+    sample: { size: 3, seed: 4101 }
+    keysSha256: sha256:7d2aa2db1f7fbe13e69873d7150d985f223a7e4a109c4656b8e29e816924f1ae
+  repeat:
+    source: test
+    sample: { size: 8, seed: 4102 }
+    keysSha256: sha256:ae2a67128e1721db756496846e434de067ccb7082f70c4d92c0593f4cadd349a
+  confirmation:
+    source: heldout
+    sample: { size: 60, seed: 4103 }
+    keysSha256: sha256:462d9deaad0569dab442dcbf69d4aa89fdaa35438bf94985fa21f27ec89cdb85
+
+# Shared prompt; {{review_request}} is the arm's entry in reviewRequests. Arms differ only in
+# that request (declared below) and their install and agent flags.
+prompt: |
+  {{review_request}}
+
+  This repository is checked out at the pull request's head on branch `pr-head`; the base
+  commit is branch `review-base`. The pull request's title, description and commit SHAs are in
+  `{{pr_dir}}/pr.json`, and the full change is in `{{pr_dir}}/diff.patch`. Use only this local
+  checkout and its Git history. Do not access the network, GitHub, or any copy of this pull
+  request, its comments or later fixes.
+
+  When the review is done, write every finding to `{{pr_dir}}/findings.json` as:
+
+  ```json
+  {
+    "pr": { "pr_number": <number from pr.json>, "head": "<head SHA from pr.json>" },
+    "findings": [
+      { "file": "path/relative/to/repo", "start_line": 10, "end_line": 12, "message": "What is wrong, why it matters and how to fix it." }
+    ]
+  }
+  ```
+
+  Each finding names one problem in the changed code, with the file path relative to the
+  repository root and the line range in the head version of that file. Then repeat the same
+  JSON in a final ```json block of your answer.
+
+reviewRequests:
+  default: Review the changes on this branch against review-base.
+  # The README's ensemble wording, so the review-ensemble skill activates natively without --agent.
+  ensemble: Run the review ensemble on this branch against review-base.
+
+arms:
+  - id: stock
+    ref: null
+    selection: null
+    agent: null
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: &noLeakTools
+      allow:
+        - write
+        - shell(git:*)
+      deny:
+        - web_fetch
+        - web_search
+        - github-mcp-server
+        - shell(git fetch:*)
+        - shell(git pull:*)
+        - shell(git clone:*)
+        - shell(git ls-remote:*)
+        - shell(git push:*)
+        - shell(gh:*)
+        - shell(curl:*)
+        - shell(wget:*)
+        - shell(Invoke-WebRequest:*)
+        - shell(Invoke-RestMethod:*)
+        - shell(iwr:*)
+        - shell(irm:*)
+      allowUrl: []
+      denyUrl:
+        - github.com
+        - api.github.com
+        - raw.githubusercontent.com
+        - codeload.github.com
+        - review-bench.ai
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1000 }
+  - id: nitcracker
+    ref: candidate
+    selection: --review
+    agent: the-nitcracker
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1500 }
+  - id: sparring-partner
+    ref: candidate
+    selection: --review
+    agent: sparring-partner
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1500 }
+  - id: ensemble
+    ref: candidate
+    selection: --review
+    agent: null
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 5000 }
+  - id: previous
+    ref: previous
+    selection: --review
+    agent: the-nitcracker
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1500 }
+
+# reasoningEffort is fixed for every arm in qualification and recorded in run.json.
+# Stage ceilings are 1.5x planned cost including judging (spec lane 8). The pilot is three
+# runs sharing the pilot ceiling; the repeat block is a separate run so its trials are a
+# second, independent run of the same PRs.
+stages:
+  qualification:
+    split: qualification
+    arms: [stock, nitcracker, sparring-partner, ensemble]
+    repeats: 1
+    maxAiCredits: 19000
+  pilot:
+    split: test
+    arms: [stock, nitcracker, sparring-partner, ensemble]
+    repeats: 1
+    ceilingGroup: pilot
+    maxAiCredits: 155625
+  pilot-repeat:
+    split: repeat
+    arms: [stock, nitcracker, sparring-partner]
+    repeats: 1
+    ceilingGroup: pilot
+    maxAiCredits: 22200
+  pilot-previous:
+    split: test
+    arms: [previous]
+    repeats: 1
+    ceilingGroup: pilot
+    maxAiCredits: 28125
+  confirmation:
+    split: confirmation
+    arms: [stock, nitcracker, sparring-partner, ensemble]
+    repeats: 1
+    maxAiCredits: 374000
+
+limits:
+  timeoutMs: 5400000
+  maxAiCredits: 1500
+  stageCeilings:
+    qualification: 19000
+    pilot: 206000
+    confirmation: 374000
+
+repeats: 1
+concurrency: 4
+
+judge:
+  provider: github-copilot
+  model: claude-sonnet-5
+  concurrency: 2
+  # Run-local PI_CODING_AGENT_DIR gets this models.json; COPILOT_GITHUB_TOKEN is the only credential.
+  piModels: pi-models.json
+  # About 45% of full-set golden findings come from Copilot code review. Reported beside,
+  # never instead of, the primary result.
+  diagnosticExcludeProducers: ['ccr:']
+
+analysis:
+  primaryMetric: grounded_recall
+  comparisons:
+    - [nitcracker, stock]
+    - [sparring-partner, stock]
+    - [ensemble, stock]
+  multipleComparisons: holm
+  familywiseAlpha: 0.05
+  interval: paired-bootstrap-by-pr
+  guardrail: grounded_precision
+  secondary: [augmented_recall, augmented_precision]
+  revisionComparison: [nitcracker, previous]
+
+scorers:
+  - id: grounded_recall
+    kind: judge
+    primary: true
+    model: claude-sonnet-5
+  - id: grounded_precision
+    kind: judge
+    primary: false
+    model: claude-sonnet-5
+  - id: augmented_recall
+    kind: judge
+    primary: false
+    model: claude-sonnet-5
+  - id: augmented_precision
+    kind: judge
+    primary: false
+    model: claude-sonnet-5
+
+license:
+  code: MIT
+  data: not stated by ReviewBench; use requires the maintainer decision recorded in datasets.lock
+  redistribution: none; corpus, golden data and mirrors stay under EVALS_ARTIFACT_ROOT, never in Git

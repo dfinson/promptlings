@@ -1,0 +1,120 @@
+[
+  {
+    "pr_key": "acme_widgets_1-aaaaaaaa",
+    "candidate_findings": [
+      {
+        "file": "src/c0.js",
+        "start_line": 1,
+        "end_line": 2,
+        "message": "candidate 0",
+        "status": "matched_tp",
+        "matched_golden_index": 0,
+        "covered_golden_indices": [
+          0,
+          1
+        ],
+        "golden_tp_fp": "tp",
+        "golden_severity": "high",
+        "golden_category": "bug",
+        "matched_to_ground_truth": true,
+        "llm_judged_match": true,
+        "match_method": "llm",
+        "matched_truth_label": "tp",
+        "result_severity": "high",
+        "result_category": "bug"
+      },
+      {
+        "file": "src/c1.js",
+        "start_line": 1,
+        "end_line": 2,
+        "message": "candidate 1",
+        "status": "novel_tp",
+        "covered_golden_indices": [],
+        "classifier_tp_fp": "tp",
+        "classifier_severity": "medium",
+        "classifier_category": "bug",
+        "matched_to_ground_truth": false,
+        "llm_judged_match": false,
+        "match_method": "none",
+        "llm_classification": "tp",
+        "result_severity": "medium",
+        "result_category": "bug"
+      },
+      {
+        "file": "src/c2.js",
+        "start_line": 1,
+        "end_line": 2,
+        "message": "candidate 2",
+        "status": "novel_fp",
+        "covered_golden_indices": [],
+        "matched_to_ground_truth": false,
+        "llm_judged_match": false,
+        "match_method": "none"
+      },
+      {
+        "file": "src/c3.js",
+        "start_line": 1,
+        "end_line": 2,
+        "message": "candidate 3",
+        "status": "novel_fp",
+        "covered_golden_indices": [],
+        "classifier_tp_fp": "fp",
+        "classifier_severity": "low",
+        "classifier_category": "style",
+        "matched_to_ground_truth": false,
+        "llm_judged_match": false,
+        "match_method": "none",
+        "llm_classification": "fp",
+        "result_severity": "low",
+        "result_category": "style"
+      }
+    ]
+  },
+  {
+    "pr_key": "acme_widgets_2-bbbbbbbb",
+    "candidate_findings": [
+      {
+        "file": "src/c0.js",
+        "start_line": 1,
+        "end_line": 2,
+        "message": "candidate 0",
+        "status": "matched_tp",
+        "matched_golden_index": 1,
+        "covered_golden_indices": [
+          0,
+          1
+        ],
+        "golden_tp_fp": "tp",
+        "golden_severity": "high",
+        "golden_category": "bug",
+        "matched_to_ground_truth": true,
+        "llm_judged_match": true,
+        "match_method": "llm",
+        "matched_truth_label": "tp",
+        "result_severity": "high",
+        "result_category": "bug"
+      },
+      {
+        "file": "src/c1.js",
+        "start_line": 1,
+        "end_line": 2,
+        "message": "candidate 1",
+        "status": "novel_fp",
+        "covered_golden_indices": [],
+        "classifier_tp_fp": "fp",
+        "classifier_severity": "medium",
+        "classifier_category": "perf",
+        "matched_to_ground_truth": false,
+        "llm_judged_match": false,
+        "match_method": "none",
+        "llm_classification": "fp",
+        "result_severity": "medium",
+        "result_category": "perf"
+      }
+    ]
+  },
+  {
+    "pr_key": "acme_gadgets_7-cccccccc",
+    "candidate_findings": []
+  }
+]
