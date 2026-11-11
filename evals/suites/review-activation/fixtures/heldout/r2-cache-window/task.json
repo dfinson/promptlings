@@ -1,0 +1,17 @@
+{
+  "id": "r2-cache-window",
+  "seed": "tests/review-regressions.md R2",
+  "summary": "A 30-second cache is an explicit freshness and load tradeoff, not a defect.",
+  "requirements": "# Requirements\n\nThis reader serves a non-critical status dashboard. `now` is monotonic time in seconds and never decreases. `fetch` returns a status string or raises an error. The dashboard permits values less than 60 seconds old. No workload, upstream call budget, or preferred refresh interval has been specified.\n\nNo live PR, provider, or CI is available for this branch.\n",
+  "base": {
+    "status.py": "class StatusReader:\n    def read(self, now, fetch):\n        return fetch()\n"
+  },
+  "head": {
+    "status.py": "class StatusReader:\n    def __init__(self):\n        self._value = None\n        self._at = None\n\n    def read(self, now, fetch):\n        if self._at is not None and now - self._at < 30:\n            return self._value\n        value = fetch()\n        self._value = value\n        self._at = now\n        return value\n"
+  },
+  "commitMessage": "Cache dashboard status for 30 seconds",
+  "expect": {
+    "mentions": ["status.py"],
+    "nitcrackerAnchors": []
+  }
+}

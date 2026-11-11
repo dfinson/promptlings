@@ -1,0 +1,106 @@
+name: review-activation
+description: >-
+  Native activation of the review-ensemble skill, the-nitcracker and Sparring
+  Partner under the real copilot -p. Every check is deterministic and reads
+  the trial's event evidence; no model grades these trials.
+
+taskSource:
+  type: fixtures
+  fixtures: fixtures
+
+# `heldout` is not used while tuning the review agents or the ensemble.
+splits:
+  live:
+    - r1-authorization
+    - r3-reachability
+  heldout:
+    - r2-cache-window
+
+# `--stage live` selects stages.live (AC-13).
+stages:
+  live:
+    split: live
+    maxAiCredits: 2400
+  heldout:
+    split: heldout
+    maxAiCredits: 1200
+
+prompt: >-
+  Review the changes on this branch against main. The requirements and
+  constraints are in REQUIREMENTS.md. Return the review in this conversation.
+  Do not push, fetch, or post anything.
+
+arms:
+  - id: nitcracker
+    ref: HEAD
+    selection: --review
+    agent: the-nitcracker
+    model: gpt-6.1-sol
+    reasoningEffort: medium
+    tools: &reviewTools
+      allow:
+        - shell(git:*)
+        - write
+      deny:
+        - shell(git push:*)
+        - shell(git fetch:*)
+        - shell(git pull:*)
+        - shell(gh:*)
+        - shell(curl:*)
+        - shell(wget:*)
+        - shell(Invoke-WebRequest:*)
+        - shell(Invoke-RestMethod:*)
+      allowUrl: []
+      denyUrl:
+        - github.com
+        - api.github.com/repos
+    sandbox: true
+    customInstructions: true
+  - id: sparring-partner
+    ref: HEAD
+    selection: --review
+    agent: sparring-partner
+    model: gpt-6.1-sol
+    reasoningEffort: medium
+    tools: *reviewTools
+    sandbox: true
+    customInstructions: true
+  - id: ensemble
+    ref: HEAD
+    selection: --review
+    agent: null
+    model: gpt-6.1-sol
+    reasoningEffort: medium
+    tools: *reviewTools
+    sandbox: true
+    customInstructions: true
+    # Declared prompt difference: adapter.js buildPrompt() gives this arm the
+    # README's "Run the review ensemble ..." request, so the skill must
+    # activate natively from the user's wording.
+
+limits:
+  timeoutMs: 1800000
+  maxAiCredits: 400
+  stageCeilings:
+    live: 2400
+    heldout: 1200
+
+repeats: 1
+concurrency: 1
+
+scorers:
+  - id: activation
+    kind: deterministic
+    primary: true
+    description: >-
+      1 when every activation check for the arm and task passes, else 0.
+      Computed by adapter.js collect() over checks.js.
+  - id: checks_passed
+    kind: deterministic
+    primary: false
+
+license:
+  data: >-
+    In-repo fixtures derived from tests/review-regressions.md R1 to R3,
+    Apache-2.0 with the repository.
+  redistribution: allowed

@@ -1,0 +1,5 @@
+{"type":"subagent.selected","data":{"agentName":"sparring-partner","agentDisplayName":"sparring-partner","tools":["*"]},"id":"s-sel","timestamp":"2026-11-11T10:00:00.000Z"}
+{"type":"skill.invoked","data":{"name":"technical-investigation","path":"skills/technical-investigation/SKILL.md","content":"..."},"id":"s-inv-technical-investigation","timestamp":"2026-11-11T10:00:03.000Z"}
+{"type":"skill.invoked","data":{"name":"design-analysis","path":"skills/design-analysis/SKILL.md","content":"..."},"id":"s-inv-design-analysis","timestamp":"2026-11-11T10:00:05.000Z"}
+{"type":"skill.invoked","data":{"name":"test-analysis","path":"skills/test-analysis/SKILL.md","content":"..."},"id":"s-inv-test-analysis","timestamp":"2026-11-11T10:00:07.000Z"}
+{"type":"skill.invoked","data":{"name":"evidence-verification","path":"skills/evidence-verification/SKILL.md","content":"..."},"id":"s-inv-evidence-verification","timestamp":"2026-11-11T10:00:09.000Z"}
