@@ -293,8 +293,60 @@ export function buildReport(inputs, options = {}) {
     stage: { analysis: stage, verdictIssued },
     arms: armSummaries,
     comparisons,
-    disclosures: { sameModel },
+    disclosures: { sameModel, suite: suiteDisclosures(options.disclosures, options.runDir ?? runs.find((r) => r.runDir)?.runDir ?? null) },
   };
+}
+
+const DISTRIBUTION = /^([^#]+)#(.+)$/;
+
+/**
+ * Validates the suite's analysis.disclosures list. An entry with a `distribution`
+ * ("<file under runDir>#<dotted key path>") gets `data` ({source, counts}) for its arm, or `missing`
+ * ({source, reason}) when the file, key or arm entry is absent. A perspective-mode entry needs one.
+ */
+export function suiteDisclosures(list, runDir) {
+  if (list === undefined || list === null) return [];
+  if (!Array.isArray(list)) throw new Error('analysis.disclosures must be a list');
+  return list.map((d, i) => {
+    const where = `analysis.disclosures[${i}]`;
+    if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error(`${where} must be an object`);
+    if (typeof d.arm !== 'string' || !d.arm.trim()) throw new Error(`${where}.arm must be a non-empty string`);
+    if (typeof d.text !== 'string' || !d.text.trim()) throw new Error(`${where}.text must be a non-empty string`);
+    if (d.kind !== undefined && d.kind !== null && typeof d.kind !== 'string') throw new Error(`${where}.kind must be a string`);
+    if (d.distribution !== undefined && d.distribution !== null) {
+      const m = typeof d.distribution === 'string' ? DISTRIBUTION.exec(d.distribution) : null;
+      const file = m?.[1] ?? '';
+      if (!m || path.isAbsolute(file) || file.split(/[\\/]/).includes('..')) {
+        throw new Error(`${where}.distribution must be "<file under the run directory>#<key path>"`);
+      }
+    } else if (d.kind === 'perspective-mode') {
+      throw new Error(`${where} of kind perspective-mode needs a distribution`);
+    }
+    const out = { arm: d.arm, kind: d.kind ?? null, text: d.text };
+    if (out.kind === null) delete out.kind;
+    if (d.distribution) Object.assign(out, { distribution: d.distribution }, resolveDistribution(d.distribution, d.arm, runDir));
+    return out;
+  });
+}
+
+function resolveDistribution(spec, arm, runDir) {
+  const [, file, keyPath] = DISTRIBUTION.exec(spec);
+  if (!runDir) return { missing: { source: spec, reason: 'no run directory recorded to resolve the distribution' } };
+  const full = path.join(runDir, file);
+  const source = `${full}#${keyPath}`;
+  if (!fs.existsSync(full)) return { missing: { source, reason: `${file} not found in the run directory` } };
+  let value;
+  try {
+    value = JSON.parse(fs.readFileSync(full, 'utf8'));
+  } catch (err) {
+    return { missing: { source, reason: `${file} is not valid JSON: ${err.message}` } };
+  }
+  for (const key of keyPath.split('.')) {
+    if (!value || typeof value !== 'object' || !(key in value)) return { missing: { source, reason: `key ${keyPath} not found in ${file}` } };
+    value = value[key];
+  }
+  if (!value || typeof value !== 'object' || !(arm in value)) return { missing: { source, reason: `no entry for arm ${arm} under ${keyPath} in ${file}` } };
+  return { data: { source, counts: value[arm] } };
 }
 
 const fmt = (v, digits = 3) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(digits) : 'n/a');
@@ -360,9 +412,19 @@ export function renderMarkdown(report, { outDir } = {}) {
     for (const t of excluded) lines.push(`- ${cell(t.arm)} ${cell(t.task)} repeat ${t.repeat}: ${t.kind}${t.reason ? `, ${cell(t.reason)}` : ''} (${link(t.trialDir)})`);
     lines.push('');
   }
-  if (report.disclosures.sameModel.length) {
+  const suiteDisc = report.disclosures.suite ?? [];
+  if (report.disclosures.sameModel.length || suiteDisc.length) {
     lines.push('## Disclosures', '');
     for (const d of report.disclosures.sameModel) lines.push(`- Arm ${cell(d.arm)} uses \`${cell(d.model)}\`, the same model as the ${d.role}.`);
+    for (const d of suiteDisc) {
+      lines.push(`- Arm ${cell(d.arm)}${d.kind ? ` (${cell(d.kind)})` : ''}: ${cell(d.text)}`);
+      if (d.missing) lines.push(`  - ${d.kind === 'perspective-mode' ? 'Perspective-mode distribution' : 'Distribution'} missing: ${cell(d.missing.reason)} (${cell(d.missing.source)}).`);
+      else if (d.data && d.kind === 'perspective-mode') {
+        const c = d.data.counts ?? {};
+        const n = (k) => (c[k] ?? 'n/a');
+        lines.push(`  - Perspective modes: dispatched ${n('dispatched')}, inlined ${n('inlined')}, none ${n('none')}; ${n('trials')} trials; ${n('invalidatedExcluded')} invalidated trial(s) excluded.`);
+      } else if (d.data) lines.push(`  - Distribution (${cell(d.data.source)}): ${cell(stable(d.data.counts))}`);
+    }
     lines.push('');
   }
   lines.push('## Trial directories', '');
