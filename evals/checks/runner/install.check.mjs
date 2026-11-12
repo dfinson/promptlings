@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, delimiter, dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -70,8 +70,17 @@ test("install: a source whose shrinkwrap matches the checkout reuses its node_mo
   // A recording npm first on PATH: the real one would hit the network and take minutes.
   writeFileSync(join(bin, "npm.cmd"), `@echo npm %*>>"${calls}"\r\n@exit /b 0\r\n`);
   writeFileSync(join(bin, "npm"), `#!/bin/sh\necho "npm $*" >> "${calls}"\n`, { mode: 0o755 });
-  const source = await withParentEnv({ PATH: `${bin}${delimiter}${process.env.PATH}` }, () =>
-    install.prepareSource("HEAD", { root: join(root, "artifacts") }));
+  // Reuse needs the checkout's node_modules. A checkout before `npm ci` gets an empty stub for this check only.
+  const modules = join(repoRoot, "node_modules");
+  const stub = !existsSync(modules);
+  if (stub) mkdirSync(modules);
+  let source;
+  try {
+    source = await withParentEnv({ PATH: `${bin}${delimiter}${process.env.PATH}` }, () =>
+      install.prepareSource("HEAD", { root: join(root, "artifacts") }));
+  } finally {
+    if (stub) rmSync(modules, { recursive: true, force: true });
+  }
   assert.equal(existsSync(calls), false, `npm ran: ${existsSync(calls) ? readFileSync(calls, "utf8") : ""}`);
   assert.ok(lstatSync(join(source.dir, "node_modules")).isSymbolicLink(), "node_modules links to the checkout's");
 });
