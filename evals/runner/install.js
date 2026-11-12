@@ -18,9 +18,13 @@ export function resolveRef(ref) {
   return run("git", ["rev-parse", "--verify", `${ref}^{commit}`], { cwd: repoRoot }).trim();
 }
 
+// npm prefers npm-shrinkwrap.json over package-lock.json. Line endings are normalized because the checkout may
+// use CRLF where `git archive` emits LF.
 function lockHash(dir) {
-  const file = join(dir, "package-lock.json");
-  return existsSync(file) ? createHash("sha256").update(readFileSync(file)).digest("hex") : null;
+  const name = ["npm-shrinkwrap.json", "package-lock.json"].find((n) => existsSync(join(dir, n)));
+  if (!name) return null;
+  const text = readFileSync(join(dir, name), "utf8").replace(/\r\n/g, "\n");
+  return createHash("sha256").update(`${name}\n${text}`).digest("hex");
 }
 
 // Extracts the Promptlings tree at `ref` into a cached, read-only source directory with its dependencies.
