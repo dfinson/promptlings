@@ -178,8 +178,14 @@ arms:
       Review profile: standard.
       Output contract: defer output to this host. The host's output contract is the findings
       file and final JSON block described below; report every accepted finding there in that shape.
-    # Recorded in collected.json for qualification; see qualify.js.
-    qualificationChecks: [agent-ran, workflow-mode, skill-read, perspectives, findings-file]
+    # Recorded in collected.json; see qualify.js. The four checks gate qualification.
+    qualificationChecks: [agent-ran, workflow-mode, skill-read, findings-file]
+    # Spec Amendment 5: perspective handling is a disclosed observation, not a gate. Each trial
+    # records its mode (dispatched, inlined or none) with observation: true; the report discloses
+    # the per-arm distribution. In rb-qual-3 all three hve trials passed the four gates with mode
+    # none: the agent judged each diff small enough to review directly, and a probe that supplied
+    # perspectives explicitly still did not dispatch.
+    qualificationObservations: [perspectives]
 
 # reasoningEffort is fixed for every arm in qualification and recorded in run.json.
 # Stage ceilings are 1.5x planned cost including judging (spec lane 8). The pilot is three
@@ -265,7 +271,7 @@ analysis:
   revisionComparison: [nitcracker, previous]
   # Fields that may differ between compared arms; core merges these with its defaults (id, label,
   # ref, selection, agent). Every other arm field, including limits, must match.
-  declaredDifferences: [plugin, external, promptPreamble, qualificationChecks]
+  declaredDifferences: [plugin, external, promptPreamble, qualificationChecks, qualificationObservations]
   disclosures:
     - arm: hve-code-review
       kind: prompt-preamble
@@ -275,6 +281,17 @@ analysis:
         to HEAD, profile standard, output in the task's findings contract). It is the only
         prompt difference between arms; the exact text is arms[hve-code-review].promptPreamble
         and each trial's prompt.txt.
+    # Amendment 5. The per-arm counts {dispatched, inlined, none, trials, invalidatedExcluded}
+    # are in <runDir>/score-run.json under perspectiveModes (adapter perspectiveModes).
+    - arm: hve-code-review
+      kind: perspective-mode
+      distribution: score-run.json#perspectiveModes
+      text: >-
+        Perspective handling in the hve-code-review arm is reported, not required. Each trial
+        records whether the Code Review agent dispatched perspective subagents, inlined
+        perspectives or used none; qualification does not gate on it because the agent decides
+        per diff (in qualification it reviewed small diffs directly, even when perspectives were
+        supplied explicitly). The per-arm distribution of modes is shown with this disclosure.
 
 scorers:
   - id: grounded_recall

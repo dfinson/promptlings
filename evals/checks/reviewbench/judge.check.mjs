@@ -270,7 +270,7 @@ test('judge: scoreRun judges each arm from collected candidates and reports the 
   };
   const dataset = judgeDataset(root);
   const suite = { judge: { ...JUDGE, diagnosticExcludeProducers: ['ccr:'] } };
-  const { entries, rejected } = await scoreRun({
+  const { entries, rejected, perspectiveModes } = await scoreRun({
     runDir, suite, diagnostic: true, runner, env: { COPILOT_GITHUB_TOKEN: 'tok' }, fetchImpl: fakeFetch(), artifactRoot: join(root, 'art'),
     datasetDir: dataset,
   });
@@ -279,4 +279,6 @@ test('judge: scoreRun judges each arm from collected candidates and reports the 
   assert.deepEqual([...new Set(entries.map((e) => e.repeat))], [0]);
   for (const variant of ['primary', 'exclude-producers']) assert.ok(existsSync(join(runDir, 'judge', 'stock', 'r0', variant, 'verified.json')), variant);
   assert.equal(entries.length, 6);
+  // No arm in this suite observes perspectives, so the distribution is present and empty.
+  assert.deepEqual(perspectiveModes, {});
 });

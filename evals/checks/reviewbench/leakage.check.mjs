@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { applyLeakage, classifyCall, scanTrial } from '../../scoring/leakage.js';
-import { collect, loadSuite, PR_DIR } from '../../suites/reviewbench/adapter.js';
+import { collect, loadSuite, perspectiveModes, PR_DIR } from '../../suites/reviewbench/adapter.js';
 
 const TASK = { repo: 'acme/widgets', prNumber: 1, base: 'a'.repeat(40), head: 'b'.repeat(40) };
 
@@ -281,8 +281,9 @@ test('leakage: hve qualification passes a workflow-mode trial and records the pr
   const out = collect(record, TASK);
   assert.equal(out.status, 'completed', out.reason);
   assert.equal(out.qualification.passed, true, JSON.stringify(out.qualification.checks));
-  assert.deepEqual(Object.keys(out.qualification.checks), ['agent-ran', 'workflow-mode', 'skill-read', 'perspectives', 'findings-file']);
+  assert.deepEqual(Object.keys(out.qualification.checks), ['agent-ran', 'workflow-mode', 'skill-read', 'findings-file', 'perspectives']);
   assert.equal(out.qualification.checks.perspectives.mode, 'dispatched');
+  assert.equal(out.qualification.checks.perspectives.observation, true);
   assert.match(out.promptPreamble.text, /workflow\s+autonomy mode/);
   assert.ok(out.promptPreamble.text.includes(TASK.base));
   assert.match(out.promptPreamble.sha256, /^[0-9a-f]{64}$/);
@@ -301,11 +302,59 @@ test('leakage: hve qualification detects inlined perspectives', (t) => {
   assert.equal(out.qualification.passed, true);
 });
 
-test('leakage: hve qualification fails on ask_user, a refused skill read, missing perspectives or a wrong plugin', (t) => {
+// Amendment 5: perspective handling is a disclosed observation, not a gate.
+const HVE_NO_PERSPECTIVES = HVE_GOOD.filter((e) => e.type !== 'subagent.started');
+
+test('leakage: hve qualification passes with perspective mode none and records the mode as an observation', (t) => {
+  const out = collect(hveTrial(t, HVE_NO_PERSPECTIVES, { findings: HVE_FINDINGS }).record, TASK);
+  assert.equal(out.status, 'completed', out.reason);
+  assert.equal(out.qualification.passed, true, JSON.stringify(out.qualification.checks));
+  const { perspectives } = out.qualification.checks;
+  assert.equal(perspectives.observation, true);
+  assert.equal(perspectives.mode, 'none');
+  assert.equal('pass' in perspectives, false);
+  for (const id of ['agent-ran', 'workflow-mode', 'skill-read', 'findings-file']) assert.equal(out.qualification.checks[id].pass, true, id);
+});
+
+test('leakage: hve qualification with perspective mode none still fails when any gating check fails', (t) => {
+  const cases = {
+    'agent-ran': [HVE_NO_PERSPECTIVES, { flags: ['--agent', 'Code Review'] }],
+    'workflow-mode': [[...HVE_NO_PERSPECTIVES, ...call('a1', 'ask_user', { question: 'Which profile?' })], {}],
+    'skill-read': [[...HVE_NO_PERSPECTIVES, ...call('v2', 'view', { path: 'C:\\p\\.github\\skills\\coding-standards\\code-review\\SKILL.md' }, false)], {}],
+    'findings-file': [HVE_NO_PERSPECTIVES, { findings: undefined }],
+  };
+  for (const [check, [events, opts]] of Object.entries(cases)) {
+    const out = collect(hveTrial(t, events, { findings: HVE_FINDINGS, ...opts }).record, TASK);
+    assert.equal(out.qualification.passed, false, check);
+    assert.equal(out.qualification.checks[check].pass, false, check);
+    assert.equal(out.qualification.checks.perspectives.mode, 'none', check);
+  }
+});
+
+test('leakage: perspectiveModes counts each observing arm\'s perspective modes over trials that were not invalidated', (t) => {
+  const runDir = scratch(t);
+  const write = (task, arm, repeat, collected) => {
+    const dir = join(runDir, 'trials', task, arm, String(repeat));
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'collected.json'), JSON.stringify(collected));
+  };
+  const q = (mode) => ({ passed: true, checks: { perspectives: { observation: true, mode, evidence: 'x' } } });
+  write('a_1-aaaaaaaa', HVE, 0, { status: 'completed', invalidated: false, qualification: q('none') });
+  write('b_2-bbbbbbbb', HVE, 0, { status: 'completed', invalidated: false, qualification: q('none') });
+  write('c_3-cccccccc', HVE, 0, { status: 'errored', invalidated: false, qualification: q('dispatched') });
+  write('d_4-dddddddd', HVE, 0, { status: 'invalidated', invalidated: true, qualification: q('inlined') });
+  write('a_1-aaaaaaaa', 'stock', 0, { status: 'completed', invalidated: false });
+  const suite = loadSuite();
+  assert.deepEqual(perspectiveModes(runDir, suite), {
+    [HVE]: { dispatched: 1, inlined: 0, none: 2, trials: 3, invalidatedExcluded: 1 },
+  });
+  assert.deepEqual(perspectiveModes(join(runDir, 'absent'), suite), {});
+});
+
+test('leakage: hve qualification fails on ask_user, a refused skill read or a wrong plugin', (t) => {
   const cases = {
     'workflow-mode': [...HVE_GOOD, ...call('a1', 'ask_user', { question: 'Which profile?' })],
     'skill-read': [...HVE_GOOD, ...call('v2', 'view', { path: 'C:\\p\\.github\\skills\\coding-standards\\code-review\\SKILL.md' }, false)],
-    perspectives: HVE_GOOD.filter((e) => e.type !== 'subagent.started'),
   };
   for (const [check, events] of Object.entries(cases)) {
     const out = collect(hveTrial(t, events, { findings: HVE_FINDINGS }).record, TASK);

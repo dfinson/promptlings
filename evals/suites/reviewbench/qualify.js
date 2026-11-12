@@ -48,16 +48,20 @@ function touchesSkill(toolName, args) {
 }
 
 /**
- * Checks one trial of an arm that declares qualificationChecks. `record` is the trial record
+ * Checks one trial of an arm that declares qualificationChecks (gates) or
+ * qualificationObservations (recorded with `observation: true`, never gating). `record` is the trial record
  * (trial.json); `findingsSource` is where collect read the findings, if anywhere.
  */
 export function qualifyTrial({ record = {}, trialDir, armConfig, findingsSource, findingsPath }) {
   const wanted = armConfig?.qualificationChecks ?? [];
+  // Observations are evaluated and recorded but never gate `passed` (Amendment 5: perspectives).
+  const observed = (armConfig?.qualificationObservations ?? []).filter((id) => !wanted.includes(id));
   const eventsPath = record.eventsPath ?? (trialDir ? join(trialDir, 'events.jsonl') : null);
   const events = readEvents(eventsPath);
   const results = {};
   if (!events) {
     for (const id of wanted) results[id] = { pass: false, evidence: `no events at ${eventsPath}` };
+    for (const id of observed) results[id] = { observation: true, mode: null, evidence: `no events at ${eventsPath}` };
     return { passed: false, checks: results };
   }
 
@@ -119,9 +123,12 @@ export function qualifyTrial({ record = {}, trialDir, armConfig, findingsSource,
       return { pass, evidence: pass ? findingsPath : `findings read from ${findingsSource ?? 'nowhere'}, expected ${findingsPath}` };
     },
   };
-  for (const id of wanted) {
-    if (!all[id]) throw new Error(`unknown qualification check ${id}`);
-    results[id] = all[id]();
+  for (const id of [...wanted, ...observed]) if (!all[id]) throw new Error(`unknown qualification check ${id}`);
+  for (const id of wanted) results[id] = all[id]();
+  const passed = wanted.every((id) => results[id].pass);
+  for (const id of observed) {
+    const { pass, ...rest } = all[id]();
+    results[id] = { observation: true, ...rest };
   }
-  return { passed: Object.values(results).every((r) => r.pass), checks: results };
+  return { passed, checks: results };
 }

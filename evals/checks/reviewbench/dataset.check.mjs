@@ -169,7 +169,7 @@ test('dataset: suite.yaml declares the frozen splits, six arms and three stages'
     stock: 5000, nitcracker: 5000, 'sparring-partner': 5000, ensemble: 5000, previous: 5000, 'hve-code-review': 5000,
   });
   assert.equal(suite.limits.maxAiCredits, 5000);
-  assert.deepEqual(suite.analysis.declaredDifferences, ['plugin', 'external', 'promptPreamble', 'qualificationChecks']);
+  assert.deepEqual(suite.analysis.declaredDifferences, ['plugin', 'external', 'promptPreamble', 'qualificationChecks', 'qualificationObservations']);
   const allowed = new Set(['id', 'label', 'ref', 'selection', 'agent', ...suite.analysis.declaredDifferences]);
   const byId = Object.fromEntries(suite.arms.map((a) => [a.id, a]));
   for (const pair of [...suite.analysis.comparisons, suite.analysis.revisionComparison]) {
@@ -184,6 +184,14 @@ test('dataset: suite.yaml declares the frozen splits, six arms and three stages'
   assert.equal(hve.ref, null);
   assert.equal(hve.selection, null);
   assert.deepEqual(hve.tools, suite.arms.find((a) => a.id === 'stock').tools);
+  // Amendment 5: perspectives is a disclosed observation, never a gate.
+  assert.deepEqual(hve.qualificationChecks, ['agent-ran', 'workflow-mode', 'skill-read', 'findings-file']);
+  assert.deepEqual(hve.qualificationObservations, ['perspectives']);
+  const perspectiveDisclosure = suite.analysis.disclosures.filter((d) => d.kind === 'perspective-mode');
+  assert.equal(perspectiveDisclosure.length, 1);
+  assert.equal(perspectiveDisclosure[0].arm, 'hve-code-review');
+  assert.match(perspectiveDisclosure[0].text, /reported, not required/);
+  assert.equal(perspectiveDisclosure[0].distribution, 'score-run.json#perspectiveModes');
   assert.ok(suite.arms.filter((a) => a.id !== 'hve-code-review').every((a) => !a.plugin && !a.promptPreamble));
   assert.equal(suite.splits.confirmation.sample.size, 60);
   assert.match(suite.splits.confirmation.keysSha256, /^sha256:[0-9a-f]{64}$/);

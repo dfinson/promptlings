@@ -211,7 +211,9 @@ export function collect(trialRecord, task, ctx = {}) {
     base.promptPreamble = { text: preamble, sha256: createHash('sha256').update(preamble).digest('hex') };
   }
   const qualification = (findingsSource) =>
-    armConfig?.qualificationChecks?.length ? { qualification: qualifyTrial({ record: trialRecord, trialDir, armConfig, findingsSource, findingsPath }) } : {};
+    armConfig?.qualificationChecks?.length || armConfig?.qualificationObservations?.length
+      ? { qualification: qualifyTrial({ record: trialRecord, trialDir, armConfig, findingsSource, findingsPath }) }
+      : {};
   if (audited.status === 'invalidated') {
     return { ...base, ...qualification(null), status: 'invalidated', invalidated: true, reason: audited.reason };
   }
@@ -279,6 +281,7 @@ export async function scoreRun({ runDir, suite = loadSuite(), diagnostic = false
   // datasetDir is for offline checks; runs resolve and verify the pinned dataset.
   const dir = datasetDir ?? datasetFor(ctx).dir;
   const artifactRoot = artifactRootOf(ctx);
+  const modes = perspectiveModes(runDir, suite);
   const { piDir } = await preparePiDir(runDir, { env, ...(fetchImpl ? { fetchImpl } : {}) });
   const entries = [];
   const rejected = [];
@@ -294,7 +297,38 @@ export async function scoreRun({ runDir, suite = loadSuite(), diagnostic = false
       }
     }
   }
-  return { entries, rejected };
+  return { entries, rejected, perspectiveModes: modes };
+}
+
+/**
+ * Per-arm distribution of the perspectives observation (Amendment 5) from
+ * <runDir>/trials/<task>/<arm>/<repeat>/collected.json, for the report's perspective-mode
+ * disclosure. Invalidated trials are counted separately and excluded from the mode counts.
+ */
+export function perspectiveModes(runDir, suite = loadSuite()) {
+  const arms = new Set((suite.arms ?? []).filter((a) => a.qualificationObservations?.includes('perspectives')).map((a) => a.id));
+  const out = {};
+  const trialsDir = join(runDir, 'trials');
+  if (!arms.size || !existsSync(trialsDir)) return out;
+  for (const task of readdirSync(trialsDir).sort()) {
+    for (const arm of readdirSync(join(trialsDir, task)).sort()) {
+      if (!arms.has(arm)) continue;
+      for (const repeat of readdirSync(join(trialsDir, task, arm)).sort()) {
+        const file = join(trialsDir, task, arm, repeat, 'collected.json');
+        if (!existsSync(file)) continue;
+        const collected = JSON.parse(readFileSync(file, 'utf8'));
+        const mode = collected?.qualification?.checks?.perspectives?.mode;
+        if (mode === undefined) continue;
+        const d = (out[arm] ??= { dispatched: 0, inlined: 0, none: 0, trials: 0, invalidatedExcluded: 0 });
+        if (collected.invalidated === true) d.invalidatedExcluded += 1;
+        else if (mode in d) {
+          d[mode] += 1;
+          d.trials += 1;
+        }
+      }
+    }
+  }
+  return out;
 }
 
 /**
