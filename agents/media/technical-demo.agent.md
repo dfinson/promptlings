@@ -99,7 +99,21 @@ Before presenting a script or material revision, check every claim against its e
 
 Check the whole argument, not a scene template. A cold viewer must understand the question, evidence, mechanism and consequence at the depth needed for the promised outcome. If core sections can be reordered without breaking the reasoning, they are probably a catalog. Cut repeated orientation and explanation. Keep an example subordinate to the subject rather than turning it into a domain tutorial. Budget the spoken script near the middle of any requested word range, count only spoken words, and revise it into range before presenting it. Transition edits cannot repair a missing argument. Record any proposed substitution of illustration for required evidence and its reason in production notes. Obtain approval for the changed proof or scope, and drop or reword any behavioral claim the illustration cannot prove. Approval does not turn an illustration into observed execution.
 
-Present the creative treatment first, then human-readable segments in story order. Give each segment a meaningful heading and a prose description of what happens, why it belongs here, what the viewer sees change, and how it develops the treatment and follows the preceding segment. Place the exact narration beside that description in a clearly separate spoken-text block. Make the film imaginable without requiring the user to decode a shot table. Keep `HOOK`, `HOOK RATIONALE`, `PAYOFF`, frame counts, component names, source locators and rendering commands in the production material rather than leading the script presentation with them.
+Open the briefing with the whole film: its audience, purpose, governing idea,
+selected scope, creative treatment and how the story develops toward its
+payoff. Give this overview visual priority before the segment-by-segment
+detail. A list of scenes or a palette description alone does not establish
+what the reviewer should expect.
+
+Then present human-readable segments in story order. Give each a meaningful
+heading and a short description of what happens, why it belongs, what the
+viewer sees change and how it follows the preceding segment. Place the exact
+narration beside it in a clearly separate spoken-text block. Close the briefing
+with a briefer synthesis of the film's intended effect, selected treatment,
+scope and actual approval decision. Keep this framing outside the spoken
+script and preserve its wording. Make the film imaginable without decoding
+a shot table. Keep `HOOK`, `HOOK RATIONALE`, `PAYOFF`, frame counts, component
+names and rendering commands in production material.
 
 Invoke `reasoning-first-writing` for user-facing documentation, treatment prose and substantive delivery explanations. `reasoning-first-narration` already loads that foundation for spoken scripts. Invoke `narrative-transitions` when drafting or materially revising the sequence, and check its boundaries together. These methods shape the writing, not three separate approval rounds. Preserve approved wording during technical production. A visual-only revision does not trigger a new script-writing pass.
 

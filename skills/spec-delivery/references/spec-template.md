@@ -59,6 +59,13 @@ stays unknown rather than being invented.
 ```markdown
 # <Meaningful outcome>
 
+## Overview
+
+Give the reader the whole picture before the detailed contract: the problem,
+intended outcome, selected approach and scope, how the parts connect and the
+decision sought. Make this the first substantive reading level in content
+and styling. A title or contents list is not a substitute.
+
 ## Why
 
 Describe the concrete current situation, who encounters it, its consequence,
@@ -134,6 +141,13 @@ Do not repeat full requirements, ownership and acceptance machinery for each.
 ## Out of scope
 
 State material exclusions and why the proposal does not include them.
+
+## What this commits us to
+
+Close the substantive explanation with a shorter synthesis: the outcome,
+why the selected mechanism fits, the commitment and its boundaries, and any
+actual decision still needed. Help the reader explain and own the proposal.
+Do not introduce a requirement or repeat the full task inventory.
 
 ## Changelog
 

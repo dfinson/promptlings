@@ -24,6 +24,18 @@ these artifacts to product Git history.
 
 ## Design a reading path
 
+Start with a genuine overview before the detailed sections: purpose, outcome,
+selected scope, how the main parts fit and what the reader will judge.
+Use placement, typography and grouping to make that the first reading level.
+A contents rail helps navigation but cannot supply the overview's argument.
+Where useful, let one representative visual orient the reader to the whole.
+
+End the substantive reading path with a shorter synthesis of the outcome,
+chosen mechanism, commitment boundaries and actual open decision. It should
+leave the reader able to explain and own the proposal. Keep it visually
+distinct and readable, not a row of unrelated cards or an inventory of
+everything already said. Reference material may follow separately.
+
 Lead with the selected outcome, status and decision sought. Engineering
 synthesis comes before presentation: preserve the complete opportunity
 catalogue as reference without making it the implementation contract.

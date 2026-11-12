@@ -9,6 +9,14 @@ This skill writes what the presenter says and does while they drive an interacti
 
 The presenter is operating working models live, not reading slides. The script supports that: it tells them what to say before they touch a control, what to do, when to stay silent while the model moves and what to say once the result is on screen. It words in full only what must land exactly and gives cues for the rest, because reading verbatim breaks eye contact and improvising every line overruns.
 
+Invoke `reasoning-first-writing` for the user-facing script document. Before
+its detailed cues, give a short overview of the audience, intended takeaway,
+selected scope and route through the experience. Make that orientation
+visually precede the beat-by-beat material. Close the document with a briefer
+synthesis that helps the presenter own the experience and its remaining
+decision or rehearsal action. Keep this document framing outside spoken
+lines, preserving the exact hook, close and approved narration.
+
 ## The driving loop
 
 Every manipulation on stage follows four moves, the structure of think-aloud narration around a live system:

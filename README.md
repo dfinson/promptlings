@@ -198,6 +198,12 @@ light/dark appearance, embedded assets, accessible reading and printing.
 Figures and short explanations lead the reader through the proposal while
 exact requirements remain visible.
 
+Every intent document begins with a clear top-down overview before its detail
+and ends with a shorter synthesis of the outcome, approach and commitment.
+This applies to specifications and demo/script briefings across formats.
+The framing helps the reader understand and own the proposal, without
+changing verbatim narration or adding boilerplate to routine comments.
+
 Engineering synthesis comes first: select the smallest coherent mechanism
 using existing capabilities, and separate its implementation contract from
 the complete opportunity catalogue, experiments and policy choices. A full

@@ -56,6 +56,10 @@ For writing-only work:
    access. Invoke technical-illustration to make consequential visual choices
    and mechanisms judgeable before implementation. Build the reading path
    through purposeful figures and short prose, not a wall of text.
+   Establish the whole proposal in an opening overview before its detailed
+   contract, with visual hierarchy that makes that reading order clear. End
+   with a shorter synthesis of the outcome, approach, commitment boundaries
+   and actual reader decision, so the human can explain and own the proposal.
    Each selected mechanism or necessary task retains its responsibility, boundaries, genuine
    prerequisites and observable acceptance. Use examples to unpack interacting
    rules, not to replace them. Use no tables unless necessary information has

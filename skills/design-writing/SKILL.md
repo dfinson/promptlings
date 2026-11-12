@@ -45,6 +45,12 @@ measurement or evidence infrastructure unrelated to that selected outcome.
 Use existing evidence mechanisms where sufficient. An attractive opening,
 more figures or collapsed sections cannot substitute for engineering synthesis.
 
+Use the foundation's overview, detail and closing-synthesis structure for every
+intent document. Establish the whole proposal before its detailed mechanisms
+or tasks, with matching visual hierarchy. Finish with a shorter account of the
+outcome, approach, boundaries and actual reader decision. Keep both grounded
+in the same contract, without creating a second approval or repeated inventory.
+
 ## Draft or revise
 
 1. Read the applicable template, upstream requirements, decision evidence, and draft when one exists. Establish what is decided, proposed, observed, or unresolved. Keep normative requirements separate from explanatory rationale.
