@@ -251,3 +251,65 @@ test('report writes Markdown and JSON with same-model disclosure', async () => {
   assert.ok(report.disclosures.sameModel.some((d) => d.arm === 'graded' && d.role === 'judge'));
   assert.match(fs.readFileSync(mdPath, 'utf8'), /same model as the judge/);
 });
+
+test('report keeps suite disclosures and resolves the perspective-mode distribution from score-run.json', async () => {
+  const { buildReport, renderMarkdown } = await load('report/index.js');
+  const counts = { dispatched: 2, inlined: 5, none: 3, trials: 10, invalidatedExcluded: 1 };
+  const runDir = fs.mkdtempSync(path.join(os.tmpdir(), 'evals-disclosures-'));
+  fs.writeFileSync(path.join(runDir, 'score-run.json'), JSON.stringify({ perspectiveModes: { 'hve-code-review': counts } }));
+  const disclosures = [
+    { arm: 'hve-code-review', kind: 'prompt-preamble', text: 'The hve arm prompt is the shared prompt preceded by a declared host preamble.' },
+    { arm: 'hve-code-review', kind: 'perspective-mode', distribution: 'score-run.json#perspectiveModes', text: 'Perspective handling is reported, not required.' },
+  ];
+  const models = { model: 'claude-x' };
+  const doc = (dir) => ({ ...scoresDoc([...trialsFor('stock'), ...trialsFor('hve-code-review')], [arm('stock', models), arm('hve-code-review', models)]), runDir: dir });
+
+  const report = JSON.parse(JSON.stringify(buildReport(doc(runDir), { baseline: 'stock', disclosures })));
+  assert.deepEqual(report.disclosures.sameModel, []);
+  assert.equal(report.disclosures.suite.length, 2);
+  assert.deepEqual(report.disclosures.suite[0], { arm: 'hve-code-review', kind: 'prompt-preamble', text: disclosures[0].text });
+  const mode = report.disclosures.suite[1];
+  assert.equal(mode.distribution, 'score-run.json#perspectiveModes');
+  assert.deepEqual(mode.data.counts, counts);
+  assert.equal(mode.data.source, `${path.join(runDir, 'score-run.json')}#perspectiveModes`);
+  assert.equal(mode.missing, undefined);
+  const md = renderMarkdown(report);
+  assert.match(md, /## Disclosures/);
+  assert.ok(md.includes(`- Arm hve-code-review (prompt-preamble): ${disclosures[0].text}`));
+  assert.ok(md.includes(`- Arm hve-code-review (perspective-mode): ${disclosures[1].text}`));
+  assert.ok(md.includes('  - Perspective modes: dispatched 2, inlined 5, none 3; 10 trials; 1 invalidated trial(s) excluded.'));
+
+  const noFile = fs.mkdtempSync(path.join(os.tmpdir(), 'evals-disclosures-missing-'));
+  const noKey = fs.mkdtempSync(path.join(os.tmpdir(), 'evals-disclosures-nokey-'));
+  fs.writeFileSync(path.join(noKey, 'score-run.json'), JSON.stringify({ perspectiveModes: { stock: counts } }));
+  for (const [dir, reason] of [[noFile, /score-run\.json not found/], [noKey, /no entry for arm hve-code-review/], [null, /no run directory/]]) {
+    const r = buildReport(doc(dir), { baseline: 'stock', disclosures });
+    const m = r.disclosures.suite[1];
+    assert.equal(r.disclosures.suite.length, 2, 'a missing distribution keeps the disclosure');
+    assert.equal(m.data, undefined);
+    assert.match(m.missing.reason, reason);
+    assert.match(renderMarkdown(r), /  - Perspective-mode distribution missing: /);
+  }
+
+  for (const bad of [
+    'not a list',
+    [{ arm: 7, text: 'x' }],
+    [{ arm: 'hve-code-review' }],
+    [{ arm: 'hve-code-review', text: 'x', kind: 3 }],
+    [{ arm: 'hve-code-review', kind: 'perspective-mode', text: 'x' }],
+    [{ arm: 'hve-code-review', kind: 'perspective-mode', text: 'x', distribution: '../score-run.json#perspectiveModes' }],
+    [null],
+  ]) {
+    assert.throws(() => buildReport(doc(runDir), { baseline: 'stock', disclosures: bad }), /disclosures/);
+  }
+});
+
+test('report renders same-model disclosures unchanged and omits the section when nothing is disclosed', async () => {
+  const { buildReport, renderMarkdown } = await load('report/index.js');
+  const same = buildReport(scoresDoc([...trialsFor('stock'), ...trialsFor('graded')], [arm('stock'), arm('graded')]), { baseline: 'stock' });
+  assert.deepEqual(same.disclosures.suite, []);
+  const md = renderMarkdown(same);
+  assert.ok(md.includes('## Disclosures\n\n- Arm stock uses `gpt-6.1-sol`, the same model as the judge.\n- Arm graded uses `gpt-6.1-sol`, the same model as the judge.\n\n'));
+  const none = buildReport(scoresDoc([...trialsFor('stock'), ...trialsFor('graded')], [arm('stock', { model: 'claude-x' }), arm('graded', { model: 'claude-x' })]), { baseline: 'stock' });
+  assert.doesNotMatch(renderMarkdown(none), /## Disclosures/);
+});
