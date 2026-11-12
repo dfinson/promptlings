@@ -164,6 +164,12 @@ does not establish human approval, PR publication or checklist completeness.
 Documentation-only lanes need appropriate diff review, not invented failing
 tests. Ordinary bounded changes use the repository's smallest relevant checks
 and actual required acceptance. Reject skipped, vacuous, out-of-scope or unrelated-setup evidence.
+For bug fixes, reproduce the observed failure on the baseline and demonstrate
+its resolution on the changed revision with the same focused check when
+feasible. Existing tests or a bounded runtime observation can supply that
+evidence without the handoff helper or new maintained test infrastructure.
+If baseline execution is blocked, retain the specific reason and distinguish
+passing changed-revision checks from demonstrated regression protection.
 Retain failing revisions and route repair to owners. A failed prerequisite
 blocks its consumers, not unrelated lanes. A failed test alone does not
 establish a dependency.
