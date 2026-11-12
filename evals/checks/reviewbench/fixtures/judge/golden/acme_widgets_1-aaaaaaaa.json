@@ -1,0 +1,41 @@
+{
+  "pr_key": "acme_widgets_1-aaaaaaaa",
+  "pr": {
+    "repo": "https://github.com/acme/widgets",
+    "pr_number": 1,
+    "base": "0000000000000000000000000000000000000000",
+    "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "findings": [
+    {
+      "file": "src/a.js",
+      "start_line": 10,
+      "end_line": 12,
+      "message": "synthetic finding a0",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "bug",
+      "producer": "ccr:copilot"
+    },
+    {
+      "file": "src/b.js",
+      "start_line": 10,
+      "end_line": 12,
+      "message": "synthetic finding a1",
+      "tp_fp": "tp",
+      "severity": "low",
+      "category": "style",
+      "producer": "human:reviewer"
+    },
+    {
+      "file": "src/b.js",
+      "start_line": 10,
+      "end_line": 12,
+      "message": "synthetic finding a2",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "style",
+      "producer": "ccr:copilot"
+    }
+  ]
+}

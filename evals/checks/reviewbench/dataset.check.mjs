@@ -1,0 +1,342 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  DEFAULT_LOCK_PATH,
+  DatasetPinError,
+  contentHash,
+  ensureDataset,
+  readLockEntry,
+  verifyDataset,
+} from '../../suites/reviewbench/dataset.js';
+import { keysHash, prKey, resolveSplit } from '../../suites/reviewbench/tasks.js';
+import { armPreamble, buildPrompt, diffFiles, listTasks, loadSuite, materialize, panelInputs } from '../../suites/reviewbench/adapter.js';
+
+const GIT_ID = ['-c', 'user.name=evals', '-c', 'user.email=evals@example.invalid', '-c', 'commit.gpgsign=false', '-c', 'core.autocrlf=false'];
+const git = (cwd, ...args) => execFileSync('git', [...GIT_ID, ...args], { cwd, encoding: 'utf8' }).trim();
+
+function tmp(t) {
+  const dir = mkdtempSync(join(tmpdir(), 'rb-dataset-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  return dir;
+}
+
+const manifest = [
+  { repo: 'https://github.com/acme/widgets', pr_number: 1, base: 'a'.repeat(40), head: 'a1'.repeat(20), title: 'one' },
+  { repo: 'https://github.com/acme/widgets', pr_number: 2, base: 'b'.repeat(40), head: 'b2'.repeat(20), title: 'two' },
+  { repo: 'https://github.com/acme/gadgets', pr_number: 3, base: 'c'.repeat(40), head: 'c3'.repeat(20), title: 'three' },
+];
+
+/** A tiny ReviewBench-shaped source repository with one commit. */
+function makeSource(root) {
+  const src = join(root, 'source');
+  mkdirSync(join(src, 'corpus', 'test'), { recursive: true });
+  mkdirSync(join(src, 'golden'), { recursive: true });
+  writeFileSync(join(src, 'corpus', 'manifest.json'), JSON.stringify(manifest));
+  writeFileSync(join(src, 'corpus', 'test', 'test.json'), JSON.stringify(manifest.slice(0, 2)));
+  writeFileSync(join(src, 'golden', `${prKey(manifest[0])}.json`), '{"findings":[]}\r\n');
+  writeFileSync(join(src, 'package.json'), '{}');
+  git(root, 'init', '-q', src);
+  git(src, 'add', '-A');
+  git(src, 'commit', '-q', '-m', 'pin');
+  return { src, commit: git(src, 'rev-parse', 'HEAD') };
+}
+
+function writeLock(root, entry) {
+  const lockPath = join(root, 'datasets.lock');
+  writeFileSync(lockPath, JSON.stringify({ datasets: entry ? { reviewbench: entry } : {} }));
+  return lockPath;
+}
+
+function pinnedEntry(src, commit, extra = {}) {
+  return {
+    source: { type: 'git', url: src },
+    commit,
+    contentHash: contentHash(src, ['corpus', 'golden', 'package.json']),
+    contentPaths: ['corpus', 'golden', 'package.json'],
+    codeLicense: 'MIT',
+    dataLicense: null,
+    licenseDecision: { decision: 'approved for internal evaluation', by: 'maintainer', date: '2026-01-01' },
+    ...extra,
+  };
+}
+
+test('dataset: datasets.lock records the ReviewBench pin and its licenses', () => {
+  const entry = readLockEntry(DEFAULT_LOCK_PATH);
+  assert.equal(entry.source.url, 'https://github.com/review-bench/ReviewBench.git');
+  assert.match(entry.commit, /^[0-9a-f]{40}$/);
+  assert.match(entry.contentHash, /^sha256:[0-9a-f]{64}$/);
+  assert.equal(entry.codeLicense, 'MIT');
+  assert.ok('dataLicense' in entry, 'data license is recorded, null when ReviewBench states none');
+  if (entry.dataLicense === null) assert.deepEqual(Object.keys(entry.licenseDecision ?? {}).sort(), ['by', 'date', 'decision']);
+  assert.deepEqual(entry.counts, { full: 219, test: 25, heldout: 194, testGoldenFindings: 565, testGoldenTruePositives: 352 });
+});
+
+test('dataset: refuses when datasets.lock is missing or has no ReviewBench entry', (t) => {
+  const root = tmp(t);
+  assert.throws(() => ensureDataset({ artifactRoot: root, lockPath: join(root, 'absent.lock') }), DatasetPinError);
+  assert.throws(() => ensureDataset({ artifactRoot: root, lockPath: writeLock(root, null) }), /unpinned: no entry/);
+});
+
+test('dataset: refuses an entry without a commit, content hash or license record', (t) => {
+  const root = tmp(t);
+  const { src, commit } = makeSource(root);
+  const base = pinnedEntry(src, commit);
+  for (const [field, value, message] of [
+    ['commit', 'main', /full 40-character SHA/],
+    ['contentHash', undefined, /contentHash/],
+    ['codeLicense', '', /codeLicense/],
+  ]) {
+    const lockPath = writeLock(root, { ...base, [field]: value });
+    assert.throws(() => ensureDataset({ artifactRoot: join(root, 'cache'), lockPath }), message);
+  }
+  const { dataLicense, ...noData } = base;
+  assert.throws(() => ensureDataset({ artifactRoot: join(root, 'cache'), lockPath: writeLock(root, noData) }), /dataLicense must be recorded/);
+});
+
+test('dataset: refuses data without a stated license until a maintainer decision is recorded', (t) => {
+  const root = tmp(t);
+  const { src, commit } = makeSource(root);
+  const lockPath = writeLock(root, pinnedEntry(src, commit, { licenseDecision: null }));
+  assert.throws(() => ensureDataset({ artifactRoot: join(root, 'cache'), lockPath }), /licenseDecision/);
+  assert.throws(() => listTasks('test', { artifactRoot: join(root, 'cache'), lockPath }), /licenseDecision/);
+});
+
+test('dataset: fetches the pinned commit byte-exact and verifies it', (t) => {
+  const root = tmp(t);
+  const { src, commit } = makeSource(root);
+  const lockPath = writeLock(root, pinnedEntry(src, commit));
+  const result = ensureDataset({ artifactRoot: join(root, 'cache'), lockPath });
+  assert.equal(result.commit, commit);
+  assert.equal(result.dir, join(root, 'cache', 'datasets', 'reviewbench', commit));
+  assert.equal(readFileSync(join(result.dir, 'golden', `${prKey(manifest[0])}.json`), 'utf8'), '{"findings":[]}\r\n');
+  assert.equal(ensureDataset({ artifactRoot: join(root, 'cache'), lockPath }).dir, result.dir, 'second call reuses the cache');
+});
+
+test('dataset: refuses a cached checkout whose files changed', (t) => {
+  const root = tmp(t);
+  const { src, commit } = makeSource(root);
+  const lockPath = writeLock(root, pinnedEntry(src, commit));
+  const { dir } = ensureDataset({ artifactRoot: join(root, 'cache'), lockPath });
+  writeFileSync(join(dir, 'golden', `${prKey(manifest[0])}.json`), '{"findings":[{"tp_fp":"tp"}]}');
+  assert.throws(() => ensureDataset({ artifactRoot: join(root, 'cache'), lockPath }), /changed: content hash/);
+});
+
+test('dataset: refuses a checkout at a different commit than the pin', (t) => {
+  const root = tmp(t);
+  const { src, commit } = makeSource(root);
+  const entry = pinnedEntry(src, commit);
+  const { dir } = ensureDataset({ artifactRoot: join(root, 'cache'), lockPath: writeLock(root, entry) });
+  writeFileSync(join(dir, 'extra.txt'), 'x');
+  git(dir, 'add', 'extra.txt');
+  git(dir, 'commit', '-q', '-m', 'drift');
+  assert.throws(() => verifyDataset(dir, entry), /changed: checkout is at/);
+});
+
+test('dataset: refuses a pin whose upstream content differs from the recorded hash', (t) => {
+  const root = tmp(t);
+  const { src, commit } = makeSource(root);
+  const lockPath = writeLock(root, pinnedEntry(src, commit, { contentHash: `sha256:${'0'.repeat(64)}` }));
+  assert.throws(() => ensureDataset({ artifactRoot: join(root, 'cache'), lockPath }), /changed: content hash/);
+});
+
+test('dataset: splits resolve with sizes enforced and sampled draws frozen by keysSha256', () => {
+  const corpus = { full: manifest, test: manifest.slice(0, 2) };
+  const splits = {
+    test: { source: 'test', size: 2 },
+    heldout: { source: 'full', exclude: ['test'], size: 1 },
+    one: { source: 'full', sample: { size: 2, seed: 7 } },
+  };
+  assert.deepEqual(resolveSplit('heldout', splits, corpus).map(prKey), [prKey(manifest[2])]);
+  const drawn = resolveSplit('one', splits, corpus).map(prKey);
+  assert.equal(drawn.length, 2);
+  assert.deepEqual(resolveSplit('one', splits, corpus).map(prKey), drawn, 'same seed, same draw');
+  const frozen = { ...splits, one: { ...splits.one, keysSha256: keysHash(drawn) } };
+  assert.doesNotThrow(() => resolveSplit('one', frozen, corpus));
+  const stale = { ...splits, one: { ...splits.one, keysSha256: keysHash([prKey(manifest[0])]) } };
+  assert.throws(() => resolveSplit('one', stale, corpus), /frozen as/);
+  assert.throws(() => resolveSplit('test', { test: { source: 'test', size: 25 } }, corpus), /expects 25/);
+});
+
+const HVE_TEAMS = {
+  'hve-full': ['orientation', 'functional', 'standards', 'readiness', 'security', 'accessibility'],
+  'hve-standard': ['orientation', 'functional', 'standards', 'readiness'],
+};
+const TEAM_NAMES = HVE_TEAMS['hve-full'];
+
+test('dataset: suite.yaml declares the frozen splits, seven arms and three stages', () => {
+  const suite = loadSuite();
+  assert.deepEqual(suite.arms.map((a) => a.id), ['stock', 'nitcracker', 'sparring-partner', 'ensemble', 'previous', 'hve-full', 'hve-standard']);
+  assert.ok(suite.arms.every((a) => a.model === 'gpt-6.1-sol' && a.sandbox === true));
+  assert.deepEqual(Object.fromEntries(suite.arms.map((a) => [a.id, a.limits.maxAiCredits])), {
+    stock: 5000, nitcracker: 5000, 'sparring-partner': 5000, ensemble: 5000, previous: 5000, 'hve-full': 5000, 'hve-standard': 5000,
+  });
+  assert.equal(suite.limits.maxAiCredits, 5000);
+  assert.deepEqual(suite.analysis.declaredDifferences, ['plugin', 'external', 'promptPreamble', 'requiredTeam', 'qualificationChecks']);
+  const allowed = new Set(['id', 'label', 'ref', 'selection', 'agent', ...suite.analysis.declaredDifferences]);
+  const byId = Object.fromEntries(suite.arms.map((a) => [a.id, a]));
+  for (const pair of [...suite.analysis.comparisons, suite.analysis.revisionComparison]) {
+    const [a, b] = pair.map((id) => byId[id]);
+    const undeclared = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((k) => !allowed.has(k) && JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+    assert.deepEqual(undeclared, [], `${pair.join(' vs ')} differ only in declared fields`);
+  }
+  assert.equal(suite.arms.find((a) => a.id === 'ensemble').agent, null);
+  const stockArm = suite.arms.find((a) => a.id === 'stock');
+  for (const [id, team] of Object.entries(HVE_TEAMS)) {
+    const hve = suite.arms.find((a) => a.id === id);
+    assert.deepEqual(hve.plugin, { repo: 'microsoft/hve-core', commit: '299c0b68741d9bc08106b132043724c23166e2a4' }, id);
+    assert.equal(hve.agent, 'hve-core:code-review', id);
+    assert.equal(hve.ref, null, id);
+    assert.equal(hve.selection, null, id);
+    assert.equal(hve.reasoningEffort, stockArm.reasoningEffort, id);
+    assert.deepEqual(hve.tools, stockArm.tools, id);
+    assert.deepEqual(hve.requiredTeam, team, id);
+    // Amendment 6: dispatch of the whole required team gates qualification.
+    assert.deepEqual(hve.qualificationChecks, ['agent-ran', 'workflow-mode', 'skill-read', 'team-dispatched', 'findings-file'], id);
+    assert.equal(hve.qualificationObservations, undefined, id);
+    const disclosure = suite.analysis.disclosures.filter((d) => d.arm === id);
+    assert.equal(disclosure.length, 1, id);
+    assert.equal(disclosure[0].kind, 'prompt-preamble');
+    assert.match(disclosure[0].text, /declared steering beyond the host contract/);
+    assert.equal(disclosure[0].preamble, hve.promptPreamble, `${id} disclosure carries the exact preamble`);
+  }
+  assert.equal(suite.analysis.disclosures.some((d) => d.kind === 'perspective-mode'), false);
+  assert.ok(suite.arms.filter((a) => !HVE_TEAMS[a.id]).every((a) => !a.plugin && !a.promptPreamble && !a.requiredTeam));
+  assert.equal(suite.splits.confirmation.sample.size, 60);
+  assert.match(suite.splits.confirmation.keysSha256, /^sha256:[0-9a-f]{64}$/);
+  for (const s of ['qualification', 'pilot', 'confirmation']) for (const id of Object.keys(HVE_TEAMS)) assert.ok(suite.stages[s].arms.includes(id), `${s} ${id}`);
+  assert.equal(suite.stages.qualification.arms.length, 6);
+  // Amendment 6 ceilings: Amendment 3's base four-arm figures scaled by trial count.
+  assert.equal(suite.stages.qualification.maxAiCredits, Math.ceil((19000 * 18) / 12));
+  assert.equal(suite.stages.pilot.maxAiCredits, Math.ceil((155625 * 150) / 100));
+  assert.equal(suite.stages.confirmation.maxAiCredits, Math.ceil((374000 * 360) / 240));
+  assert.deepEqual(suite.limits.stageCeilings, { qualification: 28500, pilot: 283763, confirmation: 561000 });
+  assert.equal(Math.ceil(((2.576 + 0.84) * 0.22 / 0.1) ** 2), 57);
+  assert.deepEqual(suite.stages.confirmation.analysis, { verdict: true, minPairedN: 57 });
+  assert.equal(suite.analysis.multipleComparisons, 'holm');
+  assert.deepEqual(suite.analysis.comparisons.map(([a, b]) => `${a}>${b}`).sort(), ['ensemble>stock', 'hve-full>stock', 'hve-standard>stock', 'nitcracker>stock', 'sparring-partner>stock']);
+  assert.equal(suite.limits.stageCeilings.qualification, suite.stages.qualification.maxAiCredits);
+  assert.equal(suite.limits.stageCeilings.confirmation, suite.stages.confirmation.maxAiCredits);
+  const pilotGroup = Object.values(suite.stages).filter((st) => st.ceilingGroup === 'pilot').reduce((n, st) => n + st.maxAiCredits, 0);
+  assert.equal(suite.limits.stageCeilings.pilot, pilotGroup);
+  for (const s of ['qualification', 'pilot', 'pilot-repeat', 'pilot-previous']) assert.deepEqual(suite.stages[s].analysis, { verdict: false }, s);
+  assert.deepEqual(suite.judge, { ...suite.judge, provider: 'github-copilot', model: 'claude-sonnet-5' });
+  for (const arm of suite.arms) {
+    assert.deepEqual(arm.tools.allow, ['write', 'shell'], `${arm.id} allows write and all shell commands`);
+    for (const denied of ['web_fetch', 'web_search', 'shell(gh:*)', 'shell(curl:*)']) assert.ok(arm.tools.deny.includes(denied), `${arm.id} denies ${denied}`);
+    assert.ok(arm.tools.denyUrl.includes('github.com'));
+  }
+  assert.match(buildPrompt({}, { id: 'ensemble' }, suite), /^Run the review ensemble/);
+  assert.match(buildPrompt({}, { id: 'stock' }, suite), /^Review the changes on this branch/);
+  const task = { base: 'a'.repeat(40), head: 'b'.repeat(40) };
+  const stockPrompt = buildPrompt(task, { id: 'stock' }, suite);
+  for (const [id, team] of Object.entries(HVE_TEAMS)) {
+    const hvePrompt = buildPrompt(task, { id }, suite);
+    const preamble = armPreamble(task, { id }, suite);
+    assert.match(preamble, /workflow\s+autonomy mode/, id);
+    assert.match(preamble, /branch_diff/, id);
+    assert.match(preamble, /Depth: standard\./, id);
+    assert.match(preamble, /Output contract:/, id);
+    assert.match(preamble, /separate subagent/, id);
+    assert.match(preamble, /Do not review the change directly/, id);
+    assert.match(preamble, /inline/, id);
+    assert.ok(preamble.includes(task.base) && preamble.includes(task.head), id);
+    assert.equal(hvePrompt, `${preamble}\n\n${stockPrompt}`, `${id}: the preamble is the only prompt difference`);
+    assert.throws(() => armPreamble({}, { id }, suite), /base|head/);
+    // Each preamble names exactly its team: every member as a subagent, no other perspective at all.
+    for (const name of TEAM_NAMES) {
+      const display = `Code Review ${name[0].toUpperCase()}${name.slice(1)}`;
+      if (team.includes(name)) assert.ok(preamble.includes(display), `${id} names ${display}`);
+      else assert.doesNotMatch(preamble, new RegExp(`\\b${name}\\b`, 'i'), `${id} does not name ${name}`);
+    }
+    const perspectives = preamble.match(/Perspectives: ([a-z, ]+?)\./)?.[1].split(/,\s*/);
+    assert.deepEqual(perspectives, team.filter((n) => n !== 'orientation'), `${id} perspective line`);
+    assert.match(preamble, new RegExp(`Review profile: ${id === 'hve-full' ? 'full' : 'standard'}\\.`), id);
+  }
+  assert.equal(armPreamble(task, { id: 'stock' }, suite), null);
+});
+
+test('dataset: materialize checks out the PR head with history and no remote, offline from a mirror', (t) => {
+  const root = tmp(t);
+  const repo = join(root, 'upstream');
+  git(root, 'init', '-q', '-b', 'main', repo);
+  writeFileSync(join(repo, 'app.js'), 'export const a = 1;\n');
+  git(repo, 'add', '-A');
+  git(repo, 'commit', '-q', '-m', 'base');
+  const base = git(repo, 'rev-parse', 'HEAD');
+  writeFileSync(join(repo, 'app.js'), 'export const a = 2;\n');
+  git(repo, 'commit', '-q', '-am', 'change');
+  const head = git(repo, 'rev-parse', 'HEAD');
+  const mirrors = join(root, 'mirrors');
+  mkdirSync(mirrors);
+  git(root, 'clone', '-q', '--bare', repo, join(mirrors, 'acme_widgets.git'));
+
+  const task = { id: `acme_widgets_9-${head.slice(0, 8)}`, repo: 'https://github.com/acme/widgets', nwo: 'acme/widgets', prNumber: 9, base, head, title: 'Bump a', body: 'Changes a.' };
+  const workspace = join(root, 'trial', 'workspace');
+  const result = materialize(task, workspace, { artifactRoot: join(root, 'artifacts'), mirrorBase: mirrors });
+  assert.equal(result.headSha, head);
+  assert.equal(git(workspace, 'rev-parse', 'HEAD'), head);
+  assert.equal(git(workspace, 'rev-parse', 'review-base'), base);
+  assert.equal(git(workspace, 'remote'), '', 'no remote is configured');
+  const meta = JSON.parse(readFileSync(join(workspace, '.reviewbench', 'pr.json'), 'utf8'));
+  assert.equal(meta.head, head);
+  assert.ok(!JSON.stringify(meta).includes('/pull/'), 'no PR URL is written');
+  assert.match(readFileSync(join(workspace, '.reviewbench', 'diff.patch'), 'utf8'), /\+export const a = 2;/);
+  mkdirSync(join(workspace, '.copilot-tracking', 'pr'), { recursive: true });
+  writeFileSync(join(workspace, '.copilot-tracking', 'pr', 'pr-reference.xml'), '<pr/>');
+  assert.equal(git(workspace, 'status', '--porcelain'), '', 'PR files and hve-core tracking files are excluded from status');
+  assert.ok(existsSync(join(root, 'artifacts', 'datasets', 'reviewbench-repos', 'acme_widgets.git')));
+});
+
+test('dataset: suite.yaml declares the panel with #100 default taxonomy, unfrozen, frozen-only for confirmation', () => {
+  const suite = loadSuite();
+  const inputs = panelInputs('unused', suite, { datasetDir: join('d', 'rb') });
+  assert.equal(inputs.goldenDir, join('d', 'rb', 'golden'));
+  assert.deepEqual(inputs.namedInAdvance, []);
+  assert.deepEqual(inputs.taxonomy, {
+    version: 'v1-pilot',
+    frozen: false,
+    golden: {
+      defect_class: ['logic', 'error-handling', 'concurrency', 'security', 'api-contract', 'data-persistence', 'tests', 'performance', 'documentation', 'maintainability'],
+      locality: ['single-hunk', 'single-file', 'cross-file', 'outside-diff'],
+      detection: ['diff', 'unchanged-code', 'execution', 'history-conventions'],
+    },
+    unmatched: { verdict: ['real-missing-from-golden', 'plausible-unverifiable', 'wrong'] },
+  });
+  assert.deepEqual(Object.keys(suite.stages).filter((st) => inputs.requireFrozen(st)), ['confirmation']);
+});
+
+test('dataset: panelInputs diffFilesFor returns the changed paths from the materialized diff', (t) => {
+  const root = tmp(t);
+  const repo = join(root, 'repo');
+  git(root, 'init', '-q', '-b', 'main', repo);
+  git(repo, 'config', 'core.quotepath', 'true');
+  mkdirSync(join(repo, 'src'));
+  for (const [f, body] of [['src/app.js', 'a\n'], ['old.txt', 'same content kept for rename detection\n'], ['gone.md', 'bye\n'], ['run.sh', 'echo\n']]) writeFileSync(join(repo, f), body);
+  git(repo, 'add', '-A');
+  git(repo, 'commit', '-q', '-m', 'base');
+  writeFileSync(join(repo, 'src/app.js'), 'b\n');
+  writeFileSync(join(repo, 'with space.js'), 'x\n');
+  writeFileSync(join(repo, 'caf\u00e9.txt'), 'y\n');
+  git(repo, 'rm', '-q', 'gone.md');
+  git(repo, 'mv', 'old.txt', 'new.txt');
+  git(repo, 'add', '-A');
+  git(repo, 'update-index', '--chmod=+x', 'run.sh');
+  git(repo, 'commit', '-q', '-m', 'change');
+  const patch = execFileSync('git', ['diff', '--no-color', 'HEAD~1...HEAD'], { cwd: repo, encoding: 'utf8' });
+  const expected = ['caf\u00e9.txt', 'gone.md', 'new.txt', 'run.sh', 'src/app.js', 'with space.js'];
+  assert.deepEqual(diffFiles(patch).sort(), expected);
+
+  const runDir = join(root, 'run');
+  const id = 'acme_widgets_9-bbbbbbbb';
+  const prDir = join(runDir, 'workspaces', id, 'stock', '0', '.reviewbench');
+  mkdirSync(prDir, { recursive: true });
+  writeFileSync(join(prDir, 'diff.patch'), patch);
+  const inputs = panelInputs(runDir, loadSuite(), { datasetDir: root });
+  assert.deepEqual(inputs.diffFilesFor(id).sort(), expected);
+  assert.deepEqual(inputs.diffFilesFor({ id }).sort(), expected);
+  assert.throws(() => inputs.diffFilesFor('acme_widgets_10-cccccccc'), /no materialized diff/);
+});
