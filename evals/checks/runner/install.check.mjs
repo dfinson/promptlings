@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, delimiter, dirname, join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { runTrial } from "../../runner/index.js";
 import * as install from "../../runner/install.js";
 import { fakeCopilot, stockArm, tempDir, testToken, treeDigest, withParentEnv } from "./helpers.mjs";
-import { mkdirSync } from "node:fs";
+
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const limits = { timeoutMs: 120_000, maxAiCredits: 30 };
@@ -60,6 +60,20 @@ test("install: a Promptlings arm home records hashes of exactly the installed se
   assert.deepEqual(files.filter((f) => otherAgents.some((n) => f.includes(`/agents/${n}.`))), [], "unselected agents are not installed");
   const seen = JSON.parse(readFileSync(join(home, ".copilot", "fake-copilot-record.json"), "utf8"));
   assert.ok(seen.agents.some((a) => a.startsWith("sparring-partner")));
+});
+
+test("install: a source whose shrinkwrap matches the checkout reuses its node_modules without running npm", async () => {
+  const root = tempDir("install-lock");
+  const bin = join(root, "bin");
+  const calls = join(root, "npm-calls.txt");
+  mkdirSync(bin);
+  // A recording npm first on PATH: the real one would hit the network and take minutes.
+  writeFileSync(join(bin, "npm.cmd"), `@echo npm %*>>"${calls}"\r\n@exit /b 0\r\n`);
+  writeFileSync(join(bin, "npm"), `#!/bin/sh\necho "npm $*" >> "${calls}"\n`, { mode: 0o755 });
+  const source = await withParentEnv({ PATH: `${bin}${delimiter}${process.env.PATH}` }, () =>
+    install.prepareSource("HEAD", { root: join(root, "artifacts") }));
+  assert.equal(existsSync(calls), false, `npm ran: ${existsSync(calls) ? readFileSync(calls, "utf8") : ""}`);
+  assert.ok(lstatSync(join(source.dir, "node_modules")).isSymbolicLink(), "node_modules links to the checkout's");
 });
 
 // Every selection form the runner accepts, plus every installing arm declared by a shipped suite.
