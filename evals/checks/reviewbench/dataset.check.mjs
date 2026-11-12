@@ -161,15 +161,21 @@ test('dataset: splits resolve with sizes enforced and sampled draws frozen by ke
   assert.throws(() => resolveSplit('test', { test: { source: 'test', size: 25 } }, corpus), /expects 25/);
 });
 
-test('dataset: suite.yaml declares the frozen splits, six arms and three stages', () => {
+const HVE_TEAMS = {
+  'hve-full': ['orientation', 'functional', 'standards', 'readiness', 'security', 'accessibility'],
+  'hve-standard': ['orientation', 'functional', 'standards', 'readiness'],
+};
+const TEAM_NAMES = HVE_TEAMS['hve-full'];
+
+test('dataset: suite.yaml declares the frozen splits, seven arms and three stages', () => {
   const suite = loadSuite();
-  assert.deepEqual(suite.arms.map((a) => a.id), ['stock', 'nitcracker', 'sparring-partner', 'ensemble', 'previous', 'hve-code-review']);
+  assert.deepEqual(suite.arms.map((a) => a.id), ['stock', 'nitcracker', 'sparring-partner', 'ensemble', 'previous', 'hve-full', 'hve-standard']);
   assert.ok(suite.arms.every((a) => a.model === 'gpt-6.1-sol' && a.sandbox === true));
   assert.deepEqual(Object.fromEntries(suite.arms.map((a) => [a.id, a.limits.maxAiCredits])), {
-    stock: 5000, nitcracker: 5000, 'sparring-partner': 5000, ensemble: 5000, previous: 5000, 'hve-code-review': 5000,
+    stock: 5000, nitcracker: 5000, 'sparring-partner': 5000, ensemble: 5000, previous: 5000, 'hve-full': 5000, 'hve-standard': 5000,
   });
   assert.equal(suite.limits.maxAiCredits, 5000);
-  assert.deepEqual(suite.analysis.declaredDifferences, ['plugin', 'external', 'promptPreamble', 'qualificationChecks', 'qualificationObservations']);
+  assert.deepEqual(suite.analysis.declaredDifferences, ['plugin', 'external', 'promptPreamble', 'requiredTeam', 'qualificationChecks']);
   const allowed = new Set(['id', 'label', 'ref', 'selection', 'agent', ...suite.analysis.declaredDifferences]);
   const byId = Object.fromEntries(suite.arms.map((a) => [a.id, a]));
   for (const pair of [...suite.analysis.comparisons, suite.analysis.revisionComparison]) {
@@ -178,28 +184,40 @@ test('dataset: suite.yaml declares the frozen splits, six arms and three stages'
     assert.deepEqual(undeclared, [], `${pair.join(' vs ')} differ only in declared fields`);
   }
   assert.equal(suite.arms.find((a) => a.id === 'ensemble').agent, null);
-  const hve = suite.arms.find((a) => a.id === 'hve-code-review');
-  assert.deepEqual(hve.plugin, { repo: 'microsoft/hve-core', commit: '299c0b68741d9bc08106b132043724c23166e2a4' });
-  assert.equal(hve.agent, 'hve-core:code-review');
-  assert.equal(hve.ref, null);
-  assert.equal(hve.selection, null);
-  assert.deepEqual(hve.tools, suite.arms.find((a) => a.id === 'stock').tools);
-  // Amendment 5: perspectives is a disclosed observation, never a gate.
-  assert.deepEqual(hve.qualificationChecks, ['agent-ran', 'workflow-mode', 'skill-read', 'findings-file']);
-  assert.deepEqual(hve.qualificationObservations, ['perspectives']);
-  const perspectiveDisclosure = suite.analysis.disclosures.filter((d) => d.kind === 'perspective-mode');
-  assert.equal(perspectiveDisclosure.length, 1);
-  assert.equal(perspectiveDisclosure[0].arm, 'hve-code-review');
-  assert.match(perspectiveDisclosure[0].text, /reported, not required/);
-  assert.equal(perspectiveDisclosure[0].distribution, 'score-run.json#perspectiveModes');
-  assert.ok(suite.arms.filter((a) => a.id !== 'hve-code-review').every((a) => !a.plugin && !a.promptPreamble));
+  const stockArm = suite.arms.find((a) => a.id === 'stock');
+  for (const [id, team] of Object.entries(HVE_TEAMS)) {
+    const hve = suite.arms.find((a) => a.id === id);
+    assert.deepEqual(hve.plugin, { repo: 'microsoft/hve-core', commit: '299c0b68741d9bc08106b132043724c23166e2a4' }, id);
+    assert.equal(hve.agent, 'hve-core:code-review', id);
+    assert.equal(hve.ref, null, id);
+    assert.equal(hve.selection, null, id);
+    assert.equal(hve.reasoningEffort, stockArm.reasoningEffort, id);
+    assert.deepEqual(hve.tools, stockArm.tools, id);
+    assert.deepEqual(hve.requiredTeam, team, id);
+    // Amendment 6: dispatch of the whole required team gates qualification.
+    assert.deepEqual(hve.qualificationChecks, ['agent-ran', 'workflow-mode', 'skill-read', 'team-dispatched', 'findings-file'], id);
+    assert.equal(hve.qualificationObservations, undefined, id);
+    const disclosure = suite.analysis.disclosures.filter((d) => d.arm === id);
+    assert.equal(disclosure.length, 1, id);
+    assert.equal(disclosure[0].kind, 'prompt-preamble');
+    assert.match(disclosure[0].text, /declared steering beyond the host contract/);
+    assert.equal(disclosure[0].preamble, hve.promptPreamble, `${id} disclosure carries the exact preamble`);
+  }
+  assert.equal(suite.analysis.disclosures.some((d) => d.kind === 'perspective-mode'), false);
+  assert.ok(suite.arms.filter((a) => !HVE_TEAMS[a.id]).every((a) => !a.plugin && !a.promptPreamble && !a.requiredTeam));
   assert.equal(suite.splits.confirmation.sample.size, 60);
   assert.match(suite.splits.confirmation.keysSha256, /^sha256:[0-9a-f]{64}$/);
-  for (const s of ['qualification', 'pilot', 'confirmation']) assert.ok(suite.stages[s].arms.includes('hve-code-review'), s);
-  assert.equal(suite.stages.qualification.arms.length, 5);
-  assert.deepEqual(suite.stages.confirmation.analysis, { verdict: true, minPairedN: 54 });
+  for (const s of ['qualification', 'pilot', 'confirmation']) for (const id of Object.keys(HVE_TEAMS)) assert.ok(suite.stages[s].arms.includes(id), `${s} ${id}`);
+  assert.equal(suite.stages.qualification.arms.length, 6);
+  // Amendment 6 ceilings: Amendment 3's base four-arm figures scaled by trial count.
+  assert.equal(suite.stages.qualification.maxAiCredits, Math.ceil((19000 * 18) / 12));
+  assert.equal(suite.stages.pilot.maxAiCredits, Math.ceil((155625 * 150) / 100));
+  assert.equal(suite.stages.confirmation.maxAiCredits, Math.ceil((374000 * 360) / 240));
+  assert.deepEqual(suite.limits.stageCeilings, { qualification: 28500, pilot: 283763, confirmation: 561000 });
+  assert.equal(Math.ceil(((2.576 + 0.84) * 0.22 / 0.1) ** 2), 57);
+  assert.deepEqual(suite.stages.confirmation.analysis, { verdict: true, minPairedN: 57 });
   assert.equal(suite.analysis.multipleComparisons, 'holm');
-  assert.deepEqual(suite.analysis.comparisons.map(([a, b]) => `${a}>${b}`).sort(), ['ensemble>stock', 'hve-code-review>stock', 'nitcracker>stock', 'sparring-partner>stock']);
+  assert.deepEqual(suite.analysis.comparisons.map(([a, b]) => `${a}>${b}`).sort(), ['ensemble>stock', 'hve-full>stock', 'hve-standard>stock', 'nitcracker>stock', 'sparring-partner>stock']);
   assert.equal(suite.limits.stageCeilings.qualification, suite.stages.qualification.maxAiCredits);
   assert.equal(suite.limits.stageCeilings.confirmation, suite.stages.confirmation.maxAiCredits);
   const pilotGroup = Object.values(suite.stages).filter((st) => st.ceilingGroup === 'pilot').reduce((n, st) => n + st.maxAiCredits, 0);
@@ -215,15 +233,30 @@ test('dataset: suite.yaml declares the frozen splits, six arms and three stages'
   assert.match(buildPrompt({}, { id: 'stock' }, suite), /^Review the changes on this branch/);
   const task = { base: 'a'.repeat(40), head: 'b'.repeat(40) };
   const stockPrompt = buildPrompt(task, { id: 'stock' }, suite);
-  const hvePrompt = buildPrompt(task, { id: 'hve-code-review' }, suite);
-  const preamble = armPreamble(task, { id: 'hve-code-review' }, suite);
-  assert.match(preamble, /workflow\s+autonomy mode/);
-  assert.match(preamble, /branch_diff/);
-  assert.match(preamble, /standard/);
-  assert.ok(preamble.includes(task.base) && preamble.includes(task.head));
-  assert.equal(hvePrompt, `${preamble}\n\n${stockPrompt}`, 'the preamble is the only prompt difference');
+  for (const [id, team] of Object.entries(HVE_TEAMS)) {
+    const hvePrompt = buildPrompt(task, { id }, suite);
+    const preamble = armPreamble(task, { id }, suite);
+    assert.match(preamble, /workflow\s+autonomy mode/, id);
+    assert.match(preamble, /branch_diff/, id);
+    assert.match(preamble, /Depth: standard\./, id);
+    assert.match(preamble, /Output contract:/, id);
+    assert.match(preamble, /separate subagent/, id);
+    assert.match(preamble, /Do not review the change directly/, id);
+    assert.match(preamble, /inline/, id);
+    assert.ok(preamble.includes(task.base) && preamble.includes(task.head), id);
+    assert.equal(hvePrompt, `${preamble}\n\n${stockPrompt}`, `${id}: the preamble is the only prompt difference`);
+    assert.throws(() => armPreamble({}, { id }, suite), /base|head/);
+    // Each preamble names exactly its team: every member as a subagent, no other perspective at all.
+    for (const name of TEAM_NAMES) {
+      const display = `Code Review ${name[0].toUpperCase()}${name.slice(1)}`;
+      if (team.includes(name)) assert.ok(preamble.includes(display), `${id} names ${display}`);
+      else assert.doesNotMatch(preamble, new RegExp(`\\b${name}\\b`, 'i'), `${id} does not name ${name}`);
+    }
+    const perspectives = preamble.match(/Perspectives: ([a-z, ]+?)\./)?.[1].split(/,\s*/);
+    assert.deepEqual(perspectives, team.filter((n) => n !== 'orientation'), `${id} perspective line`);
+    assert.match(preamble, new RegExp(`Review profile: ${id === 'hve-full' ? 'full' : 'standard'}\\.`), id);
+  }
   assert.equal(armPreamble(task, { id: 'stock' }, suite), null);
-  assert.throws(() => armPreamble({}, { id: 'hve-code-review' }, suite), /base|head/);
 });
 
 test('dataset: materialize checks out the PR head with history and no remote, offline from a mirror', (t) => {

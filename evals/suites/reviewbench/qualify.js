@@ -1,17 +1,16 @@
-// Qualification checks read from a trial's Copilot events (spec lane 8, Amendment 3). They are
-// recorded in collected.json for the qualification report; they do not change trial status.
+// Qualification checks read from a trial's Copilot events (spec lane 8, Amendments 3 and 6). They
+// are recorded in collected.json for the qualification report; they do not change trial status.
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const PERSPECTIVES = ['functional', 'standards', 'accessibility', 'security', 'readiness'];
 // Subagents appear by display name ("Code Review Security") or by the CLI's plugin-namespaced id
 // ("hve-core:code-review-security").
 const NS = '(?:[\\w.-]+:)?';
-const PERSPECTIVE_AGENT = new RegExp(`^${NS}code[- ]review[- ](?:${PERSPECTIVES.join('|')})$`, 'i');
+const memberAgent = (name) => new RegExp(`^${NS}code[- ]review[- ]${name}$`, 'i');
 const CODE_REVIEW_AGENT = new RegExp(`^${NS}code[- ]review(?:[- ][a-z]+)?$`, 'i');
 const SKILL_FILE = /code-review[\\/]+(?:SKILL\.md|references[\\/])/i;
-const PERSPECTIVE_FILE = new RegExp(`(?:${PERSPECTIVES.join('|')})-findings\\.json`, 'i');
-const PERSPECTIVE_TAG = new RegExp(`\\[(?:${PERSPECTIVES.join('|')})\\]`, 'i');
+const memberFile = (name) => new RegExp(`${name}-findings\\.json`, 'i');
+const memberTag = (name) => new RegExp(`\\[${name}\\]`, 'i');
 // Interactive-mode pause text from the agent's Step 2; seeing it means workflow mode was not entered.
 const INTERACTIVE_PAUSE = /Confirm before dispatch/i;
 
@@ -47,21 +46,19 @@ function touchesSkill(toolName, args) {
   return SKILL_FILE.test(text(args));
 }
 
+const STATUS_RANK = { completed: 3, failed: 2, started: 1 };
+
 /**
- * Checks one trial of an arm that declares qualificationChecks (gates) or
- * qualificationObservations (recorded with `observation: true`, never gating). `record` is the trial record
+ * Checks one trial of an arm that declares qualificationChecks. `record` is the trial record
  * (trial.json); `findingsSource` is where collect read the findings, if anywhere.
  */
 export function qualifyTrial({ record = {}, trialDir, armConfig, findingsSource, findingsPath }) {
   const wanted = armConfig?.qualificationChecks ?? [];
-  // Observations are evaluated and recorded but never gate `passed` (Amendment 5: perspectives).
-  const observed = (armConfig?.qualificationObservations ?? []).filter((id) => !wanted.includes(id));
   const eventsPath = record.eventsPath ?? (trialDir ? join(trialDir, 'events.jsonl') : null);
   const events = readEvents(eventsPath);
   const results = {};
   if (!events) {
     for (const id of wanted) results[id] = { pass: false, evidence: `no events at ${eventsPath}` };
-    for (const id of observed) results[id] = { observation: true, mode: null, evidence: `no events at ${eventsPath}` };
     return { passed: false, checks: results };
   }
 
@@ -82,9 +79,28 @@ export function qualifyTrial({ record = {}, trialDir, armConfig, findingsSource,
   const skillRefused = skillCalls.filter((c) => outcome.get(c.id) === false);
   const askUser = calls.filter((c) => c.name === 'ask_user');
   const paused = messages.some((m) => INTERACTIVE_PAUSE.test(m));
-  const dispatched = [...subagents, ...taskAgents].filter((n) => PERSPECTIVE_AGENT.test(n));
-  const inlinedFiles = calls.filter((c) => outcome.get(c.id) !== false && PERSPECTIVE_FILE.test(text(c.args)));
-  const inlinedTags = messages.some((m) => PERSPECTIVE_TAG.test(m));
+  // Every agent name seen per toolCallId (task arguments and subagent lifecycle events), and how
+  // each dispatch ended. subagent.selected carries no toolCallId and is not a dispatch.
+  const dispatchNames = new Map();
+  const lifecycle = new Map();
+  const addName = (id, n) => {
+    if (!id || !n) return;
+    if (!dispatchNames.has(id)) dispatchNames.set(id, new Set());
+    dispatchNames.get(id).add(n);
+  };
+  for (const c of calls) if (c.name === 'task') addName(c.id, c.args?.agent_type);
+  for (const e of events) {
+    if (!/^subagent\.(?:started|completed|failed)$/.test(e?.type ?? '')) continue;
+    const id = e.data?.toolCallId;
+    for (const n of [e.data?.agentName, e.data?.agentDisplayName, e.data?.agentType]) addName(id, n);
+    if (id) lifecycle.set(id, new Set([...(lifecycle.get(id) ?? []), e.type]));
+  }
+  const dispatchStatus = (id) => {
+    const seen = lifecycle.get(id) ?? new Set();
+    if (outcome.get(id) === false || seen.has('subagent.failed')) return 'failed';
+    if (seen.has('subagent.completed') || outcome.get(id) === true) return 'completed';
+    return 'started';
+  };
   const codeReviewSubagents = [...subagents, ...taskAgents].filter((n) => CODE_REVIEW_AGENT.test(n));
 
   const agentFlag = flagValue(record.flags, '--agent');
@@ -110,12 +126,30 @@ export function qualifyTrial({ record = {}, trialDir, armConfig, findingsSource,
       pass: skillOk.length > 0 && skillRefused.length === 0,
       evidence: `${skillOk.length} successful and ${skillRefused.length} refused code-review skill reads${skillRefused.length ? `: ${skillRefused.map((c) => failure.get(c.id)).join('; ').slice(0, 300)}` : ''}`,
     }),
-    perspectives: () => {
-      const mode = dispatched.length ? 'dispatched' : inlinedFiles.length || inlinedTags ? 'inlined' : 'none';
+    // Amendment 6: every member of the arm's requiredTeam must finish as its own subagent.
+    'team-dispatched': () => {
+      const team = armConfig?.requiredTeam ?? [];
+      const members = {};
+      for (const name of team) {
+        const re = memberAgent(name);
+        const ids = [...dispatchNames].filter(([, names]) => [...names].some((n) => re.test(n))).map(([id]) => id);
+        if (ids.length) {
+          const runs = ids.map((id) => ({ id, status: dispatchStatus(id), agent: [...dispatchNames.get(id)].find((n) => re.test(n)) }));
+          const best = runs.reduce((a, b) => (STATUS_RANK[b.status] > STATUS_RANK[a.status] ? b : a));
+          members[name] = { status: best.status, evidence: runs.map((r) => `task ${r.id} ${r.agent}: ${r.status}`).join('; ') };
+          continue;
+        }
+        const files = calls.filter((c) => outcome.get(c.id) !== false && memberFile(name).test(text(c.args)));
+        const tagged = messages.some((m) => memberTag(name).test(m));
+        members[name] = files.length || tagged
+          ? { status: 'inlined', evidence: `no subagent; ${files.length} ${name}-findings writes${tagged ? `, [${name}] tags in messages` : ''}` }
+          : { status: 'missing', evidence: 'no subagent dispatch, findings file or tag' };
+      }
+      const pass = team.length > 0 && team.every((n) => members[n].status === 'completed');
       return {
-        pass: mode !== 'none',
-        mode,
-        evidence: mode === 'dispatched' ? `subagents: ${[...new Set(dispatched)].join(', ')}` : mode === 'inlined' ? `${inlinedFiles.length} perspective findings writes; perspective tags ${inlinedTags ? 'present' : 'absent'}` : 'no perspective subagent, findings file or tag',
+        pass,
+        members,
+        evidence: team.length ? team.map((n) => `${n} ${members[n].status}`).join(', ') : 'arm declares no requiredTeam',
       };
     },
     'findings-file': () => {
@@ -123,12 +157,7 @@ export function qualifyTrial({ record = {}, trialDir, armConfig, findingsSource,
       return { pass, evidence: pass ? findingsPath : `findings read from ${findingsSource ?? 'nowhere'}, expected ${findingsPath}` };
     },
   };
-  for (const id of [...wanted, ...observed]) if (!all[id]) throw new Error(`unknown qualification check ${id}`);
+  for (const id of wanted) if (!all[id]) throw new Error(`unknown qualification check ${id}`);
   for (const id of wanted) results[id] = all[id]();
-  const passed = wanted.every((id) => results[id].pass);
-  for (const id of observed) {
-    const { pass, ...rest } = all[id]();
-    results[id] = { observation: true, ...rest };
-  }
-  return { passed, checks: results };
+  return { passed: wanted.every((id) => results[id].pass), checks: results };
 }
