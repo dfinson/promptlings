@@ -1,6 +1,6 @@
 ---
 name: pr-description-writing
-description: Draft or update a pull request title and description for human reviewers, following the repository's PR template and instructions first, then showing the change with before/after screenshots (a video only when the user or template asks) and writing plain English. Use whenever any agent creates a pull request, edits a PR title or description, or prepares PR text for a user to publish.
+description: Draft or update a pull request title and description using plain prose, real before/after evidence and useful explanatory figures, following the repository's template and instructions. Use whenever an agent creates or edits PR text. Video requires a user or template request.
 ---
 
 # PR Description Writing
@@ -37,17 +37,31 @@ Every claim in the description must trace to the diff, a check that ran, or the 
 
 Media comes first because it lets a reviewer judge the result before reading code.
 
+Use pictures and plain prose together to make the change immediate. A useful
+figure need not wait for prose to fail or the implementation to cross a
+complexity threshold. Invoke `technical-illustration` when a comparison,
+sequence or relationship helps the reviewer understand the change. Put it
+beside the behavior it explains, with a clear caption and accessible text.
+Keep the result and its significance in readable prose rather than turning
+paragraphs into images or adding a gallery above a text wall.
+
 - **User-visible change** (screens, rendered documents, exports, emails, CLI output, multi-step flows): capture before/after screenshots from real builds of the base and head revisions. Use the same data, viewport, and steps for both so the only difference is the change. For a flow, capture the step that changed in both builds. Pair them side by side or one after the other, each with a one-line caption saying what to look at.
 - **Behavior without a screen** (APIs, data handling, jobs, libraries): show one concrete before/after example as text, such as input and output, a request and response, or a log line, in a fenced code block.
 - **Mechanical change** (refactor, rename, dependency bump, CI): media is not needed. Say what stays identical and how that was confirmed.
 
+Explanatory figures supplement these cases. For example, a before/after request
+path can show which step moved, while the concrete request/response example
+retains the observable contract. A figure that merely decorates or repeats the
+text should be removed. A trivial change can remain brief.
+
 Make a video only when the user's instructions or the PR template ask for one. Otherwise do not record one, whatever the kind of change. When a video is requested, record the head build covering only the changed flow, from the starting state to the visible result, with `cue-synced-demo` or the host's browser automation. Use `pr-video` instead only when the request asks for a narrated explanation of the code.
 Capture rules:
 
-- Use real captures from the running software. Never use mockups, generated images, or edited screenshots to represent behavior.
+- Use real captures to demonstrate observed behavior. Never substitute mockups, generated images or edited screenshots for execution evidence. Authored, source-backed explanatory figures are allowed to explain implementation, relationships or sequences, without impersonating a real capture.
 - Redact secrets, tokens, customer data, and personal information before capture or upload.
 - Keep media out of the repository. Store working files in the host's artifact location.
 - Upload through a mechanism that attaches files to the PR, such as the `github-pr-media` skill, the host's PR media tool, or GitHub's attachment upload. If no upload path is available, give the user the files and tell them where each one belongs in the description. Never publish placeholders, broken links, or local file paths.
+- Bind figures to the final target-relative change and update them when the mechanism changes. Preserve source evidence and revisions in the supporting record, not generic provenance labels in the artwork. Document appearance controls must not recolor actual behavior captures.
 
 ## 4. Write the title
 
@@ -92,3 +106,8 @@ Remove all of the following unless the template or repository instructions requi
 ## Finish
 
 Read the title and description as a reviewer who has not seen the conversation. Check that every claim matches the final diff, the media shows the head revision, links resolve, and every template section is filled. Then publish if authorized, or return the title, description, and media files to the caller.
+
+The reader must understand what changes, why it matters and what needs their
+attention without reconstructing the author's investigation. Rewrite dense
+prose, unexplained terminology and pictures that obscure the causal story.
+Keep PR content in the repository's native template, not an HTML specification.

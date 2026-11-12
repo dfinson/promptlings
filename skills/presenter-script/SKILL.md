@@ -9,6 +9,20 @@ This skill writes what the presenter says and does while they drive an interacti
 
 The presenter is operating working models live, not reading slides. The script supports that: it tells them what to say before they touch a control, what to do, when to stay silent while the model moves and what to say once the result is on screen. It words in full only what must land exactly and gives cues for the rest, because reading verbatim breaks eye contact and improvising every line overruns.
 
+Invoke `reasoning-first-writing` for the user-facing script document. Before
+its detailed cues, give a short overview of the audience, intended takeaway,
+selected scope and route through the experience. Make that orientation
+visually precede the beat-by-beat material. Close the document with a briefer
+synthesis that helps the presenter own the experience and its remaining
+decision or rehearsal action. Keep this document framing outside spoken
+lines, preserving the exact hook, close and approved narration.
+
+Apply `reasoning-first-narration` to the complete spoken path, not only the
+hook. Short cues must still let the presenter give context, point to a visible
+object, explain what changed and land its consequence. Fully word an essential
+causal bridge when cue compression would make the presenter reconstruct it.
+Keep ordinary body cues flexible without turning them into release-note labels.
+
 ## The driving loop
 
 Every manipulation on stage follows four moves, the structure of think-aloud narration around a live system:
@@ -19,6 +33,14 @@ Every manipulation on stage follows four moves, the structure of think-aloud nar
 4. **Read.** Say what happened and what it means, pointing at the focal element by name ("checkout stayed up; every request just paid the delay").
 
 Write every beat that moves the model in this order. A beat with no "Read" line is unfinished.
+
+Before handoff, walk the whole script at speaking pace with the screen
+sequence. Check first-listen comprehension from entry through close, including
+the transitions, waits and source of every claim. Accuracy and a fitting word
+budget are necessary but do not establish that the audience can follow.
+Rewrite dense passages before rehearsal, preserving the selected coverage.
+Use the rehearsal to check actual spoken delivery, not as a substitute for
+repairing an unclear script.
 
 ## Script structure
 

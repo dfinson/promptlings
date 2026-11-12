@@ -53,6 +53,20 @@ After the hook, give the minimum orientation a cold viewer needs to read the fir
 
 Select the production route before choosing the visual treatment. For authored films and composed hybrids, invoke the installer's pinned upstream `motionite` skill and use its brief, style selection, frame-based shot list, example components and review tools. Read its `LICENSE` and the production component catalog for asset restrictions. If the user explicitly selects HyperFrames, invoke `hyperframes` and follow that route instead. Do not port Remotion components into HyperFrames or combine both methods. For a plain recording, use `cue-synced-demo` directly.
 
+Invoke `technical-illustration` to prepare representative rendered content
+frames for the script-and-treatment approval package. Show the real proposed
+concept, palette, typography, layout and evidence density beside the segment
+they explain. Use additional views for consequential visual differences, not
+an image quota or a mandatory full storyboard. A title card or palette alone
+is insufficient. A plain recording may use a representative real capture.
+An explicitly text-only request remains text-only.
+
+Before that approval, compose only the required static samples and perform
+their supporting discovery. Do not synthesize full narration, build the
+complete timeline or render a video to obtain the samples. Apply upstream
+design methods within this boundary. A still makes appearance judgeable, not
+motion or runtime behavior.
+
 Describe the overall creative treatment in readable prose: the central idea, format, visual style, palette, energy and pacing, recurring visual elements, and how the design makes the argument understandable. Explain what the designs primarily revolve around and how the opening develops toward the payoff. Choose these for the subject and audience, not a fixed house example. Use the selected upstream style as the implementation vocabulary, with explicit user art direction taking precedence where that workflow permits it.
 
 Before storyboarding an authored film or composed hybrid, inspect a finished product demo as a moving sequence, reusing an available reference when suitable. Identify one concrete directing behavior with timecodes: how a real action or persistent object controls framing, focus or the handoff to its consequence. Apply that behavior to this film's actual evidence. A palette, isolated screenshot or written description of the reference is not sufficient. Record the reference and transferable behavior in the existing production record. This is part of Design, not an additional approval or review round.
@@ -69,6 +83,12 @@ Choose the surface for that observation:
 
 Use actual editor capture when editor interaction or navigation is evidence, or when explicitly requested. Explaining implementation does not require file-tree travel or a full workbench. Route genuine editor/browser capture through `cue-synced-demo`. Generated code and diagrams explain evidence, never pretend to be a recorded run.
 
+Follow technical-illustration's comparison guidance for current/proposed UI,
+before/after evidence and reveal controls. Compare matching subjects, data
+and framing. Keep Current captures untouched and annotate Proposed only.
+When paired moving recordings are requested, use purposeful reversible reveals
+of those recordings rather than substituting stills or an unrelated hybrid.
+
 A coherent scene may contain several views, and a continuous view may support several spoken lines. Choose cuts where the evidence or inference changes. Do not impose a shot count, a new layout for every sentence or a fixed shot-duration ceiling. Retain reading time when inspecting the artifact matters.
 
 When a sequence follows a document, operation or comparison, carry the recognizable evidence object and its spatial anchors through the changes. Use motion to expose how an input relates to a result, not merely to introduce containers, titles or arrows. Design capture-to-explanation and explanation-to-capture handoffs around the evidence they share, without fabricating continuous action across different states. Avoid removing an artifact and bringing it back solely to restate its premise or recap the same payoff. A boundary label or settling question can update the current evidence view instead of becoming another scene.
@@ -83,13 +103,45 @@ When a reference is accepted, transfer its explanatory functions: what it select
 
 Before presenting a script or material revision, check every claim against its exact source passage rather than notes or summaries. For comparisons, verify both inputs and both outcomes. Do not call inputs equivalent because they share one property. Explicitly invoke `reasoning-first-narration` on the full script. Rerun its opening hook check and confirm the named payoff scene and closing callback exist.
 
+Apply its whole-script first-listen check with the actual planned screen
+sequence. Context must precede unfamiliar mechanism, each explanation must
+have a concrete referent and consequence, and sections must form one natural
+spoken argument. Accurate, short release-note sentences do not pass merely
+because they cover the features. Preserve meaningful substance and selected
+scope while giving ideas room to breathe. Resolve a real coverage/duration
+conflict with the user rather than packing more concepts into each utterance.
+
 Check the whole argument, not a scene template. A cold viewer must understand the question, evidence, mechanism and consequence at the depth needed for the promised outcome. If core sections can be reordered without breaking the reasoning, they are probably a catalog. Cut repeated orientation and explanation. Keep an example subordinate to the subject rather than turning it into a domain tutorial. Budget the spoken script near the middle of any requested word range, count only spoken words, and revise it into range before presenting it. Transition edits cannot repair a missing argument. Record any proposed substitution of illustration for required evidence and its reason in production notes. Obtain approval for the changed proof or scope, and drop or reword any behavioral claim the illustration cannot prove. Approval does not turn an illustration into observed execution.
 
-Present the creative treatment first, then human-readable segments in story order. Give each segment a meaningful heading and a prose description of what happens, why it belongs here, what the viewer sees change, and how it develops the treatment and follows the preceding segment. Place the exact narration beside that description in a clearly separate spoken-text block. Make the film imaginable without requiring the user to decode a shot table. Keep `HOOK`, `HOOK RATIONALE`, `PAYOFF`, frame counts, component names, source locators and rendering commands in the production material rather than leading the script presentation with them.
+Open the briefing with the whole film: its audience, purpose, governing idea,
+selected scope, creative treatment and how the story develops toward its
+payoff. Give this overview visual priority before the segment-by-segment
+detail. A list of scenes or a palette description alone does not establish
+what the reviewer should expect.
 
-Invoke `reasoning-first-writing` for user-facing documentation, treatment prose and substantive delivery explanations. `reasoning-first-narration` already loads that foundation for spoken scripts. Invoke `narrative-transitions` when drafting or materially revising the sequence, and check its boundaries together. These methods shape the writing, not three separate approval rounds. Preserve approved wording during technical production. A visual-only revision does not trigger a new script-writing pass.
+Then present human-readable segments in story order. Give each a meaningful
+heading and a short description of what happens, why it belongs, what the
+viewer sees change and how it follows the preceding segment. Place the exact
+narration beside it in a clearly separate spoken-text block. Close the briefing
+with a briefer synthesis of the film's intended effect, selected treatment,
+scope and actual approval decision. Keep this framing outside the spoken
+script and preserve its wording. Make the film imaginable without decoding
+a shot table. Keep `HOOK`, `HOOK RATIONALE`, `PAYOFF`, frame counts, component
+names and rendering commands in production material.
 
-Present the treatment, segment descriptions, verbatim narration, evidence and delivery choices as one coherent approval package before expensive production. Explain the applicable production gates once in that package, not in spoken narration. Only clear user approval counts. Feedback, questions, coordinator or autopilot permission do not replace it. Record the user's exact approval, time, script SHA-256, visual treatment, scope and voice conditions. Compare those inputs before production that consumes them. Reuse the approval across sessions and checkpoints while its exact content and conditions remain unchanged. A material change requires approval of that change, not another complete onboarding. Continue independent preparation while approval is pending. Production permission is not listening-based voice approval.
+Invoke `design-writing` for the approval briefing and follow its shared HTML
+guidance: a standalone, component-based reading copy with light/dark controls,
+an overview, exact narration beside inspected visuals and a shorter closing
+decision. Explicit user formats take precedence. Keep the director's story
+and approval ownership, not a specification-delivery manifest.
+Use `reasoning-first-writing` for other substantive documentation and delivery
+prose. `reasoning-first-narration` loads that foundation for speech.
+Invoke `narrative-transitions` on the sequence and check its boundaries together.
+These methods shape one approval package, not additional approval rounds.
+Preserve approved wording during production. A visual-only revision does not
+trigger a new script-writing pass.
+
+Present the treatment, segment descriptions, verbatim narration, inspected representative stills, evidence and delivery choices as one coherent approval package before expensive production. Put each still beside its relevant segment so the user can judge the words and look together. Explain the applicable production gates once in that package, not in spoken narration. Only clear user approval counts. Feedback, questions, coordinator or autopilot permission do not replace it. Record the user's exact approval, time, script SHA-256, visual/sample revisions, scope and voice conditions. Agreement with the wording alone does not settle an unresolved visual direction. Compare those inputs before production that consumes them. Reuse valid approval across sessions and checkpoints. A material change returns the affected script or sample for approval, retaining unchanged work. Continue independent preparation while approval is pending without building the full production. Production permission is not listening-based voice approval.
 
 ## 4. Produce
 
@@ -97,7 +149,7 @@ The promptlings installer owns the demo toolchain (Python, Node.js, Playwright C
 
 Continue the selected route and treatment without a second briefing. On the Motionite route, select existing components before writing scene internals, using the catalog in `technical-demo-production`. Reuse Motionite's helpers and suitable frame-aware libraries through thin React compositions and parameterized props. Preserve the selected style across imports. Write custom code for a demonstrated gap, not for animations or visual primitives already available. Record versions, licenses and asset requirements. Keep dependencies, captures, generated media and renders outside the Promptlings repository and installed skills.
 
-Make the complete playable timeline the first production target, using the existing Motionite/Remotion preview rather than building another preview application. Keep recorded footage, authored content and the actual soundtrack together in that composition so framing, motion and joins can be reviewed without exporting intermediate image sequences. Do not make a gallery of stills a prerequisite for the first moving preview.
+After script and visual approval, make the complete playable timeline the first full-production target, using the existing Motionite/Remotion preview rather than building another preview application. Reuse the accepted treatment and useful sample source. Keep recorded footage, authored content and the actual soundtrack together so framing, motion and joins can be reviewed without exporting intermediate image sequences. The early representative samples do not add an exhaustive gallery or replace moving review.
 
 Use the existing Remotion CLI/configuration or public APIs, following the production skill's rendering guidance. Choose task-specific commands or ad hoc code in the external production workspace when needed, without introducing a repository-owned renderer or mandatory job format. Ordinary footage, overlays, crops and transitions belong in the composition. Reuse the browser and bundle for related outputs where the chosen tool supports it. A verified unchanged bundle can serve later props-only jobs. Batch selected native-resolution review frames rather than launching a compositor for each frame. Render the required video after moving review. Do not substitute preview availability for delivery.
 

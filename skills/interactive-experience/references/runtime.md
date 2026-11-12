@@ -2,6 +2,22 @@
 
 The experience is a folder the presenter runs from their own machine with no internet. Write it as source files in the production workspace and assemble the folder with a project-local Node build script. The build script loads esbuild from the global install and resolves every bundled import there (see Bundling below), so the workspace installs nothing. The promptlings repository holds no runtime code.
 
+## Select only the required capabilities
+
+The approved storyline and delivery mode determine which parts of this
+contract apply. Core behavior is a served audience view, complete stop/beat
+state, reset, keyboard navigation, presenter cues, accessible rendering,
+fallback and an offline handout. Use an in-page presenter layout for
+single-screen delivery. Add the separate synchronized window only when the
+selected delivery calls for it.
+
+Video files, range transport and chapters apply to video stops. Fixed-step
+clocks and transport controls apply to time-based simulations. Random seeds
+apply to models using randomness. The data API, saved snapshots and captured
+data export apply when persistent capture or recall is selected. Omit unused
+directories, endpoints, controls and code rather than implementing empty
+subsystems. Do not omit a capability the user actually requested.
+
 ## Folder
 
 ```text
@@ -12,8 +28,8 @@ The experience is a folder the presenter runs from their own machine with no int
   build.mjs         pre-renders code and layouts into src/generated/, then bundles with esbuild
   app.js            build output: one IIFE script with the runtime, stops and libraries
   assets/           fonts, images, posters, LICENSES.txt
-  videos/           <id>.mp4 with <id>.chapters.vtt and <id>.captions.vtt
-  data/             workshop records, one <stream>.ndjson per capture stream
+  videos/           when selected: <id>.mp4 and chapter/caption tracks
+  data/             when selected: persisted capture/snapshot streams
   serve.mjs         the server and the handout exporter, Node built-ins only
   start.cmd         node "%~dp0serve.mjs" --open
   start.sh          exec node "$(dirname "$0")/serve.mjs" --open
@@ -26,10 +42,10 @@ The experience is a folder the presenter runs from their own machine with no int
 
 Generate `serve.mjs` per experience using only `node:http`, `node:fs`, `node:path`, `node:url` and `node:child_process`. Node 22 is installed with the agent; nothing is installed in the folder.
 
-- **Bind and port:** listen on `127.0.0.1` only. Default to port 8765, take the next free port when it is busy, and print the audience and presenter URLs. `--port <n>` overrides. `--open` opens both URLs with the platform opener (`start`, `open` or `xdg-open`).
+- **Bind and port:** listen on `127.0.0.1` only. Default to port 8765, take the next free port when it is busy, and print the audience URL and selected presenter URL. `--port <n>` overrides. `--open` opens the selected view or views with the platform opener (`start`, `open` or `xdg-open`).
 - **Static files:** serve the folder with explicit content types (`text/html`, `text/css`, `text/javascript`, `font/woff2`, `image/svg+xml`, `image/webp`, `image/png`, `video/mp4`, `text/vtt`, `application/json`, `text/plain`). Resolve every path against the folder root and refuse anything that escapes it, including encoded `..` segments. Serve `data/` only through the data API.
-- **Range requests:** send `Accept-Ranges: bytes` on files. For `Range: bytes=start-end`, `bytes=start-` and `bytes=-suffix`, answer `206 Partial Content` with `Content-Range: bytes start-end/size` and stream that slice. Answer an unsatisfiable range with `416` and `Content-Range: bytes */size`. Clamp an `end` beyond the file to `size - 1`, answer `bytes=-0` with `416`, and answer `HEAD` with the same headers and no body. Treat a multi-range request as a full `200` response. Video seeking depends on this; Python's `http.server` lacks it, which is why the server is generated rather than borrowed.
-- **Data API:** `POST /api/data/<stream>` with a JSON body of at most 64 KB appends one line to `data/<stream>.ndjson` with a server timestamp. `GET /api/data/<stream>` returns the stream's records as a JSON array. Stream names match `^[a-z0-9-]{1,40}$`; reject anything else with `400` and malformed JSON with `400`. Append with `fs.appendFile` so a crash loses at most the request in flight.
+- **Range requests, when video is selected:** send `Accept-Ranges: bytes` on files. For `Range: bytes=start-end`, `bytes=start-` and `bytes=-suffix`, answer `206 Partial Content` with `Content-Range: bytes start-end/size` and stream that slice. Answer an unsatisfiable range with `416` and `Content-Range: bytes */size`. Clamp an `end` beyond the file to `size - 1`, answer `bytes=-0` with `416`, and answer `HEAD` with the same headers and no body. Treat a multi-range request as a full `200` response. Video seeking depends on this; Python's `http.server` lacks it.
+- **Data API, when persistence is selected:** `POST /api/data/<stream>` with a JSON body of at most 64 KB appends one line to `data/<stream>.ndjson` with a server timestamp. `GET /api/data/<stream>` returns the stream's records as a JSON array. Stream names match `^[a-z0-9-]{1,40}$`; reject anything else with `400` and malformed JSON with `400`. Append with `fs.appendFile` so a crash loses at most the request in flight.
 - **Caching:** send `Cache-Control: no-store` so a rebuilt folder is never served stale during rehearsal.
 - **Handout:** `node serve.mjs --handout` writes `handout.html` (see below) and exits.
 
@@ -43,12 +59,12 @@ Generate `serve.mjs` per experience using only `node:http`, `node:fs`, `node:pat
 
 - Describe the storyline as an ordered list of stops. Each stop has a stable identifier (for example `queue`), a section, a kind (`app`, `video`, `capture` or `evidence`), a title for the map and the next preview, and an ordered list of beats.
 - A beat has an identifier, presenter notes, a focal element and the state it sets: a named preset, a patch to the stop state, a revealed layer or control, or a video chapter.
-- A mini-app stop declares its presets, including `entry`. A preset is a complete state object: every control value, the random seed and, for simulations, the tick to run to. Applying a preset always produces the same frame, whatever happened before.
+- A mini-app stop declares its presets, including `entry`. A preset is a complete state object: every control value and, where used, random seed and simulation tick. Applying a preset always produces the same frame, whatever happened before.
 - Render through one function, `show(stopId, beatIndex, state)`, that sets the complete visual state. Transitions may animate from the current frame to the target, but the target never depends on the route. Going backward, jumping by deep link and reloading produce the same frame as walking forward.
-- Each mini-app implements `mount(root, ctx)` returning `{ setState(state, { animate }), getState(), tick(), dispose() }`. `ctx` supplies `rng(seed)`, the fixed-step clock, `save(stream, record)`, `load(stream)` and the reduced-motion flag.
+- Each mini-app implements `mount(root, ctx)` returning `{ setState(state, { animate }), getState(), dispose() }`, plus `tick()` for a simulation. `ctx` supplies the reduced-motion flag and only the selected capabilities: `rng(seed)`, the fixed-step clock, or persistence through `save(stream, record)` and `load(stream)`.
 - **Randomness:** use only `ctx.rng(seed)`, a seeded generator such as mulberry32. `Math.random`, `Date.now` and `performance.now` never influence a model's state.
 - **Time:** simulations advance in fixed ticks (for example 60 per simulated second) from the clock, never from frame timing. Play, pause, single-step and speed change the tick rate only, so a preset run to tick N is identical on every machine.
-- **Exploration:** the presenter can move any visible control or drag any manipulable element at any time. The state changes, the URL keeps the stop and beat, and `0` returns to the beat's state. `S` saves the current state to the `snapshots` stream with the stop identifier; the presenter view lists saved snapshots for recall.
+- **Exploration:** the presenter can move any visible control or drag any manipulable element at any time. The state changes, the URL keeps the stop and beat, and `0` returns to the beat's state. When persistent recall is selected, `S` saves the current state to `snapshots`; the presenter view lists them for recall.
 - Update the URL hash on every beat with `history.replaceState` (for example `#queue/2`) and restore from it on load.
 
 ## Controls
@@ -76,22 +92,26 @@ Generate `serve.mjs` per experience using only `node:http`, `node:fs`, `node:pat
 
 Most clickers send `PageUp`, `PageDown`, `B` and `.`, so the storyline works from a clicker alone. Ignore key repeat during a running transition by jumping straight to its end state rather than queueing. Keys never act while focus is in a text field of a capture stop.
 
+Expose only controls for selected capabilities. A simple stateless comparison
+does not implement a simulation clock, video seeking or snapshot writes just
+to reserve these key bindings. Core beat navigation and reset still work.
+
 Stepping backward through a simulation replays from the preset to tick N-1, which stays exact because the model is deterministic.
 
 ## Presenter view
 
-- `index.html?view=presenter` shows the current beat scaled down, the next-beat preview, the notes, the stop's presets with their keys, saved snapshots, elapsed and wall-clock time and the section time budget. Both windows are served from the same origin and sync through `BroadcastChannel`: either window can drive, and the other follows with the same stop, beat, state, video time and play state.
-- `P` switches the audience page into the same layout for single-screen or screen-share delivery.
+- The presenter layout shows the current beat scaled down, the next-beat preview, notes, preset keys, elapsed/wall-clock time and time budget. Include saved snapshots or playback controls only when selected.
+- `P` opens that layout for single-screen or screen-share delivery. When two windows are selected, `index.html?view=presenter` opens it separately and `BroadcastChannel` keeps stop, beat and state synchronized in both directions, including video time/play state only when used.
 - Notes come from the same stop list the experience renders, so the script cues and the screen cannot drift.
 
-## Video stops
+## Video stops (when selected)
 
 - Embed the clip from the `technical-demo` agent's output as `videos/<id>.mp4`, H.264 video with AAC audio for universal hardware decoding, with a poster frame in `assets/`. Never inline video as base64.
 - Add `<track kind="chapters">` from `<id>.chapters.vtt`, generated from the clip's chapter or scene data, and `<track kind="captions">` from its narration. Bind beats to chapters so the storyline map, the presenter view and `[`/`]` share one chapter list.
 - Start playback only from a presenter key or click, which satisfies browser autoplay rules with sound. Show no native controls on the stage; the presenter view shows the playhead and chapter list.
 - Record each clip's audio mode: `muted` (the default; the presenter narrates live), `narrated` (an authentic voice plays, captions on, presenter silent) or `ambient` (the sound is evidence). The stop list carries the mode, the stage shows a speaker icon only when sound plays, and the script follows the same mode.
 
-## Workshop data capture
+## Workshop data capture (when selected)
 
 - A capture stop records what the room decides: a predicted outcome, a vote count, the parameters the room chose, an exercise answer, a ranked list. The presenter or a facilitator enters it with large controls on the stage or in the presenter view, and the stop shows the aggregate as it builds.
 - Records go to the data API, one stream per question. Store no names or personal data unless the user explicitly asks for it; record counts, choices and free text the room agreed to share.
@@ -103,7 +123,7 @@ Stepping backward through a simulation replays from the preset to tick N-1, whic
 `node serve.mjs --handout` writes one `handout.html` that opens from `file://` with no network:
 
 - Inline `app.css` with every `url(assets/...)` as a data URI, `app.js`, and every `assets/` reference in `index.html`.
-- Embed every `data/*.ndjson` stream as JSON in `<script type="application/json" id="captured">`; capture stops render read-only from it.
+- When persistence is selected, embed each `data/*.ndjson` stream as JSON in `<script type="application/json" id="captured">`; capture stops render read-only from it. Without persistence, no data API or captured-data block is required.
 - Set `handout` mode: controls are always visible, the reader drives at their own pace, presenter notes, the presenter view and data writes are off.
 - Replace each video element with its own poster, chapter list and clip file name, and copy the clips next to the handout when sharing them.
 - Keep the license notices.
@@ -128,7 +148,7 @@ The promptlings installer installs this toolkit globally with the agent, at thes
 - **Fonts:** copy the toolkit's latin `.woff2` files for the chosen pairing into `assets/fonts/`. Keep to two families and a few weights.
 - **Code:** highlight with Shiki in `build.mjs` and write the HTML, or the token snapshots for a code morph, into `src/generated/`. The browser loads only the magic-move core and renderer, never Shiki. Import `@shikijs/magic-move/style.css` into `app.css`; the morph renders unstyled without it.
 - **Diagrams:** author as inline SVG, laying out larger graphs with dagre in `build.mjs`.
-- **Models and simulations:** plain JavaScript state and update functions on the fixed clock, seeded by a hand-written mulberry32 `rng(seed)`. Use D3 for scales, shapes and force layouts, stepping the force simulation manually from the clock. Write controls by hand in the direction's visual language; no GUI panel library and no physics engine.
+- **Models and simulations:** use plain state/update functions, with a fixed clock only for time-based simulation and `rng(seed)` only for randomness. Use D3 where its scales or layouts are needed, stepping force simulations manually from the clock. Reuse accessible native controls and available toolkit components in the chosen visual language, rather than inventing a GUI framework or installing unused libraries. Product screenshots and static proposals may reuse the product's actual design system without importing its whole application into the experience.
 - **Motion:** CSS transitions for state changes and the Web Animations API for sequenced or seekable steps (`animation.currentTime` follows the beat); `flubber` interpolates morphs between unlike SVG paths.
 - **Raster evidence:** screenshots as compressed WebP or PNG in `assets/`.
 - **Bundling:** `build.mjs` takes `npmRoot` from `npm root --global`, loads esbuild with `createRequire(path.join(npmRoot, "noop.js"))("esbuild")`, and calls `esbuild.build({ entryPoints: ["src/main.js"], bundle: true, format: "iife", target: "es2020", minify: true, legalComments: "eof", outfile: "app.js", nodePaths: [npmRoot] })`. Pass `nodePaths` explicitly: the JS API ignores the `NODE_PATH` environment variable, and a static `import "esbuild"` from the workspace fails because ESM resolution ignores it too. One IIFE serves both the live server and the `file://` handout. Rebuild after every source change; never edit `app.js` by hand.

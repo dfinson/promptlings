@@ -22,17 +22,41 @@ is not a human decision. Distinguish the requested case from other cases
 grouped by the old condition. Reconcile intent whenever a proposed mechanism
 or scope changes, not only after writing or implementation.
 
-Before presenting a specification or seeking delivery approval, load
-intent-alignment and use the human template's coverage and comprehension checks.
-Route corrections through the existing writing authority. An alignment result
-does not replace human approval.
+Select the smallest coherent implementation using existing mechanisms before
+planning delivery. A complete opportunity catalogue is not a selected roadmap.
+Separate the bounded contract, optional experiments and policy decisions.
+Acceptance should prove that contract and its affected failure paths, not
+silently require new general-purpose infrastructure.
+
+Load intent-alignment before selecting the delivery mechanism. Check required
+coverage and scope restraint against the user's evidenced intent and accepted
+changes, not only the derived specification. Apply the same check before
+presenting, assigning work or proceeding on a material change to assumptions,
+dependencies or acceptance. A child brief cannot create new scope.
+Reuse unchanged evidence and the existing record. Route corrections through
+the existing owner and retain the human template's comprehension checks.
+An alignment result does not replace human approval.
 
 The execution rules below apply when preparing or carrying out authorized
 delivery, not as mandatory fields of every human specification.
-Writing permission is not implementation approval. Before implementation,
-obtain human approval of behavior, exact paths, owners, criterion commands
-and critical markings at an immutable revision. Preserve that approval source.
-Agreement on the human specification alone is not execution readiness.
+Writing permission is not implementation approval. Bind the selected behavior
+to the user's actual implementation authorization and preserve its reviewed
+revision. Agreement on the human specification alone is not execution readiness.
+Before implementation, establish the selected scope and actual authority.
+"Implement it" authorizes the clear selected contract, not every
+unselected opportunity. Resolve only material ambiguity, policy choices or
+authority gaps before proceeding.
+
+Record scope, product base and appropriate checks in the existing session
+record. Do not demand a separate approval of routine file choices or commands
+for an ordinary bounded change. When the user requests an execution plan or
+an active delivery contract requires it, preserve exact paths, owners, criterion commands
+and critical markings at an immutable revision. Obtain that plan's required
+approval before use.
+When presenting such a plan to a human, invoke `reasoning-first-writing` and
+frame the exact operational content with its overview and shorter closing
+synthesis. Follow `references/execution-plan-template.md` without omitting
+fields. An internal execution record need not acquire presentation prose.
 Keep working specs, plans and evidence in session artifacts or the user's
 chosen external system by default. Record each artifact's locator and immutable
 version, or SHA-256 of its exact saved bytes, with the human approval reference.
@@ -50,23 +74,32 @@ Approval does not authorize merging a PR or final human acceptance.
 
 ## Ready work
 
-Use one reviewable PR per coherent lane by default. Record its branch, intended
-target, product base SHA, scope and genuine dependencies in the existing
-session record or authorized plan. Independent PRs target the repository's
-intended delivery branch. A consumer that needs an unmerged producer can stack
-on its passing head and target that producer's branch. Do not equate three
-sessions with three independent PRs if the implementation genuinely requires
-a different split, but never collapse lanes merely because they were tested
-together.
+One bounded change normally has one owner and one reviewable patch in the
+existing worktree. Record its intended target, product base, selected scope and
+checks. Split into delivery lanes only for a concrete independent outcome,
+review/deployment risk or genuine dependency, within the user's constraints.
+The number of research headings or available agents is not a reason to split.
 
-One coherent lane implements directly in the existing worktree without a child
-session or another worktree. For multiple lanes, the master coordinates planning,
+Recheck proportionality before fan-out when a modest objective produces many
+abstractions, services, persistent stores, PRs or clarification questions.
+Simplify the mechanism and reuse existing functionality. If necessary work
+cannot fit an explicit size constraint, explain that conflict rather than
+silently widening or discarding scope. Retain unselected opportunities as
+reference, not mandatory later work.
+
+For genuinely separate delivery lanes, the master coordinates planning,
 PRs and evidence rather than writing product code. Each lane gets an isolated
 child and branch. Record the lane base before tests or product edits. Supply
 verbatim approved behavior, immutable approval references, recorded base, exact
 paths, interfaces, commands, exclusions, PR target, runnable helper and accessible
 artifact and scratch locations. Use `references/lane-brief-template.md`.
 
+Carry the selected mechanism, overall size/complexity constraint and exclusions
+into each assignment. Ask for the minimum sufficient change, not fresh
+architecture or PR decomposition by default. The coordinator remains
+accountable for expansion.
+
+The following concurrency rules apply after a delivery split is justified.
 Maximize safe concurrency. Start every ready independent lane before waiting.
 An acyclic graph's hard edges need an unavailable producer contract or
 demonstrated ordering invariant. Existing generic contracts, logical flow,
@@ -75,7 +108,9 @@ interfaces and coordinate actual overlap and migration hazards. Start consumers
 as soon as their required producer contract is available and its prerequisite
 checks pass, including on an unmerged PR. Do not wait for final acceptance or
 merge when a passing stack permits progress. Keep unaffected work moving when
-one lane is blocked. Do not invent owners, lanes or speculative contracts.
+one lane is blocked. Independent PRs target the intended delivery branch.
+A genuine consumer may target an unmerged producer's passing branch.
+Do not invent owners, lanes or speculative contracts.
 
 Never use an accumulating local integration branch as the default handoff or
 publication source. Do not feed unrelated lane commits back into review
@@ -83,7 +118,9 @@ branches. A real prerequisite belongs in an explicit stack, not hidden ancestry.
 
 ## Critical implementation
 
-First write only approved critical tests. Put proposed complete product file
+Apply this procedure only to human-marked critical criteria under the approved
+gate contract. Do not invent critical markings or new tests to make routine
+documentation work fit it. First write only approved critical tests. Put proposed complete product file
 contents in data, never in product paths. In the authorized scratch directory,
 write one JSON request with these fields:
 
@@ -117,7 +154,7 @@ confirm those identities after publication. Retargeting, rebasing or a target
 advance requires refreshed diff evidence. Never move the recorded base merely
 to conceal unrelated changes.
 
-For changed-behavior handoffs, run `scripts/gate.py handoff --help`, then invoke
+For gate-managed changed-behavior handoffs, run `scripts/gate.py handoff --help`, then invoke
 handoff with `--base <lane-base-sha>`, `--target <actual-target-sha>` and
 `--head <actual-pr-head-sha>`, exact paths, changed tests, intended
 fail-on-base/pass-on-head commands and authorized scratch. Read its
@@ -125,7 +162,14 @@ revision-bound evidence and inspect semantics, including peer changes within
 shared files. The helper checks scope and tests without merging branches. It
 does not establish human approval, PR publication or checklist completeness.
 Documentation-only lanes need appropriate diff review, not invented failing
-tests. Reject skipped, vacuous, out-of-scope or unrelated-setup evidence.
+tests. Ordinary bounded changes use the repository's smallest relevant checks
+and actual required acceptance. Reject skipped, vacuous, out-of-scope or unrelated-setup evidence.
+For bug fixes, reproduce the observed failure on the baseline and demonstrate
+its resolution on the changed revision with the same focused check when
+feasible. Existing tests or a bounded runtime observation can supply that
+evidence without the handoff helper or new maintained test infrastructure.
+If baseline execution is blocked, retain the specific reason and distinguish
+passing changed-revision checks from demonstrated regression protection.
 Retain failing revisions and route repair to owners. A failed prerequisite
 blocks its consumers, not unrelated lanes. A failed test alone does not
 establish a dependency.
@@ -144,7 +188,7 @@ Do not reconstruct history as a substitute for that evidence.
 At final integration execute every automated criterion, including the actual
 required E2E journey. Repeat after repairs. Load intent-alignment to compare the
 integrated behavior and evidence with the approved baseline and intended
-outcome. Keep unresolved intent and unverified behavior explicit without
+outcome, including proportional scope and the selected mechanism. Keep unresolved intent and unverified behavior explicit without
 inventing additional acceptance criteria. Use sparring-partner for integrated
 review and review-ensemble for human-marked risky work when available.
 Missing review and human judgments remain
