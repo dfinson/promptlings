@@ -272,7 +272,9 @@ export const JSON_ONLY_REMINDER = 'Reminder: you have no tools and cannot read f
  * whose labels all belong to the taxonomy, or an explicit failure record with its reason. An
  * unparsable answer is re-asked once with the same prompt plus JSON_ONLY_REMINDER. Every raw answer
  * is kept in panel.answers and, with evidenceDir, written to <evidenceDir>/<panelist>/answers/ with
- * a per-item attempt record in <evidenceDir>/<panelist>/items/<item>.json.
+ * a per-item attempt record in <evidenceDir>/<panelist>/items/<item>.json. A call that fails
+ * without an answer splits its batch in half and asks each half once, recursively down to single
+ * items; a single item whose call still fails becomes the failure record, listing every attempt.
  */
 export async function runPanel({
   items,
@@ -308,15 +310,18 @@ export async function runPanel({
     for (const kind of ['golden', 'unmatched']) {
       const pool = shuffle(items.filter((it) => it.kind === kind), seed + 7919 * (p + 1));
       const dims = dimensionsFor(taxonomy, kind);
-      for (const [b, batch] of batches(kind, pool, taxonomy, { maxChars, maxItems }).entries()) {
+      // A call that fails without an answer (timeout or nonzero exit) splits its batch in half and
+      // asks each half once, down to single items; `inherited` carries the parent attempts.
+      const askBatch = async (batch, label, inherited) => {
         const prompt = assertBlind(buildPanelPrompt(kind, batch, taxonomy), names);
         prompts.push({ panelist: model, kind, items: batch.map((it) => it.id), sha256: crypto.createHash('sha256').update(prompt).digest('hex'), text: prompt });
         const attempts = [];
         let returned = null;
         let outcome = null;
+        let callFailed = false;
         for (const attempt of [1, 2]) {
           const asked = attempt === 1 ? prompt : assertBlind(`${prompt}\n${JSON_ONLY_REMINDER}`, names);
-          const record = { id: `${model}/${kind}-b${String(b + 1).padStart(2, '0')}-a${attempt}`, panelist: model, kind, batch: b + 1, attempt, items: batch.map((it) => it.id), promptSha256: crypto.createHash('sha256').update(asked).digest('hex'), text: null, error: null, file: null };
+          const record = { id: `${model}/${kind}-${label}-a${attempt}`, panelist: model, kind, batch: label, attempt, items: batch.map((it) => it.id), promptSha256: crypto.createHash('sha256').update(asked).digest('hex'), text: null, error: null, file: null };
           answers.push(record);
           attempts.push(record);
           let raw;
@@ -325,10 +330,11 @@ export async function runPanel({
           } catch (err) {
             record.error = `panelist call failed: ${err.message}`;
             outcome = attempt === 1 ? record.error : `panelist answer unparsable (${attempts[0].error}); retry ${record.error}`;
+            callFailed = true;
             break;
           }
           record.text = String(raw ?? '');
-          record.file = writeEvidence(model, `answers/${kind}-b${String(b + 1).padStart(2, '0')}-a${attempt}.txt`, record.text);
+          record.file = writeEvidence(model, `answers/${kind}-${label}-a${attempt}.txt`, record.text);
           try {
             returned = parseAnnotations(raw);
             break;
@@ -337,7 +343,18 @@ export async function runPanel({
             outcome = attempt === 1 ? null : `panelist answer unparsable after retry: ${attempts.map((a) => a.error).join('; then ')}`;
           }
         }
-        const answerIds = attempts.map((a) => a.id);
+        const history = [...inherited, ...attempts];
+        if (callFailed && batch.length > 1) {
+          const half = Math.ceil(batch.length / 2);
+          await askBatch(batch.slice(0, half), `${label}.1`, history);
+          await askBatch(batch.slice(half), `${label}.2`, history);
+          return;
+        }
+        if (callFailed && inherited.length) {
+          const sizes = [...new Set(history.map((a) => a.items.length))];
+          outcome = `${outcome}; every call failed across batches of ${sizes.slice(0, -1).join(', ')} and ${sizes.at(-1)} item(s)`;
+        }
+        const answerIds = history.map((a) => a.id);
         const finish = (it, result) => {
           if (result.reason) failures.push({ item: it.id, panelist: model, reason: result.reason, answers: answerIds });
           else annotations.push({ item: it.id, panelist: model, labels: result.labels, answers: answerIds });
@@ -345,13 +362,13 @@ export async function runPanel({
             item: it.id,
             panelist: model,
             kind,
-            attempts: attempts.map(({ id, attempt, promptSha256, file, error }) => ({ id, attempt, promptSha256, file, error })),
+            attempts: history.map(({ id, attempt, items: asked, promptSha256, file, error }) => ({ id, attempt, items: asked, promptSha256, file, error })),
             outcome: result.reason ? { failure: result.reason } : { labels: result.labels },
           });
         };
         if (!returned) {
           for (const it of batch) finish(it, { reason: outcome });
-          continue;
+          return;
         }
         const byId = new Map();
         for (const a of returned) if (a && typeof a.id === 'string' && !byId.has(a.id)) byId.set(a.id, a);
@@ -368,6 +385,9 @@ export async function runPanel({
           }
           finish(it, { labels: Object.fromEntries(dims.map((d) => [d, a[d]])) });
         }
+      };
+      for (const [b, batch] of batches(kind, pool, taxonomy, { maxChars, maxItems }).entries()) {
+        await askBatch(batch, `b${String(b + 1).padStart(2, '0')}`, []);
       }
     }
   }
