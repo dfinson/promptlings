@@ -53,6 +53,10 @@ for an ordinary bounded change. When the user requests an execution plan or
 an active delivery contract requires it, preserve exact paths, owners, criterion commands
 and critical markings at an immutable revision. Obtain that plan's required
 approval before use.
+When presenting such a plan to a human, invoke `reasoning-first-writing` and
+frame the exact operational content with its overview and shorter closing
+synthesis. Follow `references/execution-plan-template.md` without omitting
+fields. An internal execution record need not acquire presentation prose.
 Keep working specs, plans and evidence in session artifacts or the user's
 chosen external system by default. Record each artifact's locator and immutable
 version, or SHA-256 of its exact saved bytes, with the human approval reference.

@@ -17,6 +17,12 @@ synthesis that helps the presenter own the experience and its remaining
 decision or rehearsal action. Keep this document framing outside spoken
 lines, preserving the exact hook, close and approved narration.
 
+Apply `reasoning-first-narration` to the complete spoken path, not only the
+hook. Short cues must still let the presenter give context, point to a visible
+object, explain what changed and land its consequence. Fully word an essential
+causal bridge when cue compression would make the presenter reconstruct it.
+Keep ordinary body cues flexible without turning them into release-note labels.
+
 ## The driving loop
 
 Every manipulation on stage follows four moves, the structure of think-aloud narration around a live system:
@@ -27,6 +33,14 @@ Every manipulation on stage follows four moves, the structure of think-aloud nar
 4. **Read.** Say what happened and what it means, pointing at the focal element by name ("checkout stayed up; every request just paid the delay").
 
 Write every beat that moves the model in this order. A beat with no "Read" line is unfinished.
+
+Before handoff, walk the whole script at speaking pace with the screen
+sequence. Check first-listen comprehension from entry through close, including
+the transitions, waits and source of every claim. Accuracy and a fitting word
+budget are necessary but do not establish that the audience can follow.
+Rewrite dense passages before rehearsal, preserving the selected coverage.
+Use the rehearsal to check actual spoken delivery, not as a substitute for
+repairing an unclear script.
 
 ## Script structure
 

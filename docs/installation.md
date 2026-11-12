@@ -187,8 +187,12 @@ The bundled [technical-illustration](../skills/technical-illustration/SKILL.md)
 skill reuses available diagram, browser and selected media tooling for early
 design stills and explanatory figures. Publication distributes its instructions
 and references automatically, not another renderer or service.
+Its `frontend-design` guidance is optional for selective Spec Master or
+Technical Demo installs: bundled composition guidance and an existing design
+system remain available. Interactive Presentation retains its stricter
+installer-managed design-tool requirements.
 
-Standalone HTML specifications use the
+Standalone HTML specifications and media approval briefings use the
 [document guidance](../skills/design-writing/references/html-specifications.md).
 Established component libraries are selected and version-pinned in the
 producing agent's authorized external workspace, with their styles and notices

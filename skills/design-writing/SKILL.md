@@ -22,11 +22,12 @@ Read only the reference matching the artifact being written. For a deliverable w
 | ADR | [ADR writing](references/adr.md) | Understand one significant decision, its rationale, and consequences |
 | Specification or implementation plan | [Specification writing](references/specification.md) | Determine required behavior, constraints, delivery work, and acceptance |
 | Broader technical design | [Design document writing](references/design-document.md) | Follow the proposed system, its flows, interfaces, and tradeoffs |
+| Demo or presentation approval briefing | [Visual HTML briefings](references/html-specifications.md) | Judge the whole story, exact script and representative visuals before production |
 | Jira, Azure DevOps, GitHub, or other tracker work item | [Ticket writing](references/tickets.md) | Understand one bounded outcome and how to verify it |
 
 Identify the type from the request, existing artifact, and active workflow. Ask only when a genuine ambiguity changes the result. Do not turn a broad design into an ADR or force a technical task into a user-story persona.
 
-For proposals and specifications, also read [visual HTML specifications](references/html-specifications.md). Use a visual-led, standalone HTML reading copy by default, generated from the same authoritative editable content and figures. Explicit destinations and formats win, including conversation-only requests and tracker templates. Keep consequential requirements visible, use established components, support light/dark appearance and preserve offline, keyboard and print access. A reading copy is not a second independently authored plan.
+For proposals, specifications and media approval briefings, read [visual HTML briefings](references/html-specifications.md). Use a visual-led, standalone HTML reading copy by default, generated from the same authoritative editable content and figures. Explicit destinations and formats win, including conversation-only requests and tracker templates. Keep consequential requirements visible, use established components, support light/dark appearance and preserve offline, keyboard and print access. A reading copy is not a second independently authored plan. Media directors retain story and production ownership. Do not impose an execution-plan template on their briefings.
 
 ## Bound the decision before polishing it
 

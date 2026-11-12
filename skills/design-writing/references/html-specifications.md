@@ -1,6 +1,7 @@
-# Visual, standalone specifications
+# Visual, standalone intent briefings
 
-Use this reference for human-facing proposals and specifications. The active
+Use this reference for human-facing proposals, specifications and demo or
+presentation approval packages. The active
 method still owns their behavior, approval and delivery. Explicit user
 destinations, tracker templates and requested formats take precedence.
 
@@ -64,6 +65,20 @@ relationship. Do not attach one to every catalogue entry by formula or
 repeat the complete explanation in both the figure and surrounding prose.
 Keep optional experiments and policy alternatives clearly outside the
 selected commitment until chosen.
+
+For media briefings, show the overall film or live experience first, then
+its selected segments with exact narration separated from explanatory prose
+and inspected stills beside the relevant passage. End with the bounded
+production decision. Reuse an existing script rather than silently rewriting
+it while changing presentation. Do not turn the sprint inventory into a
+feature-by-feature film or an execution manifest.
+
+For changes to an existing UI or workflow, follow the shared
+[comparison guidance](../../technical-illustration/references/comparisons.md):
+actual Current remains unannotated, Proposed carries change explanations,
+and visible actions/results connect to the exact contract. Use a different
+visual form when no meaningful UI comparison exists. Essential scope and
+acceptance stay visible outside popovers.
 
 ## Use established components
 

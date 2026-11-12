@@ -31,10 +31,15 @@ Remove figures that merely decorate or repeat prose.
 
 ## Compose the useful view
 
-Load `frontend-design` when choosing a consequential visual direction, rather
-than imposing a house palette. An accepted direction remains authoritative
-until its inputs change. Use existing design skills for craft, not their full
-production workflows.
+When available, load `frontend-design` for a consequential visual direction.
+It is not a mandatory dependency of this shared skill: selective installations
+may not include it. Otherwise use the caller's established design system and
+the composition/inspection guidance here and in [rendering](references/rendering.md).
+Ground palette, typography and layout in the subject, identify the focal
+evidence, keep a consistent visual vocabulary, and inspect realistic content
+at delivery size. Do not invent a house palette or install a missing skill
+automatically. Preserve a caller's stricter required-tool contract.
+An accepted direction remains authoritative until its inputs change.
 
 Choose realistic subject content. Show a representative mechanism or screen,
 not only a title card, palette swatch or generic mood board. Expose materially
@@ -53,6 +58,11 @@ Keep related objects recognizable across views. Put labels on what they name,
 use comparable scales for comparisons, and make the consequential difference
 visible. One enormous diagram full of small text is not an alternative to a
 wall of prose.
+
+For current/proposed UI, before/after evidence, annotations or reveal controls,
+read [comparisons](references/comparisons.md). Reuse actual screens/components
+when their context makes the change easier to judge. Keep Current untouched
+and put change annotations on Proposed only.
 
 ## Render, inspect and return
 

@@ -22,11 +22,23 @@ dependencies and observable acceptance. Link each operational
 entry to the relevant human section and resolve mismatches before execution.
 Do not hide a new requirement or an undecided behavior in this file.
 
+When this plan is shown to the user, invoke `reasoning-first-writing`. Present
+an overview before the operational detail and a shorter closing synthesis
+after it, retaining every exact field below. They explain the whole selected
+change and commitment, not a second plan. Internal-only records may omit that
+presentation framing.
+
 ```markdown
 # <Title>: execution plan
 
 Human specification: <accessible locator and approved version or content hash>
 Approval reference: <human decision identifying the approved artifact versions>
+
+## Overview (when presented for human review)
+
+Explain the selected outcome, bounded mechanism, how the necessary tasks
+connect and the decision sought before the reader encounters criteria and
+commands. Preserve the plan's actual approval status.
 
 ## Acceptance criteria
 
@@ -65,6 +77,11 @@ evidence, `edge` or `accept` decision, and concrete coordination or recovery.
 Include a cost estimate only when supported, otherwise leave it unknown.
 An edge must appear in both task dependencies and the graph.
 If no pairs are flagged, state that briefly.
+
+## Commitment (when presented for human review)
+
+Briefly synthesize what will change, why this scope is sufficient, what remains
+unchanged and which decision is actually requested. Introduce no new work.
 ```
 
 ## Execution plan rules

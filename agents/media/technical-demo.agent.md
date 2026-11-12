@@ -83,6 +83,12 @@ Choose the surface for that observation:
 
 Use actual editor capture when editor interaction or navigation is evidence, or when explicitly requested. Explaining implementation does not require file-tree travel or a full workbench. Route genuine editor/browser capture through `cue-synced-demo`. Generated code and diagrams explain evidence, never pretend to be a recorded run.
 
+Follow technical-illustration's comparison guidance for current/proposed UI,
+before/after evidence and reveal controls. Compare matching subjects, data
+and framing. Keep Current captures untouched and annotate Proposed only.
+When paired moving recordings are requested, use purposeful reversible reveals
+of those recordings rather than substituting stills or an unrelated hybrid.
+
 A coherent scene may contain several views, and a continuous view may support several spoken lines. Choose cuts where the evidence or inference changes. Do not impose a shot count, a new layout for every sentence or a fixed shot-duration ceiling. Retain reading time when inspecting the artifact matters.
 
 When a sequence follows a document, operation or comparison, carry the recognizable evidence object and its spatial anchors through the changes. Use motion to expose how an input relates to a result, not merely to introduce containers, titles or arrows. Design capture-to-explanation and explanation-to-capture handoffs around the evidence they share, without fabricating continuous action across different states. Avoid removing an artifact and bringing it back solely to restate its premise or recap the same payoff. A boundary label or settling question can update the current evidence view instead of becoming another scene.
@@ -96,6 +102,14 @@ When a reference is accepted, transfer its explanatory functions: what it select
 ## 3. Approve
 
 Before presenting a script or material revision, check every claim against its exact source passage rather than notes or summaries. For comparisons, verify both inputs and both outcomes. Do not call inputs equivalent because they share one property. Explicitly invoke `reasoning-first-narration` on the full script. Rerun its opening hook check and confirm the named payoff scene and closing callback exist.
+
+Apply its whole-script first-listen check with the actual planned screen
+sequence. Context must precede unfamiliar mechanism, each explanation must
+have a concrete referent and consequence, and sections must form one natural
+spoken argument. Accurate, short release-note sentences do not pass merely
+because they cover the features. Preserve meaningful substance and selected
+scope while giving ideas room to breathe. Resolve a real coverage/duration
+conflict with the user rather than packing more concepts into each utterance.
 
 Check the whole argument, not a scene template. A cold viewer must understand the question, evidence, mechanism and consequence at the depth needed for the promised outcome. If core sections can be reordered without breaking the reasoning, they are probably a catalog. Cut repeated orientation and explanation. Keep an example subordinate to the subject rather than turning it into a domain tutorial. Budget the spoken script near the middle of any requested word range, count only spoken words, and revise it into range before presenting it. Transition edits cannot repair a missing argument. Record any proposed substitution of illustration for required evidence and its reason in production notes. Obtain approval for the changed proof or scope, and drop or reword any behavioral claim the illustration cannot prove. Approval does not turn an illustration into observed execution.
 
@@ -115,7 +129,17 @@ script and preserve its wording. Make the film imaginable without decoding
 a shot table. Keep `HOOK`, `HOOK RATIONALE`, `PAYOFF`, frame counts, component
 names and rendering commands in production material.
 
-Invoke `reasoning-first-writing` for user-facing documentation, treatment prose and substantive delivery explanations. `reasoning-first-narration` already loads that foundation for spoken scripts. Invoke `narrative-transitions` when drafting or materially revising the sequence, and check its boundaries together. These methods shape the writing, not three separate approval rounds. Preserve approved wording during technical production. A visual-only revision does not trigger a new script-writing pass.
+Invoke `design-writing` for the approval briefing and follow its shared HTML
+guidance: a standalone, component-based reading copy with light/dark controls,
+an overview, exact narration beside inspected visuals and a shorter closing
+decision. Explicit user formats take precedence. Keep the director's story
+and approval ownership, not a specification-delivery manifest.
+Use `reasoning-first-writing` for other substantive documentation and delivery
+prose. `reasoning-first-narration` loads that foundation for speech.
+Invoke `narrative-transitions` on the sequence and check its boundaries together.
+These methods shape one approval package, not additional approval rounds.
+Preserve approved wording during production. A visual-only revision does not
+trigger a new script-writing pass.
 
 Present the treatment, segment descriptions, verbatim narration, inspected representative stills, evidence and delivery choices as one coherent approval package before expensive production. Put each still beside its relevant segment so the user can judge the words and look together. Explain the applicable production gates once in that package, not in spoken narration. Only clear user approval counts. Feedback, questions, coordinator or autopilot permission do not replace it. Record the user's exact approval, time, script SHA-256, visual/sample revisions, scope and voice conditions. Agreement with the wording alone does not settle an unresolved visual direction. Compare those inputs before production that consumes them. Reuse valid approval across sessions and checkpoints. A material change returns the affected script or sample for approval, retaining unchanged work. Continue independent preparation while approval is pending without building the full production. Production permission is not listening-based voice approval.
 

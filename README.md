@@ -103,6 +103,12 @@ while only samples need revision. It keeps the older agent's storytelling
 and evidence standards, using Motionite/Remotion by default, HyperFrames when
 explicitly selected, and real capture for demonstrated behavior.
 
+Demo and presentation approval packages use the same standalone HTML briefing
+contract as specifications. Whole-script narration checks prioritize context,
+visible evidence and first-listen understanding over compressed feature lists.
+Interactive Presentation checks required scope and unjustified additions
+throughout, enabling runtime capabilities only when its chosen stops need them.
+
 The [production skill](skills/technical-demo-production/SKILL.md) retains approved
 inputs, selects existing components, overlaps independent preparation and reuses
 unchanged media. Its Markdown guidance preserves the measured media/browser
@@ -197,6 +203,10 @@ covers researched typography and navigation, established UI components,
 light/dark appearance, embedded assets, accessible reading and printing.
 Figures and short explanations lead the reader through the proposal while
 exact requirements remain visible.
+
+Existing-UI changes can use matched actual-current/proposed views. Current
+remains untouched, while Proposed carries meaningful clickable explanations.
+Essential behavior and acceptance remain visible outside annotations.
 
 Every intent document begins with a clear top-down overview before its detail
 and ends with a shorter synthesis of the outcome, approach and commitment.

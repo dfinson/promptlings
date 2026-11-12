@@ -23,6 +23,13 @@ A stop earns the mini-app form when manipulating a working model shows something
 | Video stop | The step cannot run live in the room (see [When to use video](#when-to-use-video)) | Chapters as beats; cut back to a mini-app for questions | `technical-demo` output |
 | Evidence stop | A single real artifact (a measurement, a screenshot, a code region) makes the point | Stepped reveal of one layer per beat | [Ciechanowski, Mechanical Watch](https://ciechanow.ski/mechanical-watch/) |
 
+For comparison stops, keep the same scenario and explicit assumptions.
+A strategy race holds input and success criteria constant while showing the
+consequences of a real choice. Before/after views use matching subjects,
+data and scale. Follow technical-illustration's comparison guidance for
+actual UI, Proposed-only annotations, paired recordings and reveal gestures.
+An attractive toggle that changes only decoration is not a working model.
+
 ## When to use video
 
 Video is optional; most experiences have none. Every clip trades the room's attention and the presenter's control of pace for something the live stops cannot give. Propose a clip only when one of these holds:
@@ -45,7 +52,7 @@ Never use a clip on a stop where the room enters data or where responding to the
 - **Model first, drawing second.** Write the state and the update function, check them against real measurements where the talk quantifies anything, then draw from the state.
 - **Small enough to explain in one stop.** If a model needs more than one new mechanism, split it across stops that build on each other.
 - **Visible state.** Show the numbers that matter (queue depth, latency, hit rate) beside the drawing, at the size floor, updating with the model.
-- **Readable at presenter speed.** The default tick rate shows the behavior at a pace a person can narrate; offer `K` to pause and `J`/`L` to step at the moment that matters.
+- **Readable at presenter speed.** For time-based models, choose a narratable tick rate with pause/step controls. Static comparisons need no simulation transport.
 - **Recoverable.** Every reachable state returns to the beat's state with `0`. No control can leave the model in a state that breaks rendering.
 - **Honest.** State on screen what the model simplifies.
 
