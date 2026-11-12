@@ -265,6 +265,7 @@ test('report keeps suite disclosures and resolves the perspective-mode distribut
   const doc = (dir) => ({ ...scoresDoc([...trialsFor('stock'), ...trialsFor('hve-code-review')], [arm('stock', models), arm('hve-code-review', models)]), runDir: dir });
 
   const report = JSON.parse(JSON.stringify(buildReport(doc(runDir), { baseline: 'stock', disclosures })));
+  assert.ok(Array.isArray(report.disclosures.suite), 'report.disclosures.suite holds the suite disclosures');
   assert.deepEqual(report.disclosures.sameModel, []);
   assert.equal(report.disclosures.suite.length, 2);
   assert.deepEqual(report.disclosures.suite[0], { arm: 'hve-code-review', kind: 'prompt-preamble', text: disclosures[0].text });
