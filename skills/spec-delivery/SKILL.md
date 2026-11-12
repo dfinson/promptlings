@@ -28,10 +28,14 @@ Separate the bounded contract, optional experiments and policy decisions.
 Acceptance should prove that contract and its affected failure paths, not
 silently require new general-purpose infrastructure.
 
-Before presenting a specification or seeking delivery approval, load
-intent-alignment and use the human template's coverage and comprehension checks.
-Route corrections through the existing writing authority. An alignment result
-does not replace human approval.
+Load intent-alignment before selecting the delivery mechanism. Check required
+coverage and scope restraint against the user's evidenced intent and accepted
+changes, not only the derived specification. Apply the same check before
+presenting, assigning work or proceeding on a material change to assumptions,
+dependencies or acceptance. A child brief cannot create new scope.
+Reuse unchanged evidence and the existing record. Route corrections through
+the existing owner and retain the human template's comprehension checks.
+An alignment result does not replace human approval.
 
 The execution rules below apply when preparing or carrying out authorized
 delivery, not as mandatory fields of every human specification.

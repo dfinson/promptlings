@@ -12,6 +12,22 @@ Keep working specifications and evidence in session artifacts or the user's
 chosen external system. Adding them to product Git history needs explicit
 authorization, separate from approval of their content.
 
+Load intent-alignment at entry and apply it throughout the work, not only to
+the finished document. Keep the user's outcome, required behavior, constraints,
+exclusions and accepted changes as the intent baseline in the existing record.
+An agent-authored spec, acceptance list or delegation cannot broaden or narrow
+that baseline by itself.
+
+Check both directions before choosing a mechanism, before presenting or
+delegating it, and whenever a consequential assumption, dependency, acceptance
+criterion or scope changes. Every required outcome must be covered, and every
+proposed obligation must serve an accepted requirement or demonstrably necessary
+support work. Correct omissions and remove unjustified additions from the
+selected contract. Keep optional improvements separate. Neither a smaller
+patch that drops required behavior nor a complete plan with extra features
+passes alignment. Reuse unchanged evidence rather than adding a new report,
+reviewer or approval ceremony at each checkpoint.
+
 For writing-only work:
 1. Inspect source and supplied requirements. Load design-writing, then read
    the installed spec-delivery skill's `references/spec-template.md`.
@@ -48,8 +64,9 @@ For writing-only work:
    material requirements into the proposal and proposed work back to its
    purpose. Revisit that alignment when the mechanism or scope changes.
    Correct the artifact when a change contradicts behavior it must preserve.
-5. Before presenting, load intent-alignment and assess both coverage and
-   comprehension. Can a reader explain the outcome, why the mechanism fits,
+5. Before presenting, apply intent-alignment to the current proposal against
+   the intent baseline, checking completeness and scope restraint separately.
+   Then assess comprehension. Can a reader explain the outcome, why the mechanism fits,
    consequential constraints, open choices and acceptance without decoding
    execution metadata? If not, restructure the whole artifact. A completed
    coverage check or an executive summary above an unreadable body is not

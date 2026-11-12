@@ -141,10 +141,12 @@ accessible context, traces requirements to work and material changes back to
 their justification, and distinguishes demonstrated mismatches from unresolved
 intent or missing evidence. It assesses plans and implementations without
 editing them or approving delivery. A supplied snapshot works without a tracker
-connection. Spec Master revisits alignment as mechanisms or scope change and
-uses the skill before presenting a specification. It checks comprehension
-separately from requirement coverage. Spec-delivery also checks alignment
-before approval and at final integration.
+connection. Spec Master loads alignment at entry and applies it before choosing
+a mechanism, presenting or delegating, and when consequential assumptions,
+dependencies or acceptance change. Required coverage and scope restraint are
+equally necessary, checked against the user's intent rather than just an
+agent-authored specification. Comprehension remains a separate check.
+Spec-delivery preserves the same baseline through assignment and integration.
 
 ### A/B testing
 
