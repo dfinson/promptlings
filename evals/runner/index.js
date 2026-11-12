@@ -263,8 +263,9 @@ function denialExcerpt(text, patterns) {
   return line.trim().slice(0, 300);
 }
 
-// Signs that the CLI's own session host failed, as opposed to the agent. Such attempts are retried.
-const infrastructurePattern = /session event delivery failed/i;
+// Signs that the CLI's own session host or its startup model catalog request failed, as opposed to the agent.
+// Such attempts are retried.
+const infrastructurePattern = /session event delivery failed|Failed to load models|Model catalog request timed out/i;
 
 /** Returns an excerpt naming the infrastructure error in a failed attempt's output, or null. */
 export function infrastructureError(output, events) {
