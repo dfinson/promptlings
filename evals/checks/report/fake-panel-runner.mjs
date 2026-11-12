@@ -8,6 +8,10 @@ export const unparsableFirst = new Set();
 export const unparsableAlways = new Set();
 export const toolIntentFirst = new Set();
 export const toolIntentAlways = new Set();
+// Model -> largest item count it answers; a larger batch exits 1 mid-reasoning with no answer.
+export const failAboveItems = new Map();
+// Model -> item ids whose presence in a prompt makes the call exit 1 with no answer.
+export const failOnItems = new Map();
 export const TOOL_INTENT = "I'll inspect the workflow file around the cited lines to judge whether these findings describe a real problem.";
 const REMINDER = '\nReminder:';
 const NO_TOOL_ANNOUNCEMENT = 'Do not announce, plan or attempt tool use';
@@ -28,6 +32,15 @@ export async function runCopilotOnce({ home, cwd, args, env }) {
   const prompt = valueOf(args, '-p') ?? '';
   const model = valueOf(args, '--model');
   calls.push({ home, cwd, args, model, prompt, env: { COPILOT_HOME: env.COPILOT_HOME, HOME: env.HOME, USERPROFILE: env.USERPROFILE } });
+  const ids = [...prompt.matchAll(/^\{"id":"(item-\d{4})"/gm)].map((m) => m[1]);
+  const tooLarge = failAboveItems.has(model) && ids.length > failAboveItems.get(model);
+  if (tooLarge || ids.some((id) => failOnItems.get(model)?.has(id))) {
+    const stalled = [
+      { type: 'user.message', data: { content: prompt } },
+      { type: 'assistant.reasoning_delta', data: { deltaContent: 'Item 0001 is a single-hunk defect.' } },
+    ];
+    return { exitCode: 1, stdout: `${stalled.map((e) => JSON.stringify(e)).join('\n')}\n`, stderr: 'timed out', home };
+  }
   const prose = unparsableAlways.has(model) || (unparsableFirst.has(model) && !prompt.includes(REMINDER));
   const toolIntent = toolIntentAlways.has(model) || (toolIntentFirst.has(model) && !prompt.includes(NO_TOOL_ANNOUNCEMENT));
   const content = toolIntent ? TOOL_INTENT

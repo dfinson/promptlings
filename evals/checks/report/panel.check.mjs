@@ -441,6 +441,58 @@ test('panel tells panelists they have no tools and re-asks a tool-intent answer 
   assert.equal(fs.readFileSync(path.join(evidenceDir, retryAnswer.file), 'utf8'), runner.TOOL_INTENT);
 });
 
+test('panel splits a batch whose call fails without an answer and retries each half down to single items', async () => {
+  const { runPanel, assertBlind, blindNames } = await load('scoring/panel.js');
+  const runner = await import(new URL('./fake-panel-runner.mjs', import.meta.url).href);
+  assert.ok(runner.failAboveItems && runner.failOnItems, 'the fake runner can stall a call');
+  runner.calls.length = 0;
+  runner.failAboveItems.set('grok-4.7', 1);
+  runner.failOnItems.set('grok-4.7', new Set(['item-0003']));
+  const evidenceDir = scratch('panel-split');
+  const names = blindNames(ARMS);
+  const items = Array.from({ length: 4 }, (_, i) => ({ id: `item-000${i + 1}`, kind: 'golden', source: {}, content: { file: 'src/a.js', lines: String(i + 1), finding: `finding ${i}` } }));
+  const saved = process.env.COPILOT_GITHUB_TOKEN;
+  process.env.COPILOT_GITHUB_TOKEN = 'ghu_fakePanelToken0123456789';
+  let panel;
+  try {
+    panel = await runPanel({ items, panelists: PANEL, names, graderConfig: { runnerModule: fakePanelRunner }, evidenceDir });
+  } finally {
+    runner.failAboveItems.clear();
+    runner.failOnItems.clear();
+    if (saved === undefined) delete process.env.COPILOT_GITHUB_TOKEN;
+    else process.env.COPILOT_GITHUB_TOKEN = saved;
+  }
+  const grok = runner.calls.filter((c) => c.model === 'grok-4.7');
+  const sizes = grok.map((c) => itemsInPrompt(c.prompt).length);
+  assert.deepEqual(sizes, [4, 2, 1, 1, 2, 1, 1], 'the batch of 4 splits into halves, then single items, each asked once');
+  for (const c of grok) {
+    assert.equal(assertBlind(c.prompt, names), c.prompt);
+    for (const name of names) assert.ok(!c.prompt.includes(name));
+  }
+  assert.equal(new Set(grok.map((c) => c.prompt)).size, grok.length, 'no prompt is asked twice');
+  assert.equal(runner.calls.filter((c) => c.model === 'claude-opus-5.5').length, 1);
+
+  for (const id of ['item-0001', 'item-0002', 'item-0004']) {
+    assert.ok(panel.annotations.find((a) => a.item === id && a.panelist === 'grok-4.7'), `${id} is labelled after the split`);
+    const rec = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'grok-4.7', 'items', `${id}.json`), 'utf8'));
+    assert.deepEqual(rec.attempts.map((a) => a.items.length), [4, 2, 1], `${id} records every attempt`);
+    assert.match(rec.attempts[0].error, /panelist call failed: Copilot grader exited 1/);
+    assert.match(rec.attempts[1].error, /panelist call failed/);
+    assert.equal(rec.attempts[2].error, null);
+    assert.ok(rec.outcome.labels);
+  }
+  const failure = panel.failures.find((f) => f.item === 'item-0003' && f.panelist === 'grok-4.7');
+  assert.ok(failure, 'the single item that still fails is the recorded failure');
+  assert.match(failure.reason, /panelist call failed: Copilot grader exited 1/);
+  assert.match(failure.reason, /batches of 4, 2 and 1 item/);
+  assert.equal(failure.answers.length, 3);
+  const rec3 = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'grok-4.7', 'items', 'item-0003.json'), 'utf8'));
+  assert.deepEqual(rec3.attempts.map((a) => a.items.length), [4, 2, 1]);
+  assert.ok(rec3.attempts.every((a) => /panelist call failed/.test(a.error)));
+  assert.equal(rec3.outcome.failure, failure.reason);
+  assert.equal(panel.failures.filter((f) => f.panelist === 'grok-4.7').length, 1, 'only the failing item is lost');
+});
+
 test('panel excludes errored and invalidated trials from behaviour features and per-arm aggregates', async () => {
   const { trialFeatures, collectFeatures } = await load('scoring/behaviour.js');
   const { runPanelAnalysis } = await load('report/panel.js');
