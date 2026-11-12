@@ -5,6 +5,7 @@
 // reports a sandbox denial), FAKE:POLICY_DENIAL (a command outside the allow list is refused by policy),
 // FAKE:INFRA_FAIL=<n> (the first n attempts in a trial directory fail as the CLI does when its session host stops
 // acknowledging event delivery; FAKE:INFRA_DIRTY makes such an attempt change the workspace first),
+// FAKE:MODELS_FAIL=<n> (the first n attempts fail at startup because the model catalog request timed out),
 // FAKE:FLOOD=<ms> (stream large deltas for ms and record the worst write delay and main-thread stall),
 // FAKE:ANCESTOR_DENIAL (a subagent's views of ancestor AGENTS.md files are refused as outside the sandbox's
 // readable paths, and the answers report it), FAKE:WORKSPACE_DENIAL (a view of a workspace file is refused the same way).
@@ -120,8 +121,12 @@ const finish = () => {
   process.exit(exitCode);
 };
 
-const infraFail = Number(/FAKE:INFRA_FAIL=(\d+)/.exec(prompt)?.[1] ?? 0);
+const modelsFail = Number(/FAKE:MODELS_FAIL=(\d+)/.exec(prompt)?.[1] ?? 0);
+const infraFail = Number(/FAKE:INFRA_FAIL=(\d+)/.exec(prompt)?.[1] ?? 0) || modelsFail;
 const flood = Number(/FAKE:FLOOD=(\d+)/.exec(prompt)?.[1] ?? 0);
+
+const modelCatalogStderr =
+  "Error: Failed to load models\n\nError: Model catalog request timed out after 30000ms\n\nCopilot could not connect to the Copilot API to retrieve the list of available models.\n";
 
 // The CLI's failure when its session host stops acknowledging event delivery, as seen in rb-qual-1.
 function infrastructureFailure() {
@@ -130,6 +135,17 @@ function infrastructureFailure() {
   writeFileSync(counter, String(attempt));
   if (attempt > infraFail) return false;
   if (prompt.includes("FAKE:INFRA_DIRTY")) writeFileSync(join(process.cwd(), "half-done.txt"), "partial edit\n");
+  if (modelsFail) {
+    // The CLI's startup failure when the model catalog request times out, verbatim from rb-qual-4.
+    for (const event of [
+      { type: "session.start", data: { fake: true } },
+      { type: "result", exitCode: 1, usage: { premiumRequests: 0, totalApiDurationMs: 0, sessionDurationMs: 34228 } },
+    ]) process.stdout.write(`${JSON.stringify(event)}\n`);
+    process.stderr.write(modelCatalogStderr);
+    const usageFile = option("--usage-output-file");
+    if (usageFile) writeFileSync(usageFile, `${JSON.stringify({ totalNanoAiu: 0 })}\n`);
+    process.exit(1);
+  }
   for (const event of [
     { type: "session.start", data: { fake: true } },
     { type: "user.message", data: { content: prompt } },

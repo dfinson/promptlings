@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
-import { runTrial } from "../../runner/index.js";
+import { infrastructureError, runTrial } from "../../runner/index.js";
 import { runSuite } from "../../runner/run.js";
 import { fakeCopilot, makeFixtureSuite, makeRealHome, stockArm, tempDir, testToken, withParentEnv } from "./helpers.mjs";
 
@@ -76,6 +76,31 @@ test("retry: infrastructure failures stop after two retries", async () => {
   assert.equal(stored.infrastructure, true);
   assert.equal(stored.attempts.length, 3);
   assert.ok(stored.attempts.every((a) => a.infrastructure && deliveryFailure.test(a.reason)));
+});
+
+test("retry: a model catalog timeout at startup is an infrastructure error and is retried", async () => {
+  const { stored } = await trial("retry-models", "FAKE:MODELS_FAIL=1");
+  assert.equal(stored.status, "completed", stored.reason);
+  assert.equal(stored.attempts.length, 2);
+  const [first] = stored.attempts;
+  assert.equal(first.status, "errored");
+  assert.equal(first.infrastructure, true);
+  assert.match(first.reason, /Failed to load models/);
+  assert.match(readFileSync(join(first.dir, "stderr.txt"), "utf8"), /Model catalog request timed out after 30000ms/);
+});
+
+test("retry: model catalog timeouts stop after two retries and the trial is marked infrastructure", async () => {
+  const { stored } = await trial("retry-models-exhausted", "FAKE:MODELS_FAIL=5");
+  assert.equal(stored.status, "errored");
+  assert.equal(stored.infrastructure, true);
+  assert.equal(stored.attempts.length, 3);
+  assert.ok(stored.attempts.every((a) => a.infrastructure && /Failed to load models/.test(a.reason)));
+});
+
+test("retry: either model catalog line alone classifies as infrastructure, an agent error does not", () => {
+  assert.ok(infrastructureError("Error: Model catalog request timed out after 30000ms", []));
+  assert.ok(infrastructureError("Error: Failed to load models", []));
+  assert.equal(infrastructureError("Error: the agent could not apply its patch to the model file", []), null);
 });
 
 test("retry: an agent-caused failure is not retried", async () => {
