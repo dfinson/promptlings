@@ -1,0 +1,306 @@
+name: martian
+description: >-
+  Martian Code Review Bench, offline set (withmartian/code-review-benchmark, MIT): 50 real pull
+  requests from Cal.com, Discourse, Grafana, Keycloak and Sentry with 173 human-verified golden
+  review comments. Each trial reviews one pull request checked out at its head with its PR
+  history and the merge base, and writes findings in the shared findings contract. A blind
+  claude-sonnet-5 judge matches each trial's findings to the PR's golden comments.
+
+taskSource:
+  type: dataset
+  lockKey: martian
+
+# The pinned dataset lives under <artifact root>/datasets/martian, never in Git. prs.json is the
+# golden URLs resolved through the GitHub API to base, head, merge base and PR text; the golden
+# files are Martian's offline/golden_comments at commit e616e849.
+dataset:
+  source: https://github.com/withmartian/code-review-benchmark
+  commit: e616e849
+  files:
+    golden_comments/cal_dot_com.json: 57db13d7b226a502c113782956c6f00ed23c5ae074e8552fb2eb0e36b1aeb691
+    golden_comments/discourse.json: e74f032c1f92182a4eed7f7b1636cd838ef145494c236cac29c42e55d15e949a
+    golden_comments/grafana.json: 41a1d1eabae61d03d5f4b16c6546dd8b51bfd65d1c91d99d65819ea8b3ae05b4
+    golden_comments/keycloak.json: a3d210731f1d9019b24206722ab02d9fcf1d7773562c134926d0b830d2921dfc
+    golden_comments/sentry.json: 2084e31da3c96b4e352a79a74a5dcb001d2b6c693e8efe7d22e26ad51de2ec1b
+    prs.json: 6c3cf4cd06bba3ad76937daa34f3a8a859b482e2822e2c399b75fcb63382eb60
+
+splits:
+  offline:
+    size: 50
+  smoke:
+    ids: [cal.com-8087]
+    size: 1
+
+# Shared prompt, identical for every arm. Widened from ReviewBench's contract so reviewers report
+# every class of issue they would raise, not only defects.
+prompt: |
+  {{review_request}}
+
+  This repository is checked out at the pull request's head on branch `pr-head`; the base
+  commit is branch `review-base`. The pull request's title, description and commit SHAs are in
+  `{{pr_dir}}/pr.json`, and the full change is in `{{pr_dir}}/diff.patch`. Use only this local
+  checkout and its Git history. Do not access the network, GitHub, or any copy of this pull
+  request, its comments or later fixes.
+
+  Report every issue you would raise in a review of this change: defects, security and
+  concurrency problems, data and API contract problems, performance problems, missing or
+  inadequate tests, documentation errors, and maintainability or design problems.
+
+  When the review is done, write every finding to `{{pr_dir}}/findings.json` as:
+
+  ```json
+  {
+    "pr": { "pr_number": <number from pr.json>, "head": "<head SHA from pr.json>" },
+    "findings": [
+      { "file": "path/relative/to/repo", "start_line": 10, "end_line": 12, "message": "What is wrong, why it matters and how to fix it." }
+    ]
+  }
+  ```
+
+  Each finding names one problem in the changed code, with the file path relative to the
+  repository root and the line range in the head version of that file. Then repeat the same
+  JSON in a final ```json block of your answer.
+
+reviewRequests:
+  default: Review the changes on this branch against review-base.
+  ensemble: Run the review ensemble on this branch against review-base.
+arms:
+  - id: stock
+    ref: null
+    selection: null
+    agent: null
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: &noLeakTools
+      # Spec Amendment 2: the broad `shell` allow lets reviewers read and run local tooling
+      # (rb-qual-1 had 2 to 29 policy refusals per trial under shell(git:*)). Every deny entry
+      # below still wins over it, and the transcript audit still invalidates leaks.
+      allow:
+        - write
+        - shell
+      deny:
+        - web_fetch
+        - web_search
+        - github-mcp-server
+        - shell(git fetch:*)
+        - shell(git pull:*)
+        - shell(git clone:*)
+        - shell(git ls-remote:*)
+        - shell(git push:*)
+        - shell(gh:*)
+        - shell(curl:*)
+        - shell(wget:*)
+        - shell(Invoke-WebRequest:*)
+        - shell(Invoke-RestMethod:*)
+        - shell(iwr:*)
+        - shell(irm:*)
+      allowUrl: []
+      denyUrl:
+        - github.com
+        - api.github.com
+        - raw.githubusercontent.com
+        - codeload.github.com
+        - withmartian.com
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1000 }
+  - id: nitcracker
+    ref: candidate
+    selection: --review
+    agent: the-nitcracker
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1000 }
+  - id: sparring-partner
+    ref: candidate
+    selection: --review
+    agent: sparring-partner
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1000 }
+  - id: ensemble
+    ref: candidate
+    selection: --review
+    agent: null
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1000 }
+  # Spec Amendments 3 and 6: Microsoft hve-core's Code Review orchestrator as an external
+  # comparator, in two arms that differ only in the required team. No Promptlings install; the
+  # runner fetches the pinned commit once per run, verifies it and passes --plugin-dir. The agent
+  # is human-gated unless an automation host declares its hidden workflow mode, and it reviews
+  # small diffs directly unless told otherwise (rb-qual-3 and rb-qual-4), so each arm's prompt is
+  # the shared prompt preceded by a promptPreamble that declares workflow mode and steers it to
+  # dispatch its whole team. That preamble is declared steering beyond the host contract and the
+  # only prompt difference between arms; the report discloses it (analysis.disclosures).
+  # hve-full: profile full, all five perspectives.
+  - id: hve-full
+    ref: null
+    selection: null
+    # Under --plugin-dir the CLI namespaces plugin agents as <plugin name>:<agent file stem>.
+    agent: hve-core:code-review
+    plugin: { repo: microsoft/hve-core, commit: 299c0b68741d9bc08106b132043724c23166e2a4 }
+    external: { name: hve-core, version: 3.2.2, license: MIT }
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1000 }
+    # Orientation plus the named perspectives; team-dispatched requires each as a completed subagent.
+    requiredTeam: [orientation, functional, standards, readiness, security, accessibility]
+    # {{base_sha}} and {{head_sha}} are the task's base and head commits.
+    promptPreamble: &hveFullPreamble |
+      Host declaration: this session runs under an automation host that declares workflow
+      autonomy mode for the Code Review agent. Do not pause for human input; skip human scope
+      confirmation, perspective and depth selection and the walk-back loop.
+      Review target: branch_diff, base ref `review-base` (commit {{base_sha}}) to head ref
+      `pr-head`, the current HEAD (commit {{head_sha}}).
+      Review profile: full.
+      Perspectives: functional, standards, readiness, security, accessibility. Use exactly these and no others.
+      Depth: standard.
+      Required team: dispatch Code Review Orientation as a separate subagent (your Step 2), then
+      dispatch Code Review Functional, Code Review Standards, Code Review Readiness, Code Review Security
+      and Code Review Accessibility
+      each as a separate subagent in one tool-call block (your Step 6). The subagent capability
+      is available in this host; use it. Do not review the change directly and do not apply any
+      perspective inline.
+      Output contract: defer output to this host. The host's output contract is the findings
+      file and final JSON block described below; report every accepted finding there in that shape.
+    # Recorded in collected.json; see qualify.js. All five gate qualification.
+    qualificationChecks: [agent-ran, workflow-mode, skill-read, team-dispatched, findings-file]
+  # hve-standard: profile standard restricted to its three core perspectives, no specialists.
+  - id: hve-standard
+    ref: null
+    selection: null
+    # Under --plugin-dir the CLI namespaces plugin agents as <plugin name>:<agent file stem>.
+    agent: hve-core:code-review
+    plugin: { repo: microsoft/hve-core, commit: 299c0b68741d9bc08106b132043724c23166e2a4 }
+    external: { name: hve-core, version: 3.2.2, license: MIT }
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1000 }
+    # Orientation plus the named perspectives; team-dispatched requires each as a completed subagent.
+    requiredTeam: [orientation, functional, standards, readiness]
+    # {{base_sha}} and {{head_sha}} are the task's base and head commits.
+    promptPreamble: &hveStandardPreamble |
+      Host declaration: this session runs under an automation host that declares workflow
+      autonomy mode for the Code Review agent. Do not pause for human input; skip human scope
+      confirmation, perspective and depth selection and the walk-back loop.
+      Review target: branch_diff, base ref `review-base` (commit {{base_sha}}) to head ref
+      `pr-head`, the current HEAD (commit {{head_sha}}).
+      Review profile: standard.
+      Perspectives: functional, standards, readiness. Use exactly these and no others.
+      Depth: standard.
+      Required team: dispatch Code Review Orientation as a separate subagent (your Step 2), then
+      dispatch Code Review Functional, Code Review Standards and Code Review Readiness
+      each as a separate subagent in one tool-call block (your Step 6). The subagent capability
+      is available in this host; use it. Do not review the change directly and do not apply any
+      perspective inline.
+      Output contract: defer output to this host. The host's output contract is the findings
+      file and final JSON block described below; report every accepted finding there in that shape.
+    # Recorded in collected.json; see qualify.js. All five gate qualification.
+    qualificationChecks: [agent-ran, workflow-mode, skill-read, team-dispatched, findings-file]
+
+# Ceilings: rb-qual-5 averaged about 490 credits per PR across these six arms (stock 21.7,
+# nitcracker 47.1, sparring-partner 21.4, ensemble 154, hve-full 144, hve-standard 102), so 50 PRs
+# plan about 24500. Each trial reserves its 1000-credit cap (4.5x the highest rb-qual-5 trial, 223) before it starts, so at concurrency 4 the 46000 ceiling admits trials until about 42000 is spent. The smoke trial cost 55 credits against a qualification stock average of 21.7, so Martian PRs may cost up to 2.5x the plan; this stage takes the whole overnight budget and tasks run round-robin across repositories. Judge calls are not trial credits.
+stages:
+  main:
+    split: offline
+    arms: [stock, nitcracker, sparring-partner, ensemble, hve-full, hve-standard]
+    repeats: 1
+    maxAiCredits: 46000
+    # Holm over five comparisons at 5%, power 0.80, per-PR recall SD 0.22: 50 PRs detect about an
+    # 11-point difference; fewer than 40 usable pairs gives no verdict.
+    analysis: { verdict: true, minPairedN: 40 }
+  smoke:
+    split: smoke
+    arms: [stock]
+    repeats: 1
+    maxAiCredits: 1000
+    analysis: { verdict: false }
+
+limits:
+  timeoutMs: 5400000
+  maxAiCredits: 1000
+  stageCeilings:
+    main: 46000
+    smoke: 1000
+
+repeats: 1
+concurrency: 4
+
+judge:
+  provider: github-copilot
+  model: claude-sonnet-5
+  concurrency: 4
+
+analysis:
+  primaryMetric: recall
+  comparisons:
+    - [nitcracker, stock]
+    - [sparring-partner, stock]
+    - [ensemble, stock]
+    - [hve-full, stock]
+    - [hve-standard, stock]
+  multipleComparisons: holm
+  familywiseAlpha: 0.05
+  interval: paired-bootstrap-by-pr
+  guardrail: precision
+  secondary: [recall_medplus, recall_core, recall_strict, f1, candidate_count]
+  declaredDifferences: [plugin, external, promptPreamble, requiredTeam, qualificationChecks]
+  disclosures:
+    - arm: hve-full
+      kind: prompt-preamble
+      preamble: *hveFullPreamble
+      text: >-
+        The hve-full arm's prompt is the shared task prompt preceded by a declared host preamble
+        (workflow mode, branch_diff target, depth standard, the findings contract, and a required
+        team of Orientation plus functional, standards, readiness, security and accessibility as
+        separate subagents). It is declared steering beyond the host contract.
+    - arm: hve-standard
+      kind: prompt-preamble
+      preamble: *hveStandardPreamble
+      text: >-
+        The hve-standard arm's prompt is the shared task prompt preceded by a declared host
+        preamble (workflow mode, branch_diff target, depth standard, the findings contract, and a
+        required team of Orientation plus functional, standards and readiness as separate
+        subagents). It is declared steering beyond the host contract.
+    - arm: stock
+      kind: judge
+      text: >-
+        Matching uses one blind claude-sonnet-5 call per trial that lists the PR's golden comments
+        and the trial's findings, not Martian's pairwise judge. Precision counts findings matched to
+        any golden comment, so a real issue outside the golden set counts against it.
+
+scorers:
+  - id: recall
+    kind: judge
+    primary: true
+    model: claude-sonnet-5
+  - id: precision
+    kind: judge
+    primary: false
+    model: claude-sonnet-5
+  - id: recall_medplus
+    kind: judge
+    primary: false
+    model: claude-sonnet-5
+
+license:
+  code: MIT
+  data: MIT (Martian code-review-benchmark); golden comments and resolved PR data stay under EVALS_ARTIFACT_ROOT
+  redistribution: none; dataset and repository caches stay under EVALS_ARTIFACT_ROOT, never in Git
