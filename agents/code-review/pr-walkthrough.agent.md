@@ -221,7 +221,7 @@ Format:
 
 ## Implicit bets (reviewer should agree or push back)
 
-* **{name}**: {file:line anchor}. **What:** {what}. **Why it's defensible:** {argument}. **Alternative cost:** {cost}. **The question to answer:** {question}.
+* **{name}**: {file:line anchor}. **What:** {what}. **Why it's defensible:** {argument}. **Alternative cost:** {cost}. **The question to answer:** {question}. **Failing scenario** (only when one exists): {scenario}. Defect for the functional reviewers.
 ```
 #### Proposed comments for forks and bets
 

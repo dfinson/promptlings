@@ -150,7 +150,7 @@ Place the entries after the inline output, never mixed with findings, as two blo
 
 **Implicit bets (reviewer should agree or push back)**
 
-- **{name}**: {file:line anchor}. **What:** {what}. **Why it's defensible:** {argument}. **Alternative cost:** {cost}. **The question to answer:** {question}.
+- **{name}**: {file:line anchor}. **What:** {what}. **Why it's defensible:** {argument}. **Alternative cost:** {cost}. **The question to answer:** {question}. **Failing scenario** (only when one exists): {scenario}, reported as the finding at {anchor}.
 ````
 ### 6. Draft each comment
  
@@ -248,7 +248,7 @@ For implicit bets (as many as survive the filter, in their own block after forks
 ````markdown
 **Implicit bets (reviewer should agree or push back)**
 
-- **{name}**: {file:line anchor}. **What:** {what the diff does}. **Why it's defensible:** {the argument}. **Alternative cost:** {what the other road costs}. **The question to answer:** {concrete question for the reviewer}.
+- **{name}**: {file:line anchor}. **What:** {what the diff does}. **Why it's defensible:** {the argument}. **Alternative cost:** {what the other road costs}. **The question to answer:** {concrete question for the reviewer}. **Failing scenario** (only when one exists): {scenario}, reported as the finding at {anchor}.
 - **{name}**: ...
 ````
 

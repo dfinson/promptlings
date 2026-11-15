@@ -135,61 +135,23 @@ Hard rules for top-level:
  
 If after this step you have no inline findings and no top-level finding, the survivor set may still be empty. That is a valid output. Continue to step 5b.
  
-### 5b. Design forks
- 
-Some candidates from step 2 didn't fail because they were wrong, they failed because they don't fit the "what concretely breaks" frame. The diff makes a choice among defensible alternatives, the code is internally consistent, and the right answer depends on context the agent does not have. These are design forks. They get their own channel, their own bar, and their own format.
- 
-A candidate qualifies as a design fork only if all three hold:
- 
-1. **The choice is real**. There are at least two named, defensible options with different consequences. "Use a helper or inline it" is not a fork; that's a preference. "One container image multiplexed across N services at runtime vs. N directories with separate builds vs. one image deployed N times with different env" is a fork: three named architectures, each with different consequences for build matrix, deployment shape, and observability.
-2. **The diff doesn't disambiguate**. Either the code is consistent with multiple options, or different parts of the diff/doc imply different options. If the diff makes the choice cleanly and the only open question is whether you'd have made the same call, that's a preference. Drop it.
-3. **The right answer depends on context the agent doesn't have**. Roadmap, scale targets, team shape, regulatory constraints, prior decisions in unseen code or unseen meetings. If one more grep or one more file read would settle it, do the grep instead and either resolve the question or convert it to a finding.
- 
-Forks are observations for the reviewer, not asks for the author. The author may already know the answer; the point is to surface to the reviewer that a judgment call is sitting in the diff.
- 
-Format (one block at the end of the inline output, not mixed with findings):
- 
+### 5b. Design forks and implicit bets
+
+Load the `design-forks-and-bets` skill and apply it to the candidates step 3 marked as design forks and to every resolved choice that trades one failure mode for another. The skill defines what qualifies, the required fields of each entry, and the self-check. If the skill is unavailable, report fork and bet coverage as partial rather than skipping the channel silently.
+
+Forks and bets are observations for the reviewer, not asks for the author, and they never replace a finding. When a fork or bet has a demonstrable failing scenario, run that scenario through steps 3 and 4 as a candidate finding and ship it in every findings channel the caller requested, including any structured findings file. Keep the fork or bet entry for the tradeoff.
+
+Place the entries after the inline output, never mixed with findings, as two blocks:
+
 ````markdown
 **Design forks for reviewer judgment**
- 
-- **{one-line name of the fork}**: {file or doc anchor with line number if applicable}. {One sentence stating what the diff currently does or implies.} The options on the table: ({option A, one phrase}; {option B, one phrase}; optionally option C). What differs between them: {the actual axis (workspace layout, build matrix, runtime cost, blast radius, contract surface, retention shape), be specific about the axis, not just "it depends"}. What would settle it: {a concrete signal: a number, a roadmap signal, a sign-off, a benchmark}.
-````
- 
-Hard rules:
- 
-- **Keep forks tight.** If you found many, most are preferences in disguise. Re-run step 3 on them and only the survivors ship.
-- **A fork the diff's own docs already answer is not a fork.** It's a reading-comprehension failure on your part. Re-read the relevant section and either convert to a finding ("the code at L42 contradicts the doc at L88") or drop it.
-- **"What would settle it" is mandatory.** A fork without a settling criterion is hand-wringing. If you cannot name a concrete signal that would resolve it, the fork is the model narrating its own uncertainty.
-- **Phrase as observation, not ask.** "The diff is consistent with X or Y; here is the axis they differ on" beats "you should consider whether..." or "have you thought about...".
-- **Forks are not findings in disguise.** If the candidate has a "what concretely breaks" answer, it belongs in inline findings, not here. Forks earn their separate channel by *not* having that answer.
 
-### 5c. Implicit bets
+- **{name}**: {anchor}. {current state}. The options on the table: ({option A}; {option B}; optionally option C). What differs between them: {axis}. What would settle it: {signal}.
 
-Separate from open forks, some choices in the diff are *resolved* - the code picks one option cleanly - but the choice implies a subjective position the reviewer should consciously agree with. These are not bugs (nothing breaks). They are not forks (only one option is in the diff). They are bets: technically sound decisions that trade one failure mode for another, or commit the codebase to a direction that's expensive to reverse.
-
-A candidate qualifies as an implicit bet if:
-
-1. The code is internally consistent and correct.
-2. There exists a defensible alternative the author did not take.
-3. The choice has real consequences (cost to reverse, failure mode shape, who bears the operational burden).
-
-A changed operating policy that materially trades freshness, latency, resource cost, or availability needs a reviewer-owned question when the supplied context does not establish the acceptable operating point. Staying within a contract's permitted range does not settle that choice. Include a qualifying bet in the appendix even when the narrative already explains it.
-
-Format (one block after design forks in the appendix):
-
-````markdown
 **Implicit bets (reviewer should agree or push back)**
 
-- **{one-line name}**: {file:line anchor}. **What:** {one sentence on what the diff does}. **Why it's defensible:** {the argument for this choice}. **Alternative cost:** {what the road-not-taken would have cost}. **The question to answer:** {one concrete question the reviewer should have an opinion on before approving}.
+- **{name}**: {file:line anchor}. **What:** {what}. **Why it's defensible:** {argument}. **Alternative cost:** {cost}. **The question to answer:** {question}. **Failing scenario** (only when one exists): {scenario}, reported as the finding at {anchor}.
 ````
-
-Hard rules:
-
-- **Keep bets tight.** If you found many, most are obvious-good decisions you're second-guessing. Re-read the code and ask "would a reviewer actually push back on this in a real review?" If no, drop it.
-- **Do not editorialize.** State the mechanical tradeoff. Do not say "this is reasonable", "this is defensible", or "this is a good bet." The reviewer decides.
-- **Every bet must have a "question to answer."** This is what separates a bet from narration. The question forces the reviewer to form an opinion.
-- **Bets that the diff's own docs already defend with citations are still bets.** The author's defense is context, not a reason to skip surfacing the choice. Include the defense in "why it's defensible" and let the reviewer decide if they agree.
-
 ### 6. Draft each comment
  
 For every inline finding and every top-level concern, draft the comment now. For design forks, the format in step 5b is the draft. For a fork or bet whose question the author should answer in the PR, also draft a proposed comment anchored where that choice lives.
@@ -286,7 +248,7 @@ For implicit bets (as many as survive the filter, in their own block after forks
 ````markdown
 **Implicit bets (reviewer should agree or push back)**
 
-- **{name}**: {file:line anchor}. **What:** {what the diff does}. **Why it's defensible:** {the argument}. **Alternative cost:** {what the other road costs}. **The question to answer:** {concrete question for the reviewer}.
+- **{name}**: {file:line anchor}. **What:** {what the diff does}. **Why it's defensible:** {the argument}. **Alternative cost:** {what the other road costs}. **The question to answer:** {concrete question for the reviewer}. **Failing scenario** (only when one exists): {scenario}, reported as the finding at {anchor}.
 - **{name}**: ...
 ````
 
@@ -323,7 +285,7 @@ One sentence per architectural layer, nested in dependency order. The reader who
 
 Stop at the layer where the explanation is complete. Most PRs are 3-5 layers. A 16,000-line PR might be 7. A 200-line PR is 1-2 and probably doesn't need this appendix at all.
 
-Before declaring the survivor set empty, check the narrative's operating-policy tradeoffs against step 5c. If the narrative identifies a changed operating policy whose acceptable operating point is unspecified, include its implicit-bet entry and reviewer-owned question, even when no defects survive. Say the survivor set is empty only when all channels are empty.
+Before declaring the survivor set empty, check the narrative's operating-policy tradeoffs against step 5b and the `design-forks-and-bets` skill. If the narrative identifies a changed operating policy whose acceptable operating point is unspecified, include its implicit-bet entry and reviewer-owned question, even when no defects survive. Say the survivor set is empty only when all channels are empty.
 
 "Nothing flagged" is a real result and a publishable one. Do not pad it with "the code is well-structured and follows good practices": that's grading, and you don't grade.
  

@@ -39,7 +39,9 @@ A changed operating policy that materially trades freshness, latency, resource c
 
 ## Promote failing forks and bets to findings
 
-A fork or bet with a demonstrable failing scenario is also a defect. If you can name a concrete input, call sequence, or state in which the current code produces a wrong result, loses data, or violates a stated contract, verify it like any other finding and report it in every findings channel the caller requested, including any structured findings file. Keep the fork or bet entry for the tradeoff itself. A choice that only an ordering, timing, or policy decision separates from a wrong result (for example, acting on stale state before a freshness check) usually has such a scenario. Name it.
+A fork or bet with a demonstrable failing scenario is also a defect. If you can name a concrete input, call sequence, or state in which the current code produces a wrong result, loses data, or violates a stated contract, verify it like any other finding and report it in every findings channel the caller requested, including any structured findings file. A caller with no findings channel marks the scenario inside the entry as a defect for the functional reviewers. Keep the fork or bet entry for the tradeoff itself.
+
+"Wrong" is measured against a stated contract, documented behavior, the change's own claims, or a guarantee callers rely on. An ordering mistake usually qualifies, for example acting on stale state before the freshness check the change itself added. A result that stays inside a deliberately chosen policy window, such as a value served from a declared 30-second cache, is the bet's tradeoff, not a defect.
 
 Conversely, do not downgrade a finding to a fork or bet because its mechanism was hard to verify. Either verify the mechanism and report the finding, or drop it.
 
@@ -62,9 +64,9 @@ Each bet entry contains:
 - **Why it's defensible**: the argument for this choice, including any defense the change's docs give.
 - **Alternative cost**: what the road not taken would have cost.
 - **The question to answer**: one concrete question the reviewer should have an opinion on before approving.
-- **Failing scenario**, when one exists: the scenario and a pointer to the finding it produced.
+- **Failing scenario**, only when one exists: the scenario and a pointer to the finding it produced, or the defect marking when the caller has no findings channel.
 
-The calling agent may render these fields as prose or bullets, but every field must be present.
+The calling agent may render these fields as prose or bullets. Every field is required except the failing scenario, which appears only when one exists.
 
 ## Rules
 
@@ -74,6 +76,7 @@ The calling agent may render these fields as prose or bullets, but every field m
 - **State the mechanical tradeoff, not a verdict.** Name the two failure modes being traded. Do not call a choice reasonable, acceptable, appropriate, justified, sensible, or a good bet. The reviewer decides.
 - **Phrase as observation, not ask.** "The change is consistent with X or Y, which differ on this axis" rather than "have you considered".
 - **Anchor every entry in the changed lines.** Only added or modified code is subject to fork and bet analysis.
+- **Surface a qualifying bet even when the narrative already explains it.** Explanation is not agreement; the reviewer still needs the question.
 - **An empty channel is valid.** Do not invent forks or bets to fill a section.
 
 ## Proposed comments
