@@ -152,6 +152,7 @@ Place the entries after the inline output, never mixed with findings, as two blo
 
 - **{name}**: {file:line anchor}. **What:** {what}. **Why it's defensible:** {argument}. **Alternative cost:** {cost}. **The question to answer:** {question}. **Failing scenario** (only when one exists): {scenario}, reported as the finding at {anchor}.
 ````
+
 ### 6. Draft each comment
  
 For every inline finding and every top-level concern, draft the comment now. For design forks, the format in step 5b is the draft. For a fork or bet whose question the author should answer in the PR, also draft a proposed comment anchored where that choice lives.

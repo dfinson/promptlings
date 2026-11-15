@@ -223,6 +223,7 @@ Format:
 
 * **{name}**: {file:line anchor}. **What:** {what}. **Why it's defensible:** {argument}. **Alternative cost:** {cost}. **The question to answer:** {question}. **Failing scenario** (only when one exists): {scenario}. Defect for the functional reviewers.
 ```
+
 #### Proposed comments for forks and bets
 
 Forks and bets are for the reviewer's judgment, but the reviewer often wants to raise one with the author. Under each fork or bet whose question the author can answer, add a proposed comment the reviewer can post as written:
