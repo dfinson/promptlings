@@ -251,6 +251,9 @@ const toolDenialPatterns = [
   /outside the sandbox's (?:readable|writable) paths/i,
   /unable to access '[^'\n]+': Permission denied/i,
   /The specified drive root "[^"\n]*\\AC\\Temp\\?" either does not exist/i,
+  // The sandbox itself could not start (on Linux, Bubblewrap without user and network namespaces). The CLI reports
+  // this as an ordinary tool failure with no sandbox flag, and it blocks every command the agent runs.
+  /Cannot start sandboxed command/i,
 ];
 // Locations a tool needed for itself (git's system config, the sandbox's temp directory), named in its error.
 const internalTargetPatterns = [/unable to access '([^'\n]+)': Permission denied/i, /The specified drive root "([^"\n]*\\AC\\Temp\\?)"/i];
