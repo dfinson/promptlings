@@ -152,10 +152,12 @@ and references. New agents and skills in the package are discovered
 automatically. The memory capture companion is included when Memory Manager
 is selected and memory is enabled. Sparring Partner's four core review methods
 (`technical-investigation`, `design-analysis`, `test-analysis`, and
-`evidence-verification`) are included. The default ensemble does not require
+`evidence-verification`) are included, along with `static-signals` and the shared
+`design-forks-and-bets` skill that Sparring Partner, Nitcracker, and PR Walkthrough
+load. The default ensemble does not require
 the host's built-in rubber-duck. The shared `intent-alignment` skill is also
-included and required in every ensemble. Standalone reviews select it when
-requested or needed for purpose or scope reconciliation. Ensemble readiness
+included; Sparring Partner applies it in every review, and every ensemble
+requires it. Ensemble readiness
 checks all required methods before dispatch; installing the skill does not
 add another reviewer.
 

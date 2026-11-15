@@ -185,7 +185,7 @@ Alongside R1-R3, check these boundaries when changing Sparring Partner or the en
 - An unqualified ensemble request selects the-nitcracker, PR Walkthrough, and Sparring Partner. An explicitly requested historical rubber-duck roster remains a different caller-selected composition.
 - The ensemble supplies Sparring Partner the same factual target and requirements as its peers and requires its four core methods plus the full intent-alignment method, without another worker's conclusions. The invoking agent verifies outcome authority and material alignment claims as part of synthesis.
 - Both installers' review selections include all three default agents and publish all five required Sparring Partner methods. Explicit agent selections remain caller-controlled.
-- Standalone reviews retain the four core methods, adding intent-alignment on request or material cross-source purpose or scope uncertainty. An unavailable required method is disclosed rather than claimed as applied.
+- Standalone reviews retain the four core methods plus intent-alignment and design-forks-and-bets in every review. An unavailable required method is disclosed rather than claimed as applied.
 - A caller-selected composition without Sparring Partner explicitly assigns alignment to a selected reviewer whose contract supports it, or reports Blocked without silently changing the roster.
 - The ensemble's final result pairs each confirmed finding with one deduplicated, anchored proposed comment rewritten through `review-comment-writing`, drops comments for contradicted candidates, and returns them without posting.
 
