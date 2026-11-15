@@ -4,7 +4,7 @@ import { delimiter, dirname, extname, isAbsolute, join, relative, resolve } from
 import { homePaths, isolatedEnv, tokenVariable } from "./env.js";
 import { diffWorkspace, hashTree, redaction, scrubToken, snapshotWorkspace } from "./evidence.js";
 import { installArm } from "./install.js";
-import { grantPluginReads } from "./plugin.js";
+import { confineSandbox, grantPluginReads } from "./plugin.js";
 import { artifactRoot } from "./paths.js";
 
 export { isolatedEnv } from "./env.js";
@@ -159,7 +159,11 @@ export function buildArgs({ prompt, arm, limits, trialDir }) {
   for (const entry of tools.allowUrl ?? []) args.push(`--allow-url=${entry}`);
   for (const entry of tools.denyUrl ?? []) args.push(`--deny-url=${entry}`);
   if (tools.disableBuiltinMcps) args.push("--disable-builtin-mcps");
-  if (arm.sandbox) args.push("--sandbox");
+  // Non-interactive mode denies every tool request no allow rule approves, including read-only commands the CLI
+  // cannot parse (PowerShell `git log --format=oneline`) and git revisions its path check reads as paths. Under
+  // --sandbox the operating system confines files and network (confineSandbox), so the CLI's approval layers only
+  // cost the agent evidence and are opened. --deny-tool and URL rules still apply.
+  if (arm.sandbox) args.push("--sandbox", "--allow-all-tools", "--allow-all-paths");
   if (arm.customInstructions === false) args.push("--no-custom-instructions");
   return { args, credits };
 }
@@ -244,8 +248,13 @@ function finalMessage(events) {
   return message;
 }
 
-// Signs that the sandbox or the operating system refused a tool call the CLI had already permitted. Policy
-// refusals of commands outside the arm's allowance (error code "denied") are agent behaviour and are not matched.
+// A tool call that needed interactive approval (a path, a command outside the arm's allowance) is denied in -p mode
+// with error code "denied" and this message. The agent loses that evidence, so the trial is invalid. URL approvals are
+// the arm's network confinement and are warnings. Explicit --deny-tool refusals carry a different message.
+const approvalDenialPattern = /no interactive user response was available/i;
+const urlTools = new Set(["web_fetch", "web_search"]);
+
+// Signs that the sandbox or the operating system refused a tool call the CLI had already permitted.
 const toolDenialPatterns = [
   /may be caused by the active sandbox policy/i,
   /outside the sandbox's (?:readable|writable) paths/i,
@@ -301,8 +310,9 @@ function deniedTarget(text, args, cwd) {
  * Splits sandbox and operating-system denials into those that invalidate the trial and warnings. A denial
  * invalidates when its target is inside `roots` (the workspace and the trial home), is a location the tool
  * needed for itself, or cannot be resolved. A denial of a path the agent chose outside those roots is the
- * intended confinement, so it is a warning. Reports of a denial (the final answer, a subagent's result)
- * invalidate unless every observed denial is such a warning.
+ * intended confinement, so it is a warning. A tool call denied for want of interactive approval invalidates, except
+ * a URL approval, which is a warning. Reports of a denial (the final answer, a subagent's result) invalidate unless
+ * every observed sandbox denial is such a warning.
  */
 export function classifyEnvironmentDenials(events, message, { roots = [], cwd = roots[0] } = {}) {
   const starts = new Map();
@@ -311,8 +321,19 @@ export function classifyEnvironmentDenials(events, message, { roots = [], cwd = 
   const reports = [];
   for (const event of events) {
     if (event?.type === "tool.execution_start") starts.set(event.data?.toolCallId, event.data);
-    if (event?.type !== "tool.execution_complete" || event.data?.error?.code === "denied") continue;
+    if (event?.type !== "tool.execution_complete") continue;
     const data = event.data;
+    if (data?.error?.code === "denied") {
+      const message = typeof data.error.message === "string" ? data.error.message : "";
+      if (!approvalDenialPattern.test(message)) continue;
+      const start = starts.get(data.toolCallId ?? null);
+      const tool = start?.toolName ?? null;
+      const args = start?.arguments ?? {};
+      const entry = { source: "approval", toolCallId: data.toolCallId ?? null, tool, target: args.url ?? args.path ?? null, excerpt: String(args.command ?? args.url ?? args.pattern ?? args.path ?? message).slice(0, 300) };
+      if (urlTools.has(tool)) warnings.push({ ...entry, note: "URL approval denied; the arm grants no network access." });
+      else denials.push(entry);
+      continue;
+    }
     const text = [data?.result?.content, data?.error?.message].filter((t) => typeof t === "string").join("\n");
     const flagged = data?.error?.remediation === "review_sandbox_policy" || data?.toolTelemetry?.properties?.sandbox_denied === "true";
     const toolCallId = data?.toolCallId ?? null;
@@ -329,7 +350,7 @@ export function classifyEnvironmentDenials(events, message, { roots = [], cwd = 
   if (typeof message === "string" && reportDenialPattern.test(message)) {
     reports.push({ source: "output", toolCallId: null, tool: null, target: null, excerpt: denialExcerpt(message, [reportDenialPattern]) });
   }
-  if (warnings.length && !denials.length) {
+  if (warnings.some((w) => w.source === "session") && !denials.length) {
     for (const report of reports) warnings.push({ ...report, note: "Reports a denial, and every observed denial is outside the trial's workspace and home." });
   } else denials.push(...reports);
   return { denials, warnings };
@@ -477,6 +498,7 @@ async function runAttempt({ trialDir, workspace, prompt, arm, limits, env }) {
     const installed = installArm(arm, { home, env: installEnv, root: env.EVALS_ARTIFACT_ROOT || artifactRoot() });
     record.installedHashes = installed.installedHashes;
     record.sourceSha = installed.sourceSha;
+    record.sandboxPolicy = arm.sandbox ? confineSandbox(homePaths(home).copilotHome) : null;
     record.sandboxReadonlyPaths = grantPluginReads(homePaths(home).copilotHome, arm.plugin);
     record.cliVersion = await copilotVersion(installEnv);
   } catch (error) {

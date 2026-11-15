@@ -45,3 +45,25 @@ export function notePanelInReport(run) {
   const line = run.panel.error ? `The analysis panel failed: ${run.panel.error}` : `The analysis panel was skipped: ${run.panel.skipped}`;
   appendFileSync(run.report.markdown, `\n## Analysis panel\n\n${line}\n`);
 }
+
+const armSegment = (value) => String(value ?? "").replace(/[^A-Za-z0-9._-]/g, "_");
+
+/**
+ * Adds the panel's per-trial verified metrics (findings the reference review or the panel confirms) to the primary
+ * scoreRun entry of the same task, arm and repeat, so scores.json and the report compare them like any judged
+ * metric. Returns the number of entries that received them.
+ */
+export function mergePanelMetrics(scoreResult, trialMetrics) {
+  if (!Array.isArray(scoreResult?.entries) || !trialMetrics?.length) return 0;
+  const keyOf = (t) => `${t.task}\u0000${armSegment(t.arm)}\u0000${Number(t.repeat)}`;
+  const byKey = new Map(trialMetrics.map((t) => [keyOf(t), t.metrics]));
+  let merged = 0;
+  for (const entry of scoreResult.entries) {
+    if ((entry.variant ?? "primary") !== "primary") continue;
+    const metrics = byKey.get(keyOf(entry));
+    if (!metrics) continue;
+    entry.metrics = { ...entry.metrics, ...metrics };
+    merged += 1;
+  }
+  return merged;
+}

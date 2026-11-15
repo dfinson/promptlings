@@ -112,3 +112,20 @@ export function grantPluginReads(copilotHome, plugin) {
   writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
   return filesystem.readonlyPaths;
 }
+
+/**
+ * A sandboxed arm runs with --allow-all-tools, which also approves shell commands the CLI cannot parse and so cannot
+ * match against --deny-tool rules. The sandbox therefore blocks outbound network and per-command bypass, so no shell
+ * command can fetch reference material whatever its spelling. Host loopback stays on for the CLI's local proxy.
+ */
+export function confineSandbox(copilotHome) {
+  const file = join(copilotHome, "settings.json");
+  const settings = existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
+  const sandbox = (settings.sandbox ??= {});
+  sandbox.allowBypass = false;
+  const network = ((sandbox.userPolicy ??= {}).network ??= {});
+  network.allowOutbound = false;
+  mkdirSync(copilotHome, { recursive: true });
+  writeFileSync(file, `${JSON.stringify(settings, null, 2)}\n`);
+  return { allowBypass: sandbox.allowBypass, network: { ...network } };
+}

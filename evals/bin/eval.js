@@ -5,7 +5,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-import { hasComparisons, notePanelInReport, reportOptions, stageAnalysis } from "../runner/analysis.js";
+import { hasComparisons, mergePanelMetrics, notePanelInReport, reportOptions, stageAnalysis } from "../runner/analysis.js";
 import { RunBudget } from "../runner/budget.js";
 import { tokenVariable } from "../runner/env.js";
 import { creditDerivation } from "../runner/index.js";
@@ -199,7 +199,7 @@ async function panelStage(adapter, run, manifest, artifactRoot) {
     const inputs = typeof adapter.panelInputs === "function" ? ((await adapter.panelInputs(run.runDir, manifest, { artifactRoot })) ?? {}) : {};
     const { comparisons } = reportOptions(manifest, run.stage, run.arms);
     const requireFrozen = typeof inputs.requireFrozen === "function" ? inputs.requireFrozen(run.stage) : (inputs.requireFrozen ?? panel.requireFrozen ?? false);
-    const { outDir } = await runPanelAnalysis({
+    const { outDir, trialMetrics } = await runPanelAnalysis({
       runDir: run.runDir,
       arms: run.arms,
       comparisons,
@@ -211,11 +211,15 @@ async function panelStage(adapter, run, manifest, artifactRoot) {
       ...(panel.graderConfig ? { graderConfig: panel.graderConfig } : {}),
       goldenDir: inputs.goldenDir,
       diffFilesFor: inputs.diffFilesFor,
+      ...(inputs.contextFor ? { contextFor: inputs.contextFor } : {}),
+      ...(inputs.judgeRoot ? { judgeRoot: inputs.judgeRoot } : {}),
     });
     run.panel = { ok: true, outDir: outDir ?? join(run.runDir, "panel") };
+    return trialMetrics ?? null;
   } catch (error) {
     run.panel = { ok: false, error: error.message };
   }
+  return null;
 }
 
 // Merges scoreRun into scores.json and writes the report. Harness runs only: they produce scores.json.
@@ -305,7 +309,8 @@ async function main() {
     return;
   }
   const scoreResult = await scoreStage(adapter, run, manifest, values.diagnostic, token, artifactRoot);
-  await panelStage(adapter, run, manifest, artifactRoot);
+  const trialMetrics = await panelStage(adapter, run, manifest, artifactRoot);
+  if (run.panel?.ok) run.panel.mergedTrials = mergePanelMetrics(scoreResult, trialMetrics);
   const problemsOf = () => [
     run.stoppedByCeiling && "the stage credit ceiling stopped the run before every trial started",
     run.comparable === false && run.comparabilityReason,

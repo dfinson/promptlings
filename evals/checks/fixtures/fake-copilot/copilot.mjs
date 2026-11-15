@@ -79,11 +79,17 @@ if (prompt.includes("FAKE:ANCESTOR_DENIAL")) {
 if (prompt.includes("FAKE:WORKSPACE_DENIAL")) toolEvents.push(...sandboxRead("call_view_ws", join(process.cwd(), "README.md")));
 if (prompt.includes("FAKE:POLICY_DENIAL")) {
   toolEvents.push(
-    { type: "permission.requested", data: { requestId: "req_1", permissionRequest: { kind: "shell", toolCallId: "call_curl", fullCommandText: "curl https://example.com" } } },
-    { type: "permission.completed", data: { requestId: "req_1", toolCallId: "call_curl", result: { kind: "denied-no-approval-rule-and-could-not-request-from-user" } } },
-    { type: "tool.execution_complete", data: { toolCallId: "call_curl", success: false, error: { message: "Permission denied because no interactive user response was available.", code: "denied" } } },
+    { type: "tool.execution_start", data: { toolCallId: "call_curl", toolName: "powershell", arguments: { command: "curl https://example.com" } } },
+    { type: "tool.execution_complete", data: { toolCallId: "call_curl", success: false, error: { message: "Permission to run this tool was denied due to the following rules: `shell(curl:*)`", code: "denied" } } },
   );
 }
+const approvalDenied = (id, toolName, args) => [
+  { type: "tool.execution_start", data: { toolCallId: id, toolName, arguments: args } },
+  { type: "permission.completed", data: { requestId: `req_${id}`, toolCallId: id, result: { kind: "denied-no-approval-rule-and-could-not-request-from-user" } } },
+  { type: "tool.execution_complete", data: { toolCallId: id, success: false, error: { message: "Permission denied because no interactive user response was available.", code: "denied" } } },
+];
+if (prompt.includes("FAKE:APPROVAL_DENIAL")) toolEvents.push(...approvalDenied("call_log", "powershell", { command: "git --no-pager log --format=oneline -5" }));
+if (prompt.includes("FAKE:URL_APPROVAL_DENIAL")) toolEvents.push(...approvalDenied("call_fetch", "web_fetch", { url: "https://docs.python.org/3/" }));
 
 const finish = () => {
   const events = [
