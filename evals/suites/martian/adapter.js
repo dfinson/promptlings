@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import { applyLeakage, scanTrial } from '../../scoring/leakage.js';
-import { armPreamble as rbArmPreamble, normalizeFindings } from '../reviewbench/adapter.js';
+import { armPreamble as rbArmPreamble, diffFiles, normalizeFindings } from '../reviewbench/adapter.js';
 import { qualifyTrial } from '../reviewbench/qualify.js';
 import { judgePreflight } from '../reviewbench/judge.js';
 import { judgeTrial, metricsFor } from './judge.js';
@@ -342,6 +342,121 @@ export async function scoreRun({ runDir, suite = loadSuite(), env = process.env,
   });
   entries.sort((a, b) => `${a.task}${a.arm}`.localeCompare(`${b.task}${b.arm}`));
   return { entries, rejected: [], judgeFailures };
+}
+
+function findTrialPatch(runDir, task) {
+  const root = join(runDir, 'trials', task);
+  if (!existsSync(root)) return null;
+  for (const arm of readdirSync(root).sort()) {
+    const armDir = join(root, arm);
+    if (!statSync(armDir).isDirectory()) continue;
+    for (const repeat of readdirSync(armDir).sort()) {
+      for (const patch of [join(armDir, repeat, 'diff.patch'), join(armDir, repeat, 'workspace', PR_DIR, 'diff.patch')]) {
+        if (existsSync(patch)) return patch;
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * The diff hunks of one file: those whose head-side range covers `line` when any does, otherwise
+ * every hunk of the file. Null when the file is not in the diff.
+ */
+export function hunksFor(patch, file, line) {
+  if (!file) return null;
+  for (const block of patch.split(/^(?=diff --git )/m)) {
+    if (!diffFiles(block).includes(file)) continue;
+    const hunks = block.split(/^(?=@@ )/m).slice(1);
+    const covering = Number.isInteger(line)
+      ? hunks.filter((h) => {
+        const m = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/.exec(h);
+        return m && line >= Number(m[1]) && line < Number(m[1]) + Number(m[2] ?? 1);
+      })
+      : [];
+    return (covering.length ? covering : hunks).join('');
+  }
+  return null;
+}
+
+/**
+ * Writes the classification panel's inputs from this suite's own judge layout, under
+ * <runDir>/panel-input: golden/<task>.json (every golden comment, all confirmed) and
+ * judge/<arm>/r<repeat>/primary/results.details.json (each trial's findings with the golden
+ * comments the judge matched them to). Trials without a judge verdict are left out, as in scoreRun.
+ */
+export function writePanelInputs(runDir, suite = loadSuite(), ctx = {}) {
+  const root = join(runDir, 'panel-input');
+  rmSync(root, { recursive: true, force: true });
+  const tasks = new Map(listTasks(Object.keys(suite.splits)[0], { ...ctx, suite }).map((t) => [t.id, t]));
+  const byTrial = new Map();
+  const judged = new Set();
+  for (const t of gatherTrials(runDir)) {
+    const task = tasks.get(t.task);
+    const verdictFile = join(runDir, 'judge', t.task, t.arm, `r${t.repeat}`, 'verdict.json');
+    if (!task || !existsSync(verdictFile)) continue;
+    const matches = JSON.parse(readFileSync(verdictFile, 'utf8')).matches;
+    const key = join(t.arm, `r${t.repeat}`);
+    if (!byTrial.has(key)) byTrial.set(key, []);
+    byTrial.get(key).push({
+      pr_key: t.task,
+      candidate_findings: t.candidate.findings.map((f, i) => ({
+        file: f.file,
+        start_line: f.start_line,
+        end_line: f.end_line,
+        message: f.message,
+        covered_golden_indices: matches.filter((m) => m.candidates.includes(i + 1)).map((m) => m.golden - 1),
+      })),
+    });
+    judged.add(t.task);
+  }
+  for (const [key, prs] of byTrial) {
+    const dir = join(root, 'judge', key, 'primary');
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'results.details.json'), `${JSON.stringify(prs, null, 2)}\n`);
+  }
+  mkdirSync(join(root, 'golden'), { recursive: true });
+  for (const id of judged) {
+    const findings = tasks.get(id).golden.map((g) => ({ tp_fp: 'tp', message: g.comment, severity: g.severity, category: g.category }));
+    writeFileSync(join(root, 'golden', `${id}.json`), `${JSON.stringify({ findings }, null, 2)}\n`);
+  }
+  return { goldenDir: join(root, 'golden'), judgeRoot: join(root, 'judge') };
+}
+
+/**
+ * Inputs for the classification panel, which labels every golden comment and every finding the
+ * judge matched to none, on every judged PR. Its verdicts give the verified metrics that replace
+ * golden-only precision. contextFor gives the panel the diff hunks a finding points at.
+ */
+export function panelInputs(runDir, suite = loadSuite(), ctx = {}) {
+  const panel = suite.panel ?? {};
+  const { goldenDir, judgeRoot } = writePanelInputs(runDir, suite, ctx);
+  const taxonomyPath = panel.taxonomy ? join(HERE, panel.taxonomy) : null;
+  const patches = new Map();
+  const patchFor = (task) => {
+    if (!patches.has(task)) {
+      const file = findTrialPatch(runDir, task);
+      patches.set(task, file ? readFileSync(file, 'utf8') : null);
+    }
+    return patches.get(task);
+  };
+  return {
+    goldenDir,
+    judgeRoot,
+    taxonomyPath,
+    taxonomy: taxonomyPath ? JSON.parse(readFileSync(taxonomyPath, 'utf8')) : null,
+    namedInAdvance: panel.namedInAdvance ?? [],
+    requireFrozen: (stage) => panel.requireFrozen?.[stage] === true,
+    // A task whose diff was never materialized has no diff features rather than stopping the panel.
+    diffFilesFor(task) {
+      const patch = patchFor(typeof task === 'string' ? task : task?.id);
+      return patch ? diffFiles(patch) : undefined;
+    },
+    contextFor(item) {
+      const patch = patchFor(item.source.task);
+      return patch ? hunksFor(patch, item.f.file, item.f.start_line) : null;
+    },
+  };
 }
 
 export async function preflight(suite = loadSuite(), ctx = {}) {

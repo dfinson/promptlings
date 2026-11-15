@@ -72,9 +72,11 @@ arms:
     model: gpt-6.1-sol
     reasoningEffort: high
     tools: &noLeakTools
-      # Spec Amendment 2: the broad `shell` allow lets reviewers read and run local tooling
-      # (rb-qual-1 had 2 to 29 policy refusals per trial under shell(git:*)). Every deny entry
-      # below still wins over it, and the transcript audit still invalidates leaks.
+      # Sandboxed arms also run with --allow-all-tools: without it the CLI's non-interactive
+      # approval denies commands its parser cannot match to an allow rule (git log --format=...,
+      # ranges read as paths), whatever this list says. Every deny entry below still wins, the
+      # sandbox blocks outbound network, and the runner invalidates any trial that still records
+      # an approval denial. The transcript audit still invalidates leaks.
       allow:
         - write
         - shell
@@ -259,8 +261,10 @@ analysis:
   multipleComparisons: holm
   familywiseAlpha: 0.05
   interval: paired-bootstrap-by-pr
-  guardrail: precision
-  secondary: [recall_medplus, recall_core, recall_strict, f1, candidate_count]
+  # verified_precision, verified and wrong come from the panel (panel: below), which rules on every
+  # finding the judge matched to no golden comment, on every judged PR.
+  guardrail: verified_precision
+  secondary: [verified, wrong, recall_medplus, recall_core, recall_strict, precision, candidate_count]
   declaredDifferences: [plugin, external, promptPreamble, requiredTeam, qualificationChecks]
   disclosures:
     - arm: hve-full
@@ -283,8 +287,21 @@ analysis:
       kind: judge
       text: >-
         Matching uses one blind claude-sonnet-5 call per trial that lists the PR's golden comments
-        and the trial's findings, not Martian's pairwise judge. Precision counts findings matched to
-        any golden comment, so a real issue outside the golden set counts against it.
+        and the trial's findings, not Martian's pairwise judge. A blind three-model panel
+        (claude-opus-5.5, grok-4.7, gpt-6.1-terra; two must agree) then rules on every finding
+        that matched no golden comment, on every judged PR. verified counts golden matches plus
+        findings the panel accepts as real problems the golden set missed; verified_precision is
+        verified over all findings; wrong counts findings the panel accepts as not a problem.
+        Findings the panel calls plausible but unverifiable, or disputes, count as neither.
+        precision (golden matches only) is kept as a secondary metric for comparison with
+        Martian's published numbers. The panel taxonomy (v1-pilot) is not frozen.
+
+panel:
+  taxonomy: ../reviewbench/taxonomy.json
+  namedInAdvance: []
+  requireFrozen:
+    main: false
+    smoke: false
 
 scorers:
   - id: recall
