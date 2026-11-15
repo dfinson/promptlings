@@ -132,8 +132,10 @@ maintained exporter, new app or repository-owned scripts.
 Provide a visible Light/Dark control with an accessible name, keyboard
 operation and clear selected state. Preserve reading position and content
 when switching. Keep both appearances legible across text, links, focus
-indicators, callouts and figures. A light initial appearance is a reasonable
-default; cross-visit persistence is not required.
+indicators, callouts and figures. Use a dark initial appearance for HTML
+specifications unless the user explicitly requests otherwise. For other
+briefings, a light initial appearance remains a reasonable default.
+Cross-visit persistence is not required.
 
 Preserve actual capture colors and accepted visual-design samples. Adapt
 authored explanatory graphics through theme-aware source or paired assets.
