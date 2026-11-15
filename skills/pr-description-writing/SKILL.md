@@ -1,6 +1,6 @@
 ---
 name: pr-description-writing
-description: Draft or update a pull request title and description for human reviewers, following the repository's PR template and instructions first, then showing the change with before/after screenshots (a video only when the user or template asks) and writing plain English. Use whenever any agent creates a pull request, edits a PR title or description, or prepares PR text for a user to publish.
+description: Draft or update a pull request title and description using plain prose, real before/after evidence and useful explanatory figures, following the repository's template and instructions. Use whenever an agent creates or edits PR text. Video requires a user or template request.
 ---
 
 # PR Description Writing
@@ -8,6 +8,8 @@ description: Draft or update a pull request title and description for human revi
 ## Goal
 
 A reviewer opens the PR and understands what changed for the people who use the software, sees it working, and knows what to check. The title and description are written for humans. They are not a log of the agent's work.
+
+Describe the final change against this PR's target, not its development history or authoring-time status. Include a fact only when it helps the reader understand, evaluate, or adopt that change. Evidence gathered for a handoff is not automatically description content.
 
 This skill owns PR text and the media that goes in it. Code changes, review, and publication authority stay with their existing owners. Creating a PR the user asked for authorizes publishing its description. It does not authorize merging.
 
@@ -25,9 +27,9 @@ Where these say nothing, use the defaults below. A template or instruction wins 
 Read the full diff against the actual PR target, the commit messages, the linked issue or work item, and the results of checks that ran. Establish:
 
 - What a user, caller, or operator can now do or will now see differently.
-- What deliberately stays the same, including stored data, public contracts, and configuration. State whether a migration is needed.
-- What was verified and how: the commands, tests, or manual checks that actually ran and their results.
-- Anything the reviewer needs to decide or watch for: a tradeoff, a rollout step, a known limitation.
+- What deliberately stays the same where compatibility matters, including stored data, public contracts, configuration, and migration requirements.
+- Which executed tests or manual checks demonstrate the changed behavior, and what they establish.
+- Anything the reviewer needs to decide or act on about the change itself: a tradeoff, a rollout step, a product limitation.
 
 Every claim in the description must trace to the diff, a check that ran, or the linked requirement. Leave out what you cannot support instead of guessing.
 
@@ -35,17 +37,31 @@ Every claim in the description must trace to the diff, a check that ran, or the 
 
 Media comes first because it lets a reviewer judge the result before reading code.
 
+Use pictures and plain prose together to make the change immediate. A useful
+figure need not wait for prose to fail or the implementation to cross a
+complexity threshold. Invoke `technical-illustration` when a comparison,
+sequence or relationship helps the reviewer understand the change. Put it
+beside the behavior it explains, with a clear caption and accessible text.
+Keep the result and its significance in readable prose rather than turning
+paragraphs into images or adding a gallery above a text wall.
+
 - **User-visible change** (screens, rendered documents, exports, emails, CLI output, multi-step flows): capture before/after screenshots from real builds of the base and head revisions. Use the same data, viewport, and steps for both so the only difference is the change. For a flow, capture the step that changed in both builds. Pair them side by side or one after the other, each with a one-line caption saying what to look at.
 - **Behavior without a screen** (APIs, data handling, jobs, libraries): show one concrete before/after example as text, such as input and output, a request and response, or a log line, in a fenced code block.
 - **Mechanical change** (refactor, rename, dependency bump, CI): media is not needed. Say what stays identical and how that was confirmed.
 
+Explanatory figures supplement these cases. For example, a before/after request
+path can show which step moved, while the concrete request/response example
+retains the observable contract. A figure that merely decorates or repeats the
+text should be removed. A trivial change can remain brief.
+
 Make a video only when the user's instructions or the PR template ask for one. Otherwise do not record one, whatever the kind of change. When a video is requested, record the head build covering only the changed flow, from the starting state to the visible result, with `cue-synced-demo` or the host's browser automation. Use `pr-video` instead only when the request asks for a narrated explanation of the code.
 Capture rules:
 
-- Use real captures from the running software. Never use mockups, generated images, or edited screenshots to represent behavior.
+- Use real captures to demonstrate observed behavior. Never substitute mockups, generated images or edited screenshots for execution evidence. Authored, source-backed explanatory figures are allowed to explain implementation, relationships or sequences, without impersonating a real capture.
 - Redact secrets, tokens, customer data, and personal information before capture or upload.
 - Keep media out of the repository. Store working files in the host's artifact location.
 - Upload through a mechanism that attaches files to the PR, such as the `github-pr-media` skill, the host's PR media tool, or GitHub's attachment upload. If no upload path is available, give the user the files and tell them where each one belongs in the description. Never publish placeholders, broken links, or local file paths.
+- Bind figures to the final target-relative change and update them when the mechanism changes. Preserve source evidence and revisions in the supporting record, not generic provenance labels in the artwork. Document appearance controls must not recolor actual behavior captures.
 
 ## 4. Write the title
 
@@ -63,14 +79,14 @@ Load `reasoning-first-writing` and apply it. Then follow this shape unless the t
 1. **Opening.** One or two short paragraphs: what someone can now do or see, and why it matters. Use concrete examples from the actual change, quoting real labels, values, or messages, for example: two columns used to read out as "Edit Plan charge, Alex"; each now reads as its own heading.
 2. **Media.** The screenshots, video, or example from step 3, placed right after the opening.
 3. **Separate behavior changes.** When the PR changes several distinct things, list each as a bullet that states the behavior, not the file.
-4. **What stays the same.** Compatibility, stored data, and migration status in one or two sentences, for example: "Stored tables without merges read and write exactly as before. No migration."
-5. **How it was checked.** The checks that actually ran, in a sentence or a short list. Name manual verification separately from automated tests.
-6. **Reviewer notes.** Only when there is a real decision, risk, or rollout step. Say what to look at and why.
+4. **What stays the same.** Relevant compatibility, stored data, and migration implications in one or two sentences, for example: "Stored tables without merges read and write exactly as before. No migration."
+5. **Behavioral evidence.** When useful, explain what an executed regression test or manual check demonstrates about this change. Distinguish the two. Omit routine check inventories and pass/pending/fail dashboards.
+6. **Reviewer notes.** Only for a decision, product risk, rollout step, or dependency needed to understand or adopt this change. Keep genuine limitations specific without turning them into a readiness report.
 7. **Links.** The issue or work item reference in the form the repository uses, such as `Fixes #123` or `AB#672904`.
 
 Scale the description to the change. A one-line fix can be one sentence plus a link. Use headings only when the template has them or the description is long enough that a reader needs to navigate it.
 
-When a PR is revised after review, rewrite the description so it describes the final change. Summarize review rounds by what behavior changed and why ("Review feedback: the safety nets were too broad. A labelled blank is now a signature line only when it names a signer or date."), not as an appended changelog.
+When a PR is revised after review, integrate the resulting behavior and rationale into the description. Describe what the final patch does, without review-round attribution, superseded approaches, or an appended changelog. For stacked PRs, link the dependency when needed and describe this layer's diff, not inherited changes.
 
 ## Cut before publishing
 
@@ -80,6 +96,7 @@ Remove all of the following unless the template or repository instructions requi
 - Openers like "This PR...", "In this PR, we...", or "This change introduces...". Start with what changed.
 - File-by-file inventories, lists of commit hashes, internal finding IDs, and line counts.
 - Test counts used as reassurance ("all 342 tests pass") instead of what the tests cover.
+- Authoring-time CI state, approval or discussion counts, merge readiness, retry/synchronization history, local setup blockers, and agent-review provenance. Put these in the requested status report or handoff, not the PR description. Missing evidence narrows a claim, not an excuse paragraph.
 - Promotional or vague words: comprehensive, robust, seamless, enhance, streamline, leverage, various improvements.
 - Hedges and disclaimers: "should work", "hopefully", "I think", "as an AI", "please review carefully".
 - Tool or AI attribution footers, agent session notes, and process narration about how the agent worked.
@@ -89,3 +106,8 @@ Remove all of the following unless the template or repository instructions requi
 ## Finish
 
 Read the title and description as a reviewer who has not seen the conversation. Check that every claim matches the final diff, the media shows the head revision, links resolve, and every template section is filled. Then publish if authorized, or return the title, description, and media files to the caller.
+
+The reader must understand what changes, why it matters and what needs their
+attention without reconstructing the author's investigation. Rewrite dense
+prose, unexplained terminology and pictures that obscure the causal story.
+Keep PR content in the repository's native template, not an HTML specification.

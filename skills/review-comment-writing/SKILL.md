@@ -1,6 +1,6 @@
 ---
 name: review-comment-writing
-description: Turn verified review findings into proposed PR comments that a human author can read and act on, each anchored to the exact diff line or range where needed and written in plain English. Use whenever a reviewer agent or review ensemble returns findings, drafts inline or top-level PR comments, or replies to review threads.
+description: Turn supported review findings into immediately understandable PR comments with plain reasoning, one ask and purposeful visuals, anchored to the exact diff where needed. Use whenever reviewers draft findings, inline or top-level comments, or review-thread replies.
 ---
 
 # Review Comment Writing
@@ -39,7 +39,7 @@ Load `reasoning-first-writing` and apply it. Then:
 2. Give the ask: the change that fixes it, or the question the author needs to answer. One ask per comment.
 3. When the fix is small, local, and certain, include it as a GitHub `suggestion` block (or the host's equivalent) instead of describing it.
 4. Use plain words and the names in the code. Put identifiers, values, and short code in backticks.
-5. Keep it short enough to read in one pass: usually two to four sentences.
+5. Make it understandable in one reading. Two to four sentences is a useful tendency, not a pass condition. State the causal link rather than compressing it into jargon. Use a short concrete sequence or example when that helps, without overwhelming the author with the investigation.
 6. Talk about the code, not the author. Do not use their name.
 
 Leave out:
@@ -65,4 +65,39 @@ write:
 
 ## Check before returning
 
-Read each comment on its own, as the author would see it in the diff view. It must make sense without the review report, state a mechanism the finding verified, and contain one clear ask. Confirm the anchor is in the diff on the stated side at the reviewed head. Rewrite any comment that fails, then return the findings with their proposed comments to the caller.
+Read only the proposed comment and ordinary diff context, not the internal
+finding or review report. Can an author unfamiliar with the investigation
+immediately explain the triggering input/state/sequence, what the code does,
+why that causes the unwanted result, the consequence, and the one requested
+change or decision?
+
+These are meaning checks, not mandatory headings or sentence slots. A design
+question explains its choice and tradeoff instead of inventing a defect.
+Preserve the finding's conditions and uncertainty. Rewrite a comment that
+requires decoding jargon, inferring the consequence or reconstructing omitted
+reasoning, even if it is short. Do not remove supported findings merely because
+writing them clearly is difficult. Return an evidence gap to the reviewer
+when the mechanism itself is unsupported.
+
+Use visuals alongside clear prose when they make a sequence, comparison or
+relationship easier to see. Invoke `technical-illustration` for a useful
+source-backed figure without requiring a failed prose-only attempt or a
+complexity threshold. Keep the consequence and ask in text, provide an
+accessible explanation, and keep the figure consistent with the finding and
+reviewed revision. A few sentences may fully explain a simple issue, and
+decorative pictures should be omitted.
+
+For example: "Search A starts first, search B finishes first, then A overwrites
+B's results. The screen now shows results for the previous search. Can we check
+that the response belongs to the current search before assigning it?" A small
+timeline can reinforce that ordering, but it does not replace the explanation.
+
+Use the destination's authorized media path. Drafting a figure or comment
+does not authorize posting it. If upload is unavailable, return the file and
+intended placement to the caller rather than publishing placeholders or local
+paths. A required visual remains a delivery blocker unless the remaining text
+fully communicates the finding. Never substitute an authored diagram for
+required execution evidence.
+
+Confirm the exact diff anchor at the reviewed head, source fidelity and one
+clear ask. Rewrite failures before returning the findings and proposed comments.

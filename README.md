@@ -87,25 +87,50 @@ review finding with a proposed comment, anchored to the diff line it concerns,
 that the author can read without the review report. Both build on
 [reasoning-first-writing](skills/reasoning-first-writing/SKILL.md).
 
+Both use purposeful visual explanations as well as readable prose. The shared
+[technical-illustration](skills/technical-illustration/SKILL.md) skill renders
+source-backed comparisons and sequences without starting a video workflow.
+Real captures still establish observed behavior. Comments must make the
+trigger, mechanism, consequence and single ask understandable in ordinary diff
+context, rather than merely meeting a sentence-count target.
+
 ### Technical demo
 
-Technical Demo presents an overall creative treatment first, then readable scene
-descriptions with the exact narration. It keeps the older agent's storytelling
+Technical Demo presents an overall creative treatment, readable scene
+descriptions, exact narration and representative rendered stills for approval
+before full production. The user can correct the palette, concept or layout
+while only samples need revision. It keeps the older agent's storytelling
 and evidence standards, using Motionite/Remotion by default, HyperFrames when
 explicitly selected, and real capture for demonstrated behavior.
 
+Demo and presentation approval packages use the same standalone HTML briefing
+contract as specifications. Whole-script narration checks prioritize context,
+visible evidence and first-listen understanding over compressed feature lists.
+Interactive Presentation checks required scope and unjustified additions
+throughout, enabling runtime capabilities only when its chosen stops need them.
+
 The [production skill](skills/technical-demo-production/SKILL.md) retains approved
 inputs, selects existing components, overlaps independent preparation and reuses
-unchanged media. Its version-checked renderer batches native-resolution review
-frames and video jobs through one browser. Writing and narration use the
+unchanged media. Its Markdown guidance preserves the measured media/browser
+settings, native-resolution rendering, bundle reuse and process-lifecycle lessons,
+using upstream tools rather than a bundled rendering framework. Writing and narration use the
 reasoning-first skills. Revisions address specific defects instead of restarting
 briefing or running fixed-count review loops.
 
 The installer fetches [Motionite](https://github.com/nxrskyaa/motionite) from the
 upstream revision in [the tool pins](lib/pins.js), just like other external skills.
-Its source and assets are not vendored here. Production dependencies and media
+Its source and assets are not vendored here. Demo installation also prepares a
+reusable version-pinned Remotion/React runtime, media component and matching
+Headless Shell through Remotion's own CLI. `--no-demo` skips these. The producing
+agent checks GPU support at render time without installing CUDA or drivers.
+Additional production dependencies and media
 belong in an external production workspace. Measure complete draft turnaround
 separately from rendering time.
+
+Interactive Presentation uses the same early visual decision: static stop
+designs accompany the storyline before functional mini-apps are built.
+The approved design carries into implementation. Actual interaction checks,
+video review and human rehearsal remain with their existing workflows.
 
 ### Intent alignment
 
@@ -122,10 +147,12 @@ accessible context, traces requirements to work and material changes back to
 their justification, and distinguishes demonstrated mismatches from unresolved
 intent or missing evidence. It assesses plans and implementations without
 editing them or approving delivery. A supplied snapshot works without a tracker
-connection. Spec Master revisits alignment as mechanisms or scope change and
-uses the skill before presenting a specification. It checks comprehension
-separately from requirement coverage. Spec-delivery also checks alignment
-before approval and at final integration.
+connection. Spec Master loads alignment at entry and applies it before choosing
+a mechanism, presenting or delegating, and when consequential assumptions,
+dependencies or acceptance change. Required coverage and scope restraint are
+equally necessary, checked against the user's intent rather than just an
+agent-authored specification. Comprehension remains a separate check.
+Spec-delivery preserves the same baseline through assignment and integration.
 
 ### A/B testing
 
@@ -167,6 +194,38 @@ and resolved resource and stopping constraints. Results do not authorize
 repair, installation or promotion.
 
 ### Specifications and delivery
+
+Human-facing proposals and specifications default to a visual-led, standalone
+HTML reading copy generated from the same authoritative editable content.
+Explicit conversation-only requests and tracker formats still win. The
+[document guidance](skills/design-writing/references/html-specifications.md)
+covers researched typography and navigation, established UI components,
+light/dark appearance, embedded assets, accessible reading and printing.
+Figures and short explanations lead the reader through the proposal while
+exact requirements remain visible.
+
+Existing-UI changes can use matched actual-current/proposed views. Current
+remains untouched, while Proposed carries meaningful clickable explanations.
+Essential behavior and acceptance remain visible outside annotations.
+
+Every intent document begins with a clear top-down overview before its detail
+and ends with a shorter synthesis of the outcome, approach and commitment.
+This applies to specifications and demo/script briefings across formats.
+The framing helps the reader understand and own the proposal, without
+changing verbatim narration or adding boilerplate to routine comments.
+
+Engineering synthesis comes first: select the smallest coherent mechanism
+using existing capabilities, and separate its implementation contract from
+the complete opportunity catalogue, experiments and policy choices. A full
+investigation does not commit every idea to delivery. One bounded change
+normally stays with one owner in one reviewable patch, with additional lanes
+justified by actual outcomes, risk or dependencies rather than document headings.
+
+Bounded living-spec examples can show how a consequential choice changes the
+outcome while acceptance criteria stay fixed. They provide named states and
+reset, not authorization or a backend. The HTML works offline, including its
+visuals, without a required server or CDN. This is a reading experience, not a
+second independently maintained plan.
 
 To agree on a proposal before implementing it, select Spec Master or ask your
 current agent:
