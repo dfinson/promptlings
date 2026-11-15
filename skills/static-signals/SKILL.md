@@ -67,7 +67,7 @@ Keep the work lightweight. Give the whole pass a time budget, about five minutes
 
 ## Precision
 
-Leads are worth reading only while they are mostly right. If most leads from one tool or rule turn out false in this change, stop reading its remaining leads, and record that in the return so the rule can be disabled for this repository.
+Leads are worth reading only while they are mostly right. If most leads from one tool or rule turn out false in this change, stop reading its remaining leads. Record in the return every rule where more than one lead in ten proved false, so it can be disabled for this repository. That is the bar Google's Tricorder applies to analyzers shown in code review.
 
 ## Trust boundary
 
@@ -81,7 +81,7 @@ Return:
 - Any user decision about installing dependencies.
 - The normalized leads with dropped counts.
 - The neighborhoods.
-- Any rule that proved mostly false.
+- Any rule where more than one lead in ten proved false.
 
 Keep this record separate from review findings, so a reader can tell tool evidence from the reviewer's conclusions. Stop when the leads and neighborhoods are delivered, or when the budget is spent.
 
