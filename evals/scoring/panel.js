@@ -57,10 +57,10 @@ function readJson(file) {
 
 /**
  * Reads a judged stage: golden findings per task and, for every arm and repeat, the judge's
- * per-candidate match records (judge/<arm>/r<repeat>/<variant>/results.details.json).
+ * per-candidate match records (<judgeRoot>/<arm>/r<repeat>/<variant>/results.details.json).
+ * judgeRoot defaults to <runDir>/judge; a suite whose judge writes another layout passes a bridge.
  */
-export function loadJudged({ runDir, goldenDir, variant = 'primary', arms } = {}) {
-  const judgeRoot = path.join(runDir, 'judge');
+export function loadJudged({ runDir, goldenDir, variant = 'primary', arms, judgeRoot = path.join(runDir, 'judge') } = {}) {
   if (!fs.existsSync(judgeRoot)) throw new Error(`No judged results under ${judgeRoot}`);
   const golden = new Map();
   const goldenFor = (task) => {
@@ -101,16 +101,18 @@ export function loadJudged({ runDir, goldenDir, variant = 'primary', arms } = {}
           continue;
         }
         const g = goldenFor(task);
-        trials.push({ task, arm, repeat });
-        (pr.candidate_findings ?? []).forEach((f, index) => {
+        const candidates = pr.candidate_findings ?? [];
+        let matchedCount = 0;
+        candidates.forEach((f, index) => {
           for (const gi of f.covered_golden_indices ?? []) {
             if (g[gi]?.tp_fp === 'tp') catches.push({ task, arm, repeat, goldenIndex: gi });
           }
           const matched = f.matched_golden_index !== undefined || String(f.status ?? '').startsWith('matched');
           if (!matched && !(f.covered_golden_indices ?? []).length) {
             unmatched.push({ task, arm, repeat, index, file: f.file, start_line: f.start_line, end_line: f.end_line, message: f.message ?? '', status: f.status ?? null });
-          }
+          } else matchedCount += 1;
         });
+        trials.push({ task, arm, repeat, candidates: candidates.length, matched: matchedCount });
       }
     }
   }

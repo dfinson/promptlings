@@ -145,6 +145,84 @@ function unmatchedBreakdown({ panel, cons, judged }) {
   return out;
 }
 
+export const VERIFIED_METRICS = ['verified', 'verified_precision', 'wrong'];
+const VERIFIED_HIGHER_IS_BETTER = { verified: true, verified_precision: true, wrong: false };
+
+/**
+ * Per trial: verified = findings matched to the reference review plus unmatched findings the panel
+ * accepts as real-missing-from-golden; verified_precision = verified / findings; wrong = unmatched
+ * findings the panel accepts as wrong. Disputed and plausible-unverifiable findings count as
+ * neither verified nor wrong.
+ */
+function trialVerificationRows({ panel, cons, judged }) {
+  const rows = new Map();
+  for (const t of judged.trials) rows.set(key(t.task, t.arm, t.repeat), { ...t, real: 0, wrong: 0 });
+  for (const it of panel.items) {
+    if (it.kind !== 'unmatched') continue;
+    const row = rows.get(key(it.source.task, it.source.arm, it.source.repeat));
+    const l = cons.items.get(it.id).labels.verdict;
+    if (!row || l?.status !== 'accepted') continue;
+    if (l.label === 'real-missing-from-golden') row.real += 1;
+    else if (l.label === 'wrong') row.wrong += 1;
+  }
+  return [...rows.values()].map((r) => ({
+    task: r.task,
+    arm: r.arm,
+    repeat: r.repeat,
+    metrics: {
+      verified: (r.matched ?? 0) + r.real,
+      verified_precision: r.candidates ? ((r.matched ?? 0) + r.real) / r.candidates : null,
+      wrong: r.wrong,
+    },
+  }));
+}
+
+function trialVerification(args) {
+  const byTaskArm = new Map();
+  for (const r of trialVerificationRows(args)) {
+    const k = key(r.task, r.arm);
+    if (!byTaskArm.has(k)) byTaskArm.set(k, []);
+    byTaskArm.get(k).push(r.metrics);
+  }
+  return byTaskArm;
+}
+
+/** Per-trial panel-verified metrics from the all-panelists consensus, for merging into the run's scores. */
+export function panelTrialMetrics(panel, judged) {
+  return trialVerificationRows({ panel, cons: consensusLabels(panel, { exclude: [] }), judged });
+}
+
+function taskValue(byTaskArm, task, arm, metric) {
+  const values = (byTaskArm.get(key(task, arm)) ?? []).map((v) => v[metric]).filter((v) => v !== null);
+  return values.length ? mean(values) : null;
+}
+
+function verifiedFindings({ panel, cons, judged, pairs, resamples, seed }) {
+  const byTaskArm = trialVerification({ panel, cons, judged });
+  const perArm = {};
+  for (const arm of judged.arms) {
+    perArm[arm] = { tasks: judged.tasks.filter((t) => byTaskArm.has(key(t, arm))).length };
+    for (const metric of VERIFIED_METRICS) {
+      const values = judged.tasks.map((t) => taskValue(byTaskArm, t, arm, metric)).filter((v) => v !== null);
+      perArm[arm][metric] = values.length ? mean(values) : null;
+    }
+  }
+  const comparisons = [];
+  pairs.forEach(([a, b], ci) => {
+    VERIFIED_METRICS.forEach((metric, mi) => {
+      const diffs = [];
+      for (const task of judged.tasks) {
+        const va = taskValue(byTaskArm, task, a, metric);
+        const vb = taskValue(byTaskArm, task, b, metric);
+        if (va !== null && vb !== null) diffs.push(vb - va);
+      }
+      const boot = pairedBootstrap(diffs, { resamples, seed: seed + 1000 + ci * VERIFIED_METRICS.length + mi });
+      comparisons.push({ metric, higherIsBetter: VERIFIED_HIGHER_IS_BETTER[metric], a, b, tasks: diffs.length, difference: diffs.length ? boot.mean : null, ci: diffs.length ? boot.ci : [null, null] });
+    });
+  });
+  return { perArm, comparisons };
+}
+
 function featureProfiles(features, arms) {
   const usable = features.filter((f) => f.available);
   const perArm = {};
@@ -212,6 +290,7 @@ function analysisView({ panel, judged, features, pairs, namedInAdvance, handLabe
     recall,
     uniqueCatches: uniqueCatches({ panel, cons, judged, index }),
     unmatched: unmatchedBreakdown({ panel, cons, judged }),
+    verified: verifiedFindings({ panel, cons, judged, pairs, resamples, seed }),
     associations: associations({ pairs, features, recall }),
     consensus: Object.fromEntries([...cons.items].map(([id, c]) => [id, Object.fromEntries(Object.entries(c.labels).map(([d, l]) => [d, l.status === 'accepted' ? l.label : null]))])),
   };
@@ -298,6 +377,10 @@ export function renderPanelMarkdown(report) {
     const verdicts = Object.keys(Object.values(view.unmatched)[0] ?? {}).filter((k) => !['total', 'disputed', 'trials', 'perTrial'].includes(k));
     out.push('', '### Unmatched findings', '', `| Arm | Total | Per trial | ${verdicts.join(' | ')} | disputed |`, `|---|---|---|${verdicts.map(() => '---').join('|')}|---|`);
     for (const [arm, u] of Object.entries(view.unmatched)) out.push(`| ${arm} | ${u.total} | ${fmt(u.perTrial, 2)} | ${verdicts.map((v) => u[v]).join(' | ')} | ${u.disputed} |`);
+    out.push('', '### Panel-verified findings', '', 'Verified findings are those matched to the reference review plus unmatched findings the panel accepts as real-missing-from-golden, so a real problem outside the reference set counts for the arm. Verified precision divides them by all findings; wrong counts unmatched findings the panel accepts as wrong. Means are per task over repeats.', '', `| Arm | Tasks | ${VERIFIED_METRICS.join(' | ')} |`, `|---|---|${VERIFIED_METRICS.map(() => '---').join('|')}|`);
+    for (const [arm, v] of Object.entries(view.verified.perArm)) out.push(`| ${arm} | ${v.tasks} | ${VERIFIED_METRICS.map((m) => fmt(v[m])).join(' | ')} |`);
+    out.push('', '| Comparison | Metric | Tasks | Difference | 95% CI | Better |', '|---|---|---|---|---|---|');
+    for (const c of view.verified.comparisons.filter((r) => r.tasks > 0)) out.push(`| ${c.b} vs ${c.a} | ${c.metric} | ${c.tasks} | ${fmt(c.difference)} | [${fmt(c.ci[0])}, ${fmt(c.ci[1])}] | ${c.higherIsBetter ? 'higher' : 'lower'} |`);
     out.push('', '### Associations', '');
     for (const a of view.associations) out.push(`- ${a.b} vs ${a.a}: ${a.note}`);
     out.push('');
@@ -331,10 +414,11 @@ export async function runPanelAnalysis({
   handLabels,
   diffFilesFor,
   contextFor,
+  judgeRoot,
   seed = 20251111,
   resamples = DEFAULT_RESAMPLES,
 }) {
-  const judged = loadJudged({ runDir, goldenDir, variant, arms: arms?.map((a) => (typeof a === 'string' ? a : a.id)) });
+  const judged = loadJudged({ runDir, goldenDir, variant, arms: arms?.map((a) => (typeof a === 'string' ? a : a.id)), ...(judgeRoot ? { judgeRoot } : {}) });
   const names = blindNames(arms ?? judged.arms, aliases);
   const items = panelItems(judged, { arms: arms ?? judged.arms, aliases, seed, contextFor });
   const outDir = path.join(runDir, 'panel');
@@ -347,5 +431,7 @@ export async function runPanelAnalysis({
   write('report.json', report);
   write('report.md', renderPanelMarkdown(report));
   write('hand-label-sample.json', handLabelSample(panel, { seed }));
-  return { panel, report, outDir };
+  const trialMetrics = panelTrialMetrics(panel, judged);
+  write('trial-metrics.json', trialMetrics);
+  return { panel, report, outDir, trialMetrics };
 }
