@@ -98,10 +98,10 @@ Two upstream policy documents are referenced by that prompt: the Anthropic Softw
 
 Where it is already fine:
 
-- No hooks, no MCP servers, no LSP servers, no executable code. The plugin is two markdown files and a manifest, so the entire hook-scope and telemetry section is inapplicable.
+- No hooks, no MCP servers, no LSP servers, no executable code. The plugin is three markdown files (two agents and one skill) and a manifest, so the entire hook-scope and telemetry section is inapplicable.
 - No credential access of any kind.
 - No network calls made by the plugin itself.
-- The plugin `description` describes two review agents and nothing else, which is what the package contains.
+- The plugin `description` describes two review agents and the skill they share, which is what the package contains.
 
 Where a reviewer will reasonably look, and what to be ready for:
 

@@ -286,8 +286,11 @@ Sparring Partner is the portable successor to the built-in rubber-duck role.
 For PR and change reviews it loads `technical-investigation`, `design-analysis`,
 `test-analysis`, and `evidence-verification` to trace behavior, examine design
 consequences, assess regression protection, and verify candidate findings.
-In the default ensemble, Sparring Partner also applies the full
-`intent-alignment` method, establishing the evidenced outcome and source
+It also applies the full `intent-alignment` method in every review, checking the
+PR description, changelog, and documentation claims against the code, and
+`design-forks-and-bets` to surface open design choices and implicit tradeoffs.
+When it can run workspace tools, it uses `static-signals` to direct investigation.
+The full `intent-alignment` method establishes the evidenced outcome and source
 authority before judging implementation conformance. These methods form one
 adaptive review, not separate reports. The invoking agent independently
 verifies the alignment claims and synthesizes the ensemble's results.
@@ -296,8 +299,7 @@ You can also select Sparring Partner directly for a standalone PR, branch diff,
 or local change review. For other reasoning questions it selects only the
 relevant methods. The historical ensemble with built-in rubber-duck remains
 available when explicitly requested, rather than as an automatic fallback.
-Standalone reviews select alignment when requested or needed to reconcile
-purpose or scope. Every ensemble composition needs an assigned alignment
+Every ensemble composition needs an assigned alignment
 reviewer and access to the method; otherwise it stops before dispatch.
 Alignment does not add a fourth default reviewer or grant approval authority.
 
