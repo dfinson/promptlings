@@ -61,9 +61,11 @@ Keep the work lightweight. Give the whole pass a time budget, about five minutes
 
    Read the relevant callee bodies before judging a lead that depends on them.
 
-8. **Normalize the leads.** Reduce each tool result to file and line, tool and rule, and a one-line message. Collapse duplicates across tools. Drop results outside scope. Keep at most ten per tool, and record how many were dropped.
+8. **Check declared compatibility.** Read the supported versions the project declares: `required_ruby_version` in a gemspec, `engines` and `browserslist` in `package.json`, `requires-python` or classifiers in `pyproject.toml`, the `go` directive in `go.mod`, `<TargetFramework>` or `<release>`, and `rust-version`. Compare them with the syntax, standard library APIs, and dependency versions the added lines use, such as safe navigation `&.` against Ruby 1.9, or `Array.prototype.at` against an older Node. Each use newer than the lowest declared version is a lead.
 
-9. **Hand off to review.** Form an independent reading of the change first, then consult the leads, so the leads add to the review rather than replace it. Work through leads in this order: compiler and type errors, nullability, secrets, unreachable or always-true conditions, repository rules, spelling, complexity. For each lead, read the code with its neighborhood and either confirm it or dismiss it. For a confirmed problem, write an ordinary review finding with its own reasoning, evidence, and the input or call sequence that triggers it. Never forward raw tool output, rule names, or counts as findings. A dismissed lead needs no mention in the review.
+9. **Normalize the leads.** Reduce each tool result to file and line, tool and rule, and a one-line message. Collapse duplicates across tools. Drop results outside scope. Keep at most ten per tool, and record how many were dropped.
+
+10. **Hand off to review.** Form an independent reading of the change first, then consult the leads, so the leads add to the review rather than replace it. Work through leads in this order: compiler and type errors, nullability, secrets, declared compatibility, unreachable or always-true conditions, repository rules, spelling, complexity. For each lead, read the code with its neighborhood and either confirm it or dismiss it. For a confirmed problem, write an ordinary review finding with its own reasoning, evidence, and the input or call sequence that triggers it. Never forward raw tool output, rule names, or counts as findings. A dismissed lead needs no mention in the review.
 
 ## Precision
 

@@ -169,7 +169,7 @@ Separate from open forks, some choices in the diff are *resolved* - the code pic
 
 A candidate qualifies as an implicit bet if:
 
-1. The code is internally consistent and correct.
+1. The code is internally consistent and works for the cases it was designed for.
 2. There exists a defensible alternative the author did not take.
 3. The choice has real consequences (cost to reverse, failure mode shape, who bears the operational burden).
 
@@ -189,6 +189,7 @@ Hard rules:
 - **Do not editorialize.** State the mechanical tradeoff. Do not say "this is reasonable", "this is defensible", or "this is a good bet." The reviewer decides.
 - **Every bet must have a "question to answer."** This is what separates a bet from narration. The question forces the reviewer to form an opinion.
 - **Bets that the diff's own docs already defend with citations are still bets.** The author's defense is context, not a reason to skip surfacing the choice. Include the defense in "why it's defensible" and let the reviewer decide if they agree.
+- **A bet with a demonstrable failing scenario is also a finding.** If you can name a concrete input, call sequence, or state in which the chosen side produces a wrong result, loses data, or violates a stated contract, run it through steps 3 and 4 as a candidate finding and ship it in every findings channel the caller requested, including any structured findings file. Keep the bet entry for the tradeoff. The same applies to a design fork whose current code already fails in a nameable scenario.
 
 ### 6. Draft each comment
  
