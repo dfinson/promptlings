@@ -2,9 +2,14 @@
 
 The active specification or planning method owns its template, requirement vocabulary, generated files, and phase gates. Use its supported invocation to apply writing improvements.
 
+- Separate complete discovery from selected delivery. Keep opportunity catalogues, experiments and policy choices distinct from the bounded implementation contract. Only selected work acquires delivery obligations. Recommend the smallest coherent mechanism using existing capabilities before expanding the document.
+- Make "implement it" refer to an explicit selected change. Explain why that mechanism is sufficient, what stays unchanged and how existing evidence can establish success. Do not make acceptance a route for introducing an unselected coordination, metrics or evidence framework.
+- Follow [visual HTML specifications](html-specifications.md) for the default human-facing reading copy. Preserve explicit conversation-only or tracker destinations. Keep editable source, visuals and reading copy at the same revision rather than maintaining competing documents.
+- Build substantial proposals through useful figures and short explanations. Show proposed interfaces before implementation, and use flows, comparisons and state views for mechanisms. Keep exact requirements, failure cases and acceptance visible. Visuals are a normal explanatory tool, not a last resort after prose fails.
+- Use established document components, Light/Dark controls and a self-contained offline file. Where a bounded interaction clarifies a rule, give it deterministic named states and reset, hold acceptance criteria fixed and preserve every branch in the readable/printable contract. Interacting with a model is not approval.
 - Lead with the intended capability or outcome, who needs it, and the problem it addresses. State scope and relevant non-goals without silently narrowing the request.
 - For a human-facing specification, use connected prose and meaningful task sections. Give a guide-level explanation of the situation, change, mechanism, rationale and resulting experience, followed by reference-level detail where exact contracts matter. Connect both levels through the same examples. Do not require source-ticket or code-symbol decoding to understand the proposal, or replace its technical substance with slogans.
-- Preserve specification substance in that prose: concrete requirements, named delivery lanes when applicable, what each lane owns, scope boundaries, supported dependencies, important interfaces, and observable acceptance. Keep these understandable in the specification itself, not only in a supporting artifact. Do not invent assignees, sequencing, or dependencies to fill a template.
+- Preserve specification substance: concrete requirements, mechanism responsibilities, scope boundaries, genuine dependencies, important interfaces and observable acceptance. Include delivery-lane detail only when the selected work genuinely needs that split. Do not invent assignees, sequencing or dependencies to fill a template.
 - Use no tables in a human-facing specification unless the necessary information cannot be presented another way. Brevity, convention, parsing convenience, and tracking are not sufficient reasons. Keep agent briefs and execution metadata distinct from the explanation when needed, but do not create a supporting artifact without user authorization. Required behavior, essential technical reasoning, and material decisions still belong in the human explanation.
 - Describe externally observable behavior and supported user journeys. Keep requirements distinct from proposed implementation. An implementation plan may need concrete files, interfaces, tasks, dependencies, and sequencing that a product specification deliberately defers.
 - State independently assessable behaviors separately, with triggers and outcomes. Use scenarios for consequential edge cases and interactions. Preserve existing scenarios and constraints when revising, rather than shortening them to fit a word or character limit.
@@ -19,7 +24,8 @@ The active specification or planning method owns its template, requirement vocab
 Check both requirement coverage and whether the reader can distinguish what is
 required, what is proposed, why the mechanism fits, what remains unresolved and
 how completion will be demonstrated. Passing coverage does not establish
-comprehension. New requirements or important choices must not appear only in
+comprehension or proportionality. A full catalogue must not look like a single
+expansive delivery commitment. New requirements or important choices must not appear only in
 reference detail or a later execution plan.
 
 The [research and scope](sources.md#human-readable-specifications) distinguishes
