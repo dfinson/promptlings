@@ -565,7 +565,9 @@ function finishTrial({ record, result, built, paths, prompt, token, workspace, b
   if (!usage) missing.push("usage");
   record.missing = missing;
 
-  const capped = capPattern.test(result.stdout + result.stderr) || (record.aiCredits !== null && record.aiCredits >= built.credits);
+  // Review text arrives inside JSON events and can mention "session limit"; only the CLI's own lines count.
+  const cliText = [result.stderr, ...result.stdout.split(/\r?\n/).filter((line) => !line.trim().startsWith("{"))].join("\n");
+  const capped = capPattern.test(cliText) || (record.aiCredits !== null && record.aiCredits >= built.credits);
   if (result.timedOut) {
     record.status = "timed_out";
     record.reason = `Exceeded ${limits.timeoutMs} ms.`;
