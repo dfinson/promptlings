@@ -5,6 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { loadRunner } from './runner.js';
 import { trialStatus } from '../scoring/scores.js';
+import { reviewDenials } from '../scoring/denial-review.js';
 
 export function safeSegment(value) {
   const text = String(value ?? '').replace(/[^A-Za-z0-9._-]/g, '_');
@@ -94,6 +95,21 @@ export default class CopilotTrialProvider {
         limits: this.config.limits ?? arm.limits ?? {},
         env: this.config.env ?? {},
       });
+      if (record?.status === 'invalidated' && record.environmentDenials?.length && record.exitCode === 0 && this.config.denialReview !== false) {
+        // An environment denial invalidates only when the panel finds it material; a failed review keeps the invalidation.
+        try {
+          const review = await reviewDenials(record, { trialDir, graderConfig: suite?.panel?.graderConfig ?? {} });
+          record.denialReview = review;
+          if (review.decision === 'not material') {
+            record.status = 'completed';
+            delete record.invalidated;
+            delete record.reason;
+          }
+        } catch (err) {
+          record.denialReview = { decision: 'failed', error: String(err?.message ?? err) };
+        }
+        fs.writeFileSync(path.join(trialDir, 'trial.json'), `${JSON.stringify(record, null, 2)}\n`);
+      }
       const collected = normalizeCollected(adapter?.collect ? await adapter.collect(record, task, ctx) : null);
       fs.writeFileSync(path.join(trialDir, 'collected.json'), JSON.stringify(collected, null, 2));
 
