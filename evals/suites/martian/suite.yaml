@@ -64,6 +64,9 @@ prompt: |
 reviewRequests:
   default: Review the changes on this branch against review-base.
   ensemble: Run the review ensemble on this branch against review-base.
+  copilot-code-review: >-
+    Review the changes on this branch against review-base by delegating the review to Copilot's
+    built-in code-review agent (the task tool with agent_type code-review), then report its findings.
 arms:
   - id: stock
     ref: null
@@ -103,6 +106,18 @@ arms:
         - raw.githubusercontent.com
         - codeload.github.com
         - withmartian.com
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1000 }
+  # Stock plus Copilot's built-in code-review agent. In prompt mode --agent code-review fails and
+  # /review arrives as plain text, so the request asks the session to delegate to it.
+  - id: copilot-code-review
+    ref: null
+    selection: null
+    agent: null
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
     sandbox: true
     customInstructions: false
     limits: { maxAiCredits: 1000 }
@@ -222,11 +237,20 @@ arms:
 stages:
   main:
     split: offline
-    arms: [stock, nitcracker, sparring-partner, ensemble, hve-full, hve-standard]
+    arms: [stock, copilot-code-review, nitcracker, sparring-partner, ensemble, hve-full, hve-standard]
     repeats: 1
-    maxAiCredits: 46000
+    maxAiCredits: 80000
     # Holm over five comparisons at 5%, power 0.80, per-PR recall SD 0.22: 50 PRs detect about an
     # 11-point difference; fewer than 40 usable pairs gives no verdict.
+    analysis: { verdict: true, minPairedN: 40 }
+  # Fast iteration: sparring-partner against both stock baselines on the same 50 PRs. At the
+  # mt-main-2 rates (stock 46, copilot-code-review 40, sparring-partner 68 credits per trial) the
+  # stage plans about 7700 credits and roughly a quarter of the main stage's wall time.
+  fast:
+    split: offline
+    arms: [stock, copilot-code-review, sparring-partner]
+    repeats: 1
+    maxAiCredits: 15000
     analysis: { verdict: true, minPairedN: 40 }
   smoke:
     split: smoke
@@ -239,7 +263,8 @@ limits:
   timeoutMs: 5400000
   maxAiCredits: 1000
   stageCeilings:
-    main: 46000
+    main: 80000
+    fast: 15000
     smoke: 1000
 
 repeats: 1
@@ -253,6 +278,7 @@ judge:
 analysis:
   primaryMetric: recall
   comparisons:
+    - [copilot-code-review, stock]
     - [nitcracker, stock]
     - [sparring-partner, stock]
     - [ensemble, stock]
