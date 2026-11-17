@@ -5,7 +5,7 @@ description: 'Guide Technical Demo production with retained decisions, existing 
 
 # Technical Demo Production
 
-The director owns the story, treatment, approvals and delivery. This skill supplies execution support, not another workflow or review owner. Continue the selected Motionite/Remotion, explicit HyperFrames or plain-recording route.
+The director owns the story, treatment, approvals and delivery. This skill supplies execution support, not another workflow or review owner. Continue the selected HyperFrames, explicitly selected Remotion or plain-recording route.
 
 Use the upstream tools directly. Choose task-specific commands or ad hoc production code when needed in the authorized external workspace. This skill does not require a repository-owned renderer, job format, process supervisor or test suite.
 
@@ -38,9 +38,11 @@ views, not a complete timeline, working experience or soundtrack. Reuse the
 accepted direction and sample source after approval. Rejection of the palette
 revises the affected samples without discarding an unchanged script.
 
-Read [the component catalog](references/components.md) when selecting visuals. Start with the chosen Motionite example and helpers, then select existing components for gaps. Keep a thin React composition and use props for content, assets, styling and timing. Reuse the code across unrelated subjects. Write a new component only when the approved visual behavior is missing.
+On the HyperFrames route, start from the selected frame preset and search the registry (`npx hyperframes catalog`) before writing a scene, then follow the `hyperframes` skill's composition contract. Write a new block only when the approved visual behavior is missing.
 
-Reuse the installer's pinned demo runtime for standard Remotion, React, media, preview and TypeScript dependencies. Install only additional selected, version-pinned production dependencies in the external production workspace, after updating its manifest. Preserve licenses and notices when copying source. Do not install every catalog entry, adopt another library's production agent, or write a new universal scene language.
+On the explicitly selected Remotion route, read [the component catalog](references/components.md) when selecting visuals. Keep a thin React composition and use props for content, assets, styling and timing. Reuse the code across unrelated subjects. Write a new component only when the approved visual behavior is missing.
+
+On the Remotion route, reuse the installer's pinned demo runtime for standard Remotion, React, media, preview and TypeScript dependencies. Install only additional selected, version-pinned production dependencies in the external production workspace, after updating its manifest. Preserve licenses and notices when copying source. Do not install every catalog entry, adopt another library's production agent, or write a new universal scene language.
 
 Use `useCurrentFrame()` and deterministic calculations for Remotion animation. Static React/SVG components can be useful as-is. Timer-driven, CSS-transition and live-state animation needs a frame-driven adapter. A simulated terminal or chat is illustration, not proof of execution.
 
@@ -52,9 +54,11 @@ Use separate output locations and browser sessions for independent operations. A
 
 ## Render without repeated startup
 
-After the director's script-and-still approval, build one complete previewable composition containing the recorded media, authored scenes and actual soundtrack. Use the existing Motionite/Remotion Player or Studio route for moving review before encoding. Later selected native stills support that review without adding another exhaustive approval phase. Do not build an overlay-image export and per-frame FFmpeg compositing loop for ordinary footage, crops, highlights or transitions. Final media assembly and unchanged-audio muxing remain valid FFmpeg uses.
+After the director's script-and-still approval, build one complete previewable composition containing the recorded media, authored scenes and actual soundtrack. Use the selected route's existing preview (HyperFrames preview or Studio, Remotion Player or Studio) for moving review before encoding. Later selected native stills support that review without adding another exhaustive approval phase. Do not build an overlay-image export and per-frame FFmpeg compositing loop for ordinary footage, crops, highlights or transitions. Final media assembly and unchanged-audio muxing remain valid FFmpeg uses.
 
-Use the project's existing Remotion CLI/configuration or public renderer APIs. The installer prepares standard packages in `~/.promptlings/runtimes/remotion-4.0.539` under the user home, including React, TypeScript, Remotion CLI/Player, bundler, renderer, media and matching Headless Shell. Exact pins live in the installer's `lib/pins.js`. Check the package versions actually used by the production before rendering. Keep Remotion packages and add-ons version-matched rather than silently mixing local and installed versions.
+On the HyperFrames route, follow the `hyperframes` skill's `references/review.md`: run `npx hyperframes check --json` and resolve its craft warnings, review `snapshot --review` sheets and `audio --json` results, then render with the HyperFrames CLI. The runtime, browser, tuning and process-ownership guidance below applies to the explicitly selected Remotion route. Verification of the encoded file and native-size review apply to both.
+
+On the Remotion route, use the project's existing Remotion CLI/configuration or public renderer APIs. The installer prepares standard packages in `~/.promptlings/runtimes/remotion-4.0.539` under the user home, including React, TypeScript, Remotion CLI/Player, bundler, renderer, media and matching Headless Shell. Exact pins live in the installer's `lib/pins.js`. Check the package versions actually used by the production before rendering. Keep Remotion packages and add-ons version-matched rather than silently mixing local and installed versions.
 
 Resolve packages and assets from explicit locations. An installed runtime is not automatically on a production project's module search path. When using its bundler API from an external production, include that runtime's `node_modules` in webpack module resolution while preserving project aliases and Remotion's React aliases. Some add-ons, including `@remotion/transitions`, install `remotion` without the renderer or bundler. Check the complete selected toolchain rather than treating that package's presence as readiness. Keep the managed runtime installer-owned, with compositions, additional dependencies, assets, bundles and renders in the external production workspace.
 

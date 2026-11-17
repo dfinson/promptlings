@@ -333,28 +333,29 @@ test("external skills install concurrently with ordered output and a merged lock
   await assert.rejects(skillsAddConcurrent(["second", "bad"], runner), /External skill installation failed: bad \(1\)/);
 });
 
-test("demo tools select pinned upstream Motionite and honor external-skill opt-outs", () => {
+test("demo tools select pinned upstream motion skills and honor external-skill opt-outs", () => {
   const sources = externalSkillSources({ skills: true, demo: true });
-  assert.ok(sources.includes(pins.motioniteSkills));
-  assert.match(pins.motioniteSkills, /^https:\/\/github\.com\/nxrskyaa\/motionite\/tree\/[a-f0-9]{40}$/);
-  assert.equal(externalSkillSources({ skills: false, demo: true }).includes(pins.motioniteSkills), false);
-  assert.equal(externalSkillSources({ skills: true, demo: false }).includes(pins.motioniteSkills), false);
+  assert.ok(sources.includes(pins.motionArtDirectionSkill));
+  assert.match(pins.motionArtDirectionSkill, /^https:\/\/github\.com\/iart-ai\/motion-design-skills\/tree\/[a-f0-9]{40}\/skills\/motion-art-direction$/);
+  assert.equal(externalSkillSources({ skills: false, demo: true }).includes(pins.motionArtDirectionSkill), false);
+  assert.equal(externalSkillSources({ skills: true, demo: false }).includes(pins.motionArtDirectionSkill), false);
   const experience = externalSkillSources({ skills: true, demo: true, playwright: true, hyperframes: true, experience: true });
   assert.equal(experience.filter((source) => source === pins.playwrightSkills).length, 1);
 });
 
 test("root-level pinned skills participate in installer reuse", () => {
-  const ref = pins.motioniteSkills.split("/").at(-1);
+  const ref = "7b7d4dbdc0a725b362317683711d77195336b34a";
+  const source = `https://github.com/example/root-skill/tree/${ref}`;
   const entry = {
-    source: "nxrskyaa/motionite", sourceType: "github",
-    sourceUrl: "https://github.com/nxrskyaa/motionite.git", ref, skillPath: "SKILL.md",
+    source: "example/root-skill", sourceType: "github",
+    sourceUrl: "https://github.com/example/root-skill.git", ref, skillPath: "SKILL.md",
   };
-  const lock = { skills: { motionite: entry } };
-  assert.equal(skillSourceInstalled(lock, pins.motioniteSkills, () => true), true);
-  assert.equal(skillSourceInstalled(lock, `${pins.motioniteSkills}/`, () => true), true);
-  assert.equal(skillSourceInstalled(lock, pins.motioniteSkills, () => false), false);
-  assert.equal(skillSourceInstalled({ skills: { motionite: { ...entry, ref: "old" } } }, pins.motioniteSkills, () => true), false);
-  assert.equal(skillSourceInstalled({ skills: { motionite: { ...entry, skillPath: undefined } } }, pins.motioniteSkills, () => true), false);
+  const lock = { skills: { "root-skill": entry } };
+  assert.equal(skillSourceInstalled(lock, source, () => true), true);
+  assert.equal(skillSourceInstalled(lock, `${source}/`, () => true), true);
+  assert.equal(skillSourceInstalled(lock, source, () => false), false);
+  assert.equal(skillSourceInstalled({ skills: { "root-skill": { ...entry, ref: "old" } } }, source, () => true), false);
+  assert.equal(skillSourceInstalled({ skills: { "root-skill": { ...entry, skillPath: undefined } } }, source, () => true), false);
 });
 
 test("memory installs, starts, waits, then registers clients", async (t) => {

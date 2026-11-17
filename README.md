@@ -100,8 +100,8 @@ Technical Demo presents an overall creative treatment, readable scene
 descriptions, exact narration and representative rendered stills for approval
 before full production. The user can correct the palette, concept or layout
 while only samples need revision. It keeps the older agent's storytelling
-and evidence standards, using Motionite/Remotion by default, HyperFrames when
-explicitly selected, and real capture for demonstrated behavior.
+and evidence standards, using HyperFrames by default, Remotion when explicitly
+selected, and real capture for demonstrated behavior.
 
 Demo and presentation approval packages use the same standalone HTML briefing
 contract as specifications. Whole-script narration checks prioritize context,
@@ -117,13 +117,15 @@ using upstream tools rather than a bundled rendering framework. Writing and narr
 reasoning-first skills. Revisions address specific defects instead of restarting
 briefing or running fixed-count review loops.
 
-The installer fetches [Motionite](https://github.com/nxrskyaa/motionite) from the
-upstream revision in [the tool pins](lib/pins.js), just like other external skills,
-along with the [animation-principles](https://github.com/iart-ai/motion-design-skills)
-skill for motion timing and review vocabulary.
-Its source and assets are not vendored here. Demo installation also prepares a
+The installer fetches the [HyperFrames](https://github.com/heygen-com/hyperframes)
+skills, whose motion and review references bind the default route, and the
+[motion-art-direction and animation-principles](https://github.com/iart-ai/motion-design-skills)
+skills for motion direction, timing and review vocabulary, all from the upstream
+revisions in [the tool pins](lib/pins.js), just like other external skills.
+Their source and assets are not vendored here. Demo installation also prepares a
 reusable version-pinned Remotion/React runtime, media component and matching
-Headless Shell through Remotion's own CLI. `--no-demo` skips these. The producing
+Headless Shell through Remotion's own CLI for the opt-in Remotion route.
+`--no-demo` skips the demo skills and runtime, and `--no-hyperframes` skips HyperFrames. The producing
 agent checks GPU support at render time without installing CUDA or drivers.
 Additional production dependencies and media
 belong in an external production workspace. Measure complete draft turnaround

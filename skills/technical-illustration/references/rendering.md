@@ -7,8 +7,9 @@ job schema or new runtime.
 ## Select a route
 
 **Existing media composition.** Render selected native frames from the chosen
-Motionite/Remotion or explicitly selected HyperFrames route. Reuse source,
+HyperFrames or explicitly selected Remotion route. Reuse source,
 components, bundle and prepared browser while their inputs remain unchanged.
+For HyperFrames, use `npx hyperframes snapshot` at the needed instants.
 For Remotion, use its existing configuration/CLI or public
 [`renderStill`](https://www.remotion.dev/docs/renderer/render-still) API.
 Keep packages version-matched and resolve assets and runtime locations
