@@ -1,6 +1,6 @@
 # Promptlings Code Review
 
-Two pull request review agents for Claude Code, packaged as an installable plugin.
+Two pull request review agents for Claude Code, packaged as an installable plugin with the `design-forks-and-bets` skill they both load.
 
 Both agents already exist in the [promptlings](https://github.com/dfinson/promptlings) repository as plain `.agent.md` files. This plugin is an additional way to get them, not a replacement. The files stay copyable by hand and stay usable in GitHub Copilot CLI.
 
@@ -10,6 +10,8 @@ Both agents already exist in the [promptlings](https://github.com/dfinson/prompt
 | --- | --- | --- |
 | the-nitcracker | `promptlings-code-review:the-nitcracker` | A full review: inline defect comments anchored to diff lines, separate design fork and implicit bet sections, and a narrative walkthrough. |
 | pr-walkthrough | `promptlings-code-review:pr-walkthrough` | Orientation only: a narrative map of the change, its architecture, and the judgment calls buried in it. No defect hunting. |
+
+The `design-forks-and-bets` skill holds the shared rules for design forks and implicit bets. Both agents load it, so it ships with them.
 
 Use pr-walkthrough when you want to understand a diff before reviewing it. Use the-nitcracker when you want the understanding plus the findings.
 
@@ -65,9 +67,9 @@ On Claude Code 2.1.220, `claude plugin list` can report `Status: disabled` immed
 
 ## What this plugin does not ship
 
-The promptlings repository contains nine agents and twenty-three skills. This plugin still contains the two review agents only. Sparring Partner, Artifact Inspector, Memory Manager, Technical Demo, Interactive Presentation, Spec Master, Experiment Director, and the skills stay installable through `npx promptlings` or by hand.
+The promptlings repository contains nine agents and twenty-six skills. This plugin contains the two review agents and the `design-forks-and-bets` skill they load. Other skills they use when available, such as `review-comment-writing`, have written fallbacks in the agent text. Sparring Partner, Artifact Inspector, Memory Manager, Technical Demo, Interactive Presentation, Spec Master, Experiment Director, and the skills stay installable through `npx promptlings` or by hand.
 
-For `review-ensemble`, use `npx promptlings publish --review`, which publishes the-nitcracker, PR Walkthrough, Sparring Partner, and every bundled Promptlings skill. The default roster uses Sparring Partner and its four review methods, not the host's built-in rubber-duck. This plugin alone does not supply that roster or its skills. See the [workflow instructions](../../README.md#review-ensemble).
+For `review-ensemble`, use `npx promptlings publish --review`, which publishes the-nitcracker, PR Walkthrough, Sparring Partner, and every bundled Promptlings skill. The default roster uses Sparring Partner and its review methods, not the host's built-in rubber-duck. This plugin alone does not supply that roster or its skills. See the [workflow instructions](../../README.md#review-ensemble).
 
 ## What the agents do at runtime
 
@@ -79,7 +81,7 @@ Worth knowing before you install, since these agents drive your tools:
 - the-nitcracker writes its review to `$COPILOT_ARTIFACTS_DIR` when that variable is set, and otherwise to the system temp directory.
 - pr-walkthrough is read-only in every mode. It returns its full walkthrough in conversation and never saves a report, creates tracking files, fetches, or updates Git refs. A supplied diff, commit range, or bounded working-tree target takes precedence over its default base. Without a supplied target it uses locally available refs, reporting missing evidence instead of fetching it.
 
-This plugin ships no hooks, no MCP servers, no LSP servers, and no executable code. It is two markdown files and a manifest. It collects no telemetry and makes no network calls of its own; the requests above are ones the agent asks your Claude Code session to make, and you see them as normal tool calls.
+This plugin ships no hooks, no MCP servers, no LSP servers, and no executable code. It is three markdown files and a manifest. It collects no telemetry and makes no network calls of its own; the requests above are ones the agent asks your Claude Code session to make, and you see them as normal tool calls.
 
 ## Example outputs
 
@@ -93,7 +95,9 @@ The agent definitions also contain the exact output formats, including the templ
 
 `agents/pr-walkthrough.md` is the same copy with exactly two changes: the frontmatter `name` becomes the slug `pr-walkthrough` instead of `PR Walkthrough`, and the Copilot input placeholder `${input:baseBranch:origin/main}` becomes plain prose, because Claude Code does not substitute it.
 
-To check for drift after the source agents change:
+`skills/design-forks-and-bets/SKILL.md` is a byte-for-byte copy of `skills/design-forks-and-bets/SKILL.md` in the repository root.
+
+To check for drift after the source agents or the skill change:
 
 ```bash
 git diff --no-index agents/code-review/the-nitcracker.agent.md \
@@ -101,9 +105,12 @@ git diff --no-index agents/code-review/the-nitcracker.agent.md \
 
 git diff --no-index agents/code-review/pr-walkthrough.agent.md \
   plugins/promptlings-code-review/agents/pr-walkthrough.md
+
+git diff --no-index skills/design-forks-and-bets/SKILL.md \
+  plugins/promptlings-code-review/skills/design-forks-and-bets/SKILL.md
 ```
 
-The first must report no differences. The second must report exactly the two lines described above. Anything else means the copies drifted and need regenerating.
+The first and third must report no differences. The second must report exactly the two lines described above. Anything else means the copies drifted and need regenerating.
 
 ## Submission
 

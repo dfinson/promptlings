@@ -12,6 +12,10 @@ Concrete values for building mini-apps a presenter drives live in front of a roo
 - **Target size follows Fitts's law.** Controls at least 48px on the 1920x1080 stage, the primary control of a stop the largest, and the next control the presenter needs placed near the last one.
 - **Affordance is redundant.** Every interactive element changes cursor and shows a visible outline or glow on hover and focus. Color alone disappears in screen-share compression.
 - **Keyboard equivalents for every control** through native focus and arrow stepping, so the stop survives a dead trackpad. Presenter keys never fire while a text field has focus.
+- **Exercise the real gesture.** Check slow continuous movement both ways,
+  release, re-grab, cancellation and reset, not just endpoint jumps. Prevent
+  native image dragging/selection from stealing reveal-slider input while
+  retaining pointer capture and keyboard equivalents.
 
 ## Feedback and timing
 
@@ -26,12 +30,17 @@ Concrete values for building mini-apps a presenter drives live in front of a roo
 
 ## Representing a running system
 
+Transport and clocks apply to time-based stops, not to static comparisons.
+
 - **One global pause** stops every animation and simulation on the stage at once, with the state kept.
 - **A fixed transport strip** (play, pause, step, speed, reset) in the same place on every stop, separate from the parameters. Speed covers at least 0.25x to 4x.
 - **Build one mechanism at a time in the same frame.** Each stop adds to the previous stop's geometry and colors instead of redrawing the system.
 - **Semantic color, capped.** One hue per recurring entity, identical in the model, code and labels. At most three or four live hues on screen; a fifth state uses shape or motion.
 - **Reveal labels and colors in the beat that needs them.** Hide state that is irrelevant to the current beat rather than pre-labeling everything.
 - **One focal point per beat.** Exactly one element moves, brightens or grows to claim attention; everything else holds still or dims.
+- **Place content where reading begins.** Align a sparse opening with its
+  intended entry point. Correct accidental empty regions through composition,
+  not decorative filler that competes with the subject.
 - **Borders by intent.** Draw cell or node borders when edges matter, omit them when the nodes matter.
 
 ## Rendering
