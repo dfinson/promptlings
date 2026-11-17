@@ -8,7 +8,7 @@ Run each case in a fresh conversation with the agent being changed. Supply only 
 
 Ask for the agent's normal narrative and applicable appendices. The input is a closed, supplied-patch fixture, not a live PR. Repository and provider checks are unavailable, external posting is out of scope, and any domain research must use the supplied technical subject without uploading repository content.
 
-For Sparring Partner, request its normal PR and change-review result instead of Nitcracker's or Walkthrough's narrative and appendices. Make its four core methods and intent-alignment available in the fresh context. It must load and apply every required method, scale the design stage to the fixture, and return findings, substantive reasoning, and method and evidence coverage in conversation. R1-R3 are standalone reviews; R4 is an ensemble seat and requires all five methods. R5 uses the ensemble skill with its supplied capability inventory instead. The unavailable method in R5 must remain unavailable. Do not invoke rubber-duck, spawn an actual ensemble, write reports, or require live PR access for these supplied snapshots. Distinguish loading a method from applying it to the fixture.
+For Sparring Partner, request its normal PR and change-review result instead of Nitcracker's or Walkthrough's narrative and appendices. Make its four core methods, intent-alignment, and design-forks-and-bets available in the fresh context. It must load and apply every required method, scale the design stage to the fixture, and return findings, substantive reasoning, and method and evidence coverage in conversation. R1-R3 are standalone reviews; R4 is an ensemble seat and requires all six methods. R5 uses the ensemble skill with its supplied capability inventory instead. The unavailable method in R5 must remain unavailable. Do not invoke rubber-duck, spawn an actual ensemble, write reports, or require live PR access for these supplied snapshots. Distinguish loading a method from applying it to the fixture.
 
 After the run, compare the actual output with Expected behavior. Record the agent revision, selected model, case ID, outcome (Pass, Fail, or Unverified), and supporting output in session artifacts. A case passes only when every stated expectation is met. Missing output is Unverified. Check both canonical agents when changing shared review rules, and check a host-specific copy when changing its adaptation. These cases are a small maintenance check, not proof of general review accuracy.
 
@@ -131,7 +131,8 @@ new file mode 100644
 
 ### Expected behavior
 
-Load and apply all four core methods plus intent-alignment despite the absence
+Load and apply all four core methods plus intent-alignment and
+design-forks-and-bets despite the absence
 of a separate alignment request or cross-source uncertainty. Establish the
 approved outcome and authority before conformance conclusions. Apply the full
 method: trace the requirement to the implementation and the added behavior
@@ -139,7 +140,8 @@ back to its justification, assess the resulting workflow, seek counterevidence,
 and keep the result bound to R4-v1.
 
 Return an integrated review with no demonstrated defect or invented
-validation requirement. State supported source-level alignment while leaving
+validation requirement, and a design forks and implicit bets section that
+states in one line when no entry qualifies. State supported source-level alignment while leaving
 execution unverified. Do not add a reviewer, create a separate mandatory
 report, or treat a preliminary activation scan as full method application.
 
@@ -161,7 +163,8 @@ This is the complete host capability inventory for the fixture:
 - The-nitcracker, PR Walkthrough, and Sparring Partner are available in
   separate contexts and can run independent first passes in parallel.
 - Technical-investigation, design-analysis, test-analysis, and
-  evidence-verification are accessible to Sparring Partner.
+  evidence-verification, and design-forks-and-bets are accessible to
+  Sparring Partner.
 - Intent-alignment is unavailable and cannot be supplied during this run.
 
 The target and source are accessible. No checkout, live provider, or execution
@@ -183,9 +186,9 @@ Alongside R1-R3, check these boundaries when changing Sparring Partner or the en
 - With a required Sparring Partner method unavailable before dispatch, the ensemble reports Blocked and does not silently substitute rubber-duck.
 - With the supplied snapshot superseded before final output, Sparring Partner identifies stale conclusions and stops for replacement evidence rather than certifying the replacement.
 - An unqualified ensemble request selects the-nitcracker, PR Walkthrough, and Sparring Partner. An explicitly requested historical rubber-duck roster remains a different caller-selected composition.
-- The ensemble supplies Sparring Partner the same factual target and requirements as its peers and requires its four core methods plus the full intent-alignment method, without another worker's conclusions. The invoking agent verifies outcome authority and material alignment claims as part of synthesis.
-- Both installers' review selections include all three default agents and publish all five required Sparring Partner methods. Explicit agent selections remain caller-controlled.
-- Standalone reviews retain the four core methods, adding intent-alignment on request or material cross-source purpose or scope uncertainty. An unavailable required method is disclosed rather than claimed as applied.
+- The ensemble supplies Sparring Partner the same factual target and requirements as its peers and requires its four core methods, design-forks-and-bets, and the full intent-alignment method, without another worker's conclusions. The invoking agent verifies outcome authority and material alignment claims as part of synthesis.
+- Both installers' review selections include all three default agents and publish all six required Sparring Partner methods. Explicit agent selections remain caller-controlled.
+- Standalone reviews retain the four core methods plus intent-alignment and design-forks-and-bets in every review. An unavailable required method is disclosed rather than claimed as applied.
 - A caller-selected composition without Sparring Partner explicitly assigns alignment to a selected reviewer whose contract supports it, or reports Blocked without silently changing the roster.
 - The ensemble's final result pairs each confirmed finding with one deduplicated, anchored proposed comment rewritten through `review-comment-writing`, drops comments for contradicted candidates, and returns them without posting.
 

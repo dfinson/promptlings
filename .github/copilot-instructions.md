@@ -1,5 +1,13 @@
 # Copilot Instructions
 
+## No Scripts or Tests Without an Explicit Request
+
+**Do not create or add scripts unless the user explicitly requests scripts. Do not create or add tests unless the user explicitly requests tests.**
+
+This repository delivers agents and skills through Markdown instructions. Requests to improve a flow, fix a problem, verify behavior, or review a change are not permission to add scripts, test suites, test fixtures, or CI testing infrastructure. Do not turn a prompt-based workflow into a maintained execution framework.
+
+Preserve useful procedures, measured settings, failure handling and verification guidance in the relevant agent or skill. Use existing tools for execution. Task-specific production code belongs to the producing agent's authorized workspace, not automatically in this repository.
+
 ## Em Dash Ban
 
 **Never use em dashes in any generated content.** This is a hard, non-negotiable rule.
