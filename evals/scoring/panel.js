@@ -25,19 +25,49 @@ export const DEFAULT_TAXONOMY = Object.freeze({
   unmatched: {
     verdict: ['real-missing-from-golden', 'plausible-unverifiable', 'wrong'],
   },
+  design: {
+    grounded: ['yes', 'no'],
+    correct: ['yes', 'no'],
+    consequential: ['yes', 'no'],
+    non_duplicative: ['yes', 'no'],
+    actionable: ['yes', 'no'],
+  },
 });
+
+const REQUIRED_KINDS = ['golden', 'unmatched'];
+const OPTIONAL_KINDS = ['design'];
+
+/** The taxonomy with the default design rubric added when items need it and the taxonomy has none. */
+export function withDesignRubric(taxonomy) {
+  return taxonomy.design ? taxonomy : { ...taxonomy, design: DEFAULT_TAXONOMY.design };
+}
+
+/** Item kinds the taxonomy defines, in panel order. */
+export function taxonomyKinds(taxonomy) {
+  return [...REQUIRED_KINDS, ...OPTIONAL_KINDS.filter((k) => taxonomy[k])];
+}
+
+/** The finding keys an item stands for: every clustered member, or its single source finding. */
+export function membersOf(item) {
+  return item.source.members ?? [item.source];
+}
 
 const DIMENSION_HELP = {
   defect_class: 'the kind of defect',
   locality: 'single-hunk (one diff hunk), single-file (several places in one file), cross-file (several changed files), outside-diff (needs code the diff does not show)',
   detection: 'diff (reading the diff is enough), unchanged-code (needs reading unchanged code), execution (needs running or reasoning about execution), history-conventions (needs project history or conventions)',
   verdict: 'real-missing-from-golden (a real problem the reference review did not record), plausible-unverifiable (plausible but cannot be confirmed from the change), wrong (not a problem)',
+  grounded: 'yes when the point is about something the diff excerpt actually shows or changes',
+  correct: 'yes when its description of the code and of the tradeoff is accurate',
+  consequential: 'yes when the choice materially affects behaviour, failure modes, cost or maintenance',
+  non_duplicative: 'yes when it is not just a restatement of one of the nearby defect findings',
+  actionable: 'yes when a reviewer could decide or act on it (accept the bet, pick a fork, ask for a change)',
 };
 
 export function validateTaxonomy(taxonomy, { requireFrozen = false } = {}) {
   if (!taxonomy?.version) throw new Error('Panel taxonomy needs a version');
   if (requireFrozen && taxonomy.frozen !== true) throw new Error(`Panel taxonomy ${taxonomy.version} is not frozen; confirmation stages require a frozen taxonomy`);
-  for (const kind of ['golden', 'unmatched']) {
+  for (const kind of [...REQUIRED_KINDS, ...OPTIONAL_KINDS.filter((k) => taxonomy[k] !== undefined)]) {
     const dims = taxonomy[kind];
     if (!dims || !Object.keys(dims).length) throw new Error(`Panel taxonomy has no ${kind} dimensions`);
     for (const [dim, labels] of Object.entries(dims)) {
@@ -74,6 +104,7 @@ export function loadJudged({ runDir, goldenDir, variant = 'primary', arms, judge
   const trials = [];
   const catches = [];
   const unmatched = [];
+  const findings = [];
   const excluded = [];
   // A judged entry counts only when its trial record (when present) is completed and not invalidated.
   const exclusionFor = (task, arm, repeat) => {
@@ -107,10 +138,11 @@ export function loadJudged({ runDir, goldenDir, variant = 'primary', arms, judge
           for (const gi of f.covered_golden_indices ?? []) {
             if (g[gi]?.tp_fp === 'tp') catches.push({ task, arm, repeat, goldenIndex: gi });
           }
-          const matched = f.matched_golden_index !== undefined || String(f.status ?? '').startsWith('matched');
-          if (!matched && !(f.covered_golden_indices ?? []).length) {
-            unmatched.push({ task, arm, repeat, index, file: f.file, start_line: f.start_line, end_line: f.end_line, message: f.message ?? '', status: f.status ?? null });
-          } else matchedCount += 1;
+          const matched = f.matched_golden_index !== undefined || String(f.status ?? '').startsWith('matched') || (f.covered_golden_indices ?? []).length > 0;
+          const record = { task, arm, repeat, index, file: f.file, start_line: f.start_line, end_line: f.end_line, message: f.message ?? '', status: f.status ?? null };
+          findings.push({ ...record, matched });
+          if (!matched) unmatched.push(record);
+          else matchedCount += 1;
         });
         trials.push({ task, arm, repeat, candidates: candidates.length, matched: matchedCount });
       }
@@ -123,7 +155,41 @@ export function loadJudged({ runDir, goldenDir, variant = 'primary', arms, judge
       if (f.tp_fp === 'tp') goldenItems.push({ task, goldenIndex, file: f.file, start_line: f.start_line, end_line: f.end_line, message: f.message ?? '', severity: f.severity ?? null });
     });
   }
-  return { variant, arms: armIds, tasks, trials, golden: goldenItems, catches, unmatched, excluded };
+  return { variant, arms: armIds, tasks, trials, golden: goldenItems, catches, unmatched, findings, excluded };
+}
+
+/** Stable key for one arm finding: arm, repeat and index within the trial. */
+export function findingKey(f) {
+  return `${f.arm}/r${f.repeat}/${f.index}`;
+}
+
+export function parseFindingKey(k) {
+  const m = /^(.*)\/r(\d+)\/(\d+)$/.exec(k);
+  return { arm: m[1], repeat: Number(m[2]), index: Number(m[3]) };
+}
+
+/**
+ * Splits per-task clusters of finding keys into the clusters the panel must rule on (no member
+ * matched the reference review) and the unmatched findings that share a cluster with a matched
+ * one. Those count as verified without a panel call, since they describe a confirmed problem.
+ */
+export function splitClusters(judged, clusters) {
+  const byKey = new Map(judged.findings.map((f) => [`${f.task}\u0000${findingKey(f)}`, f]));
+  const toPanel = [];
+  const clusterMatched = [];
+  const seen = new Set();
+  for (const [task, groups] of Object.entries(clusters ?? {})) {
+    for (const group of groups) {
+      const members = group.map((k) => byKey.get(`${task}\u0000${k}`)).filter(Boolean);
+      for (const m of members) seen.add(`${task}\u0000${findingKey(m)}`);
+      if (!members.length) continue;
+      if (members.some((m) => m.matched)) clusterMatched.push(...members.filter((m) => !m.matched).map((m) => ({ task, arm: m.arm, repeat: m.repeat, index: m.index })));
+      else toPanel.push({ task, members });
+    }
+  }
+  // Unmatched findings the clustering never saw stay on their own.
+  for (const u of judged.unmatched) if (!seen.has(`${u.task}\u0000${findingKey(u)}`)) toPanel.push({ task: u.task, members: [u] });
+  return { toPanel, clusterMatched };
 }
 
 function escapeRegex(s) {
@@ -180,36 +246,58 @@ function lines(f) {
 }
 
 /**
- * Builds the blinded annotation pool: every golden finding and every unmatched arm finding,
- * shuffled together and given opaque ids. `source` stays with the analysis and never enters a prompt.
+ * Builds the blinded annotation pool: every golden finding, every unmatched arm finding (or, with
+ * `clusters`, one item per cluster of unmatched findings that describe the same problem, carrying
+ * its longest message and listing every member in source.members) and every design commentary
+ * cluster in `design` ({task, members, file, lines, kind, summary, nearby}), shuffled together and
+ * given opaque ids. `source` stays with the analysis and never enters a prompt.
  */
-export function panelItems(judged, { arms = judged.arms, aliases = [], seed = 20251111, contextFor } = {}) {
+export function panelItems(judged, { arms = judged.arms, aliases = [], seed = 20251111, contextFor, clusters, design = [] } = {}) {
   const names = blindNames(arms, aliases);
+  const unmatched = clusters
+    ? splitClusters(judged, clusters).toPanel.map(({ task, members }) => {
+      const rep = members.reduce((a, b) => (String(b.message).length > String(a.message).length ? b : a));
+      return {
+        kind: 'unmatched',
+        source: members.length === 1
+          ? { task, arm: rep.arm, repeat: rep.repeat, index: rep.index }
+          : { task, arm: rep.arm, repeat: rep.repeat, index: rep.index, members: members.map((m) => ({ arm: m.arm, repeat: m.repeat, index: m.index })) },
+        f: rep,
+      };
+    })
+    : judged.unmatched.map((u) => ({ kind: 'unmatched', source: { task: u.task, arm: u.arm, repeat: u.repeat, index: u.index }, f: u }));
   const raw = [
     ...judged.golden.map((g) => ({ kind: 'golden', source: { task: g.task, goldenIndex: g.goldenIndex }, f: g })),
-    ...judged.unmatched.map((u) => ({ kind: 'unmatched', source: { task: u.task, arm: u.arm, repeat: u.repeat, index: u.index }, f: u })),
+    ...unmatched,
+    ...design.map((d) => ({ kind: 'design', source: { task: d.task, members: d.members }, f: { file: d.file, start_line: d.start_line, end_line: d.end_line, lines: d.lines, message: d.summary }, kindLabel: d.kind, nearby: d.nearby ?? [] })),
   ];
   return shuffle(raw, seed).map((r, i) => {
-    const excerpt = contextFor ? contextFor(r) : null;
+    const excerpt = contextFor && (r.kind !== 'design' || r.f.file) ? contextFor(r) : null;
     return {
       id: `item-${String(i + 1).padStart(4, '0')}`,
       kind: r.kind,
       source: r.source,
       content: {
         file: sanitizeText(r.f.file, names),
-        lines: lines(r.f),
+        lines: lines(r.f) ?? (r.f.lines ? String(r.f.lines) : null),
+        ...(r.kind === 'design' ? { commentary: r.kindLabel } : {}),
         finding: sanitizeText(r.f.message, names),
         ...(excerpt ? { excerpt: sanitizeText(excerpt, names).slice(0, 2000) } : {}),
+        ...(r.kind === 'design' && r.nearby.length ? { nearby_findings: r.nearby.map((m) => sanitizeText(m, names).slice(0, 200)) } : {}),
       },
     };
   });
 }
 
+const INTRO = {
+  golden: 'Each item is a code review finding that reviewers confirmed on a pull request. Classify the problem it describes.',
+  unmatched: 'Each item is a code review finding that matched no confirmed finding for its pull request. Judge whether it describes a real problem.',
+  design: 'Each item is design commentary from a code review: a design fork (a choice with credible alternatives) or an implicit bet (a decision that trades one failure mode or cost for another), with the diff excerpt it concerns and defect findings the reviews raised nearby. Judge its quality as design commentary, not whether it reports a bug.',
+};
+
 export function buildPanelPrompt(kind, items, taxonomy) {
   const dims = taxonomy[kind];
-  const intro = kind === 'golden'
-    ? 'Each item is a code review finding that reviewers confirmed on a pull request. Classify the problem it describes.'
-    : 'Each item is a code review finding that matched no confirmed finding for its pull request. Judge whether it describes a real problem.';
+  const intro = INTRO[kind];
   const schema = Object.entries(dims).map(([dim, labels]) => `- ${dim}: one of ${labels.join(', ')}. Meaning: ${DIMENSION_HELP[dim] ?? dim}.`);
   const example = { id: items[0]?.id ?? 'item-0001', ...Object.fromEntries(Object.entries(dims).map(([d, l]) => [d, l[0]])) };
   return [
@@ -292,6 +380,8 @@ export async function runPanel({
   maxChars = MAX_PROMPT_CHARS - 4000,
 }) {
   validateTaxonomy(taxonomy, { requireFrozen });
+  if (items.some((it) => it.kind === 'design')) taxonomy = withDesignRubric(taxonomy);
+  const kinds = taxonomyKinds(taxonomy).filter((k) => REQUIRED_KINDS.includes(k) || items.some((it) => it.kind === k));
   if (new Set(panelists).size !== panelists.length || panelists.length < 3) throw new Error('The panel needs at least three distinct panelists');
   if (!grade) {
     if (!evidenceDir) throw new Error('runPanel needs grade or evidenceDir for the Copilot grader');
@@ -309,7 +399,7 @@ export async function runPanel({
     return path.relative(evidenceDir, file).split(path.sep).join('/');
   };
   for (const [p, model] of panelists.entries()) {
-    for (const kind of ['golden', 'unmatched']) {
+    for (const kind of kinds) {
       const pool = shuffle(items.filter((it) => it.kind === kind), seed + 7919 * (p + 1));
       const dims = dimensionsFor(taxonomy, kind);
       // A call that fails without an answer (timeout or nonzero exit) splits its batch in half and
@@ -393,7 +483,7 @@ export async function runPanel({
       }
     }
   }
-  return { taxonomy: { version: taxonomy.version, frozen: taxonomy.frozen === true, dimensions: { golden: taxonomy.golden, unmatched: taxonomy.unmatched } }, panelists, sharedFamily: panelists.includes(SHARED_FAMILY_PANELIST) ? SHARED_FAMILY_PANELIST : null, items, annotations, failures, prompts, answers };
+  return { taxonomy: { version: taxonomy.version, frozen: taxonomy.frozen === true, dimensions: Object.fromEntries(kinds.map((k) => [k, taxonomy[k]])) }, panelists, sharedFamily: panelists.includes(SHARED_FAMILY_PANELIST) ? SHARED_FAMILY_PANELIST : null, items, annotations, failures, prompts, answers };
 }
 
 /** Item and panelist pairs with neither an annotation nor a failure record. */
@@ -479,7 +569,7 @@ export function agreementStats(panel, { exclude = [] } = {}) {
     labelsOf.get(a.item).set(a.panelist, a.labels);
   }
   const dims = [];
-  for (const kind of ['golden', 'unmatched']) {
+  for (const kind of Object.keys(panel.taxonomy.dimensions)) {
     for (const d of Object.keys(panel.taxonomy.dimensions[kind])) {
       const items = panel.items.filter((it) => it.kind === kind);
       const units = items.map((it) => panelists.map((p) => labelsOf.get(it.id)?.get(p)?.[d] ?? null));
@@ -500,7 +590,7 @@ export function maintainerAgreement(panel, handLabels, { exclude = [] } = {}) {
   if (!handLabels || !Object.keys(handLabels).length) return null;
   const cons = consensusLabels(panel, { exclude });
   const rows = [];
-  for (const kind of ['golden', 'unmatched']) {
+  for (const kind of Object.keys(panel.taxonomy.dimensions)) {
     for (const d of Object.keys(panel.taxonomy.dimensions[kind])) {
       let labelled = 0;
       let agree = 0;

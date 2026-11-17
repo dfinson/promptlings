@@ -3,8 +3,8 @@ description: >-
   Martian Code Review Bench, offline set (withmartian/code-review-benchmark, MIT): 50 real pull
   requests from Cal.com, Discourse, Grafana, Keycloak and Sentry with 173 human-verified golden
   review comments. Each trial reviews one pull request checked out at its head with its PR
-  history and the merge base, and writes findings in the shared findings contract. A blind
-  claude-sonnet-5 judge matches each trial's findings to the PR's golden comments.
+  history and the merge base, and writes findings in the shared findings contract. Three blind
+  judges (two must agree) match each trial's findings to the PR's golden comments.
 
 taskSource:
   type: dataset
@@ -272,7 +272,10 @@ concurrency: 4
 
 judge:
   provider: github-copilot
-  model: claude-sonnet-5
+  # Three judges from different model families; a finding matches a golden comment when at least
+  # minVotes of them pair the two.
+  models: [claude-opus-5.5, grok-4.7, gpt-6.1-terra]
+  minVotes: 2
   concurrency: 4
 
 analysis:
@@ -287,10 +290,10 @@ analysis:
   multipleComparisons: holm
   familywiseAlpha: 0.05
   interval: paired-bootstrap-by-pr
-  # verified_precision, verified and wrong come from the panel (panel: below), which rules on every
-  # finding the judge matched to no golden comment, on every judged PR.
+  # verified_precision, verified, wrong and unverifiable come from the panel (panel: below), which
+  # rules on every finding the judges matched to no golden comment, on every judged PR.
   guardrail: verified_precision
-  secondary: [verified, wrong, recall_medplus, recall_core, recall_strict, precision, candidate_count]
+  secondary: [verified, wrong, unverifiable, unverifiable_rate, recall_medplus, recall_core, recall_strict, precision, candidate_count]
   declaredDifferences: [plugin, external, promptPreamble, requiredTeam, qualificationChecks]
   disclosures:
     - arm: hve-full
@@ -312,19 +315,31 @@ analysis:
     - arm: stock
       kind: judge
       text: >-
-        Matching uses one blind claude-sonnet-5 call per trial that lists the PR's golden comments
-        and the trial's findings, not Martian's pairwise judge. A blind three-model panel
-        (claude-opus-5.5, grok-4.7, gpt-6.1-terra; two must agree) then rules on every finding
-        that matched no golden comment, on every judged PR. verified counts golden matches plus
-        findings the panel accepts as real problems the golden set missed; verified_precision is
-        verified over all findings; wrong counts findings the panel accepts as not a problem.
-        Findings the panel calls plausible but unverifiable, or disputes, count as neither.
-        precision (golden matches only) is kept as a secondary metric for comparison with
-        Martian's published numbers. The panel taxonomy (v1-pilot) is not frozen.
+        Matching uses one blind call per trial and judge model (claude-opus-5.5, grok-4.7,
+        gpt-6.1-terra) that lists the PR's golden comments and the trial's findings, not Martian's
+        pairwise judge; a finding matches a golden comment when at least two judges pair them.
+        Findings that matched no golden comment are then grouped per PR by the problem they
+        describe, across all arms, and a blind three-model panel (the same three models; two must
+        agree) labels each group once, so every arm that raised the same problem gets the same
+        label. A finding grouped with a golden-matched finding counts as verified. verified counts
+        golden matches plus findings the panel accepts as real problems the golden set missed;
+        wrong counts findings the panel accepts as not a problem; verified_precision is verified
+        over verified plus wrong. Findings the panel calls plausible but unverifiable are reported
+        separately as unverifiable and unverifiable_rate rather than counted as wrong; disputed
+        findings count in none of these. Design forks and implicit bets in each review's prose are
+        extracted, grouped per PR and judged on their own rubric (grounded, correct,
+        consequential, non-duplicative, actionable) in a separate design commentary section that
+        does not enter recall or precision. precision (golden matches only) is kept as a secondary
+        metric for comparison with Martian's published numbers. The panel taxonomy (v1-pilot) is
+        not frozen.
 
 panel:
   taxonomy: ../reviewbench/taxonomy.json
   namedInAdvance: []
+  # Group duplicate unmatched findings before labelling, and score design commentary (both default on).
+  cluster: true
+  design: true
+  clusterModel: claude-opus-5.5
   requireFrozen:
     main: false
     smoke: false

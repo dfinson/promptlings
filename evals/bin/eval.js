@@ -213,6 +213,9 @@ async function panelStage(adapter, run, manifest, artifactRoot) {
       diffFilesFor: inputs.diffFilesFor,
       ...(inputs.contextFor ? { contextFor: inputs.contextFor } : {}),
       ...(inputs.judgeRoot ? { judgeRoot: inputs.judgeRoot } : {}),
+      ...(inputs.cluster ? { cluster: true } : {}),
+      ...(inputs.clusterModel ? { clusterModel: inputs.clusterModel } : {}),
+      ...(inputs.designTextFor ? { designTextFor: inputs.designTextFor } : {}),
     });
     run.panel = { ok: true, outDir: outDir ?? join(run.runDir, "panel") };
     return trialMetrics ?? null;

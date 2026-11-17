@@ -7,8 +7,7 @@ import { parse as parseYaml } from 'yaml';
 import { applyLeakage, scanTrial } from '../../scoring/leakage.js';
 import { armPreamble as rbArmPreamble, diffFiles, normalizeFindings } from '../reviewbench/adapter.js';
 import { qualifyTrial } from '../reviewbench/qualify.js';
-import { judgePreflight } from '../reviewbench/judge.js';
-import { judgeTrial, metricsFor } from './judge.js';
+import { judgePreflight, judgeTrial, metricsFor } from './judge.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const SUITE_PATH = join(HERE, 'suite.yaml');
@@ -456,6 +455,20 @@ export function panelInputs(runDir, suite = loadSuite(), ctx = {}) {
       const patch = patchFor(item.source.task);
       return patch ? hunksFor(patch, item.f.file, item.f.start_line) : null;
     },
+    // Grouping duplicate findings and scoring design commentary are on by default for this suite.
+    cluster: panel.cluster !== false,
+    ...(panel.clusterModel ? { clusterModel: panel.clusterModel } : {}),
+    ...(panel.design === false ? {} : {
+      designTextFor({ task, arm, repeat }) {
+        const dir = join(runDir, 'trials', task, arm, String(repeat));
+        const output = join(dir, 'output.md');
+        const candidate = join(dir, 'candidate.json');
+        return {
+          text: existsSync(output) ? readFileSync(output, 'utf8') : '',
+          findings: existsSync(candidate) ? JSON.parse(readFileSync(candidate, 'utf8')).findings ?? [] : [],
+        };
+      },
+    }),
   };
 }
 
