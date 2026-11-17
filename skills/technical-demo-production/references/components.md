@@ -2,9 +2,10 @@
 
 Choose components to express the approved treatment, not a topic-specific template. Captions, footage framing, quotations, diagrams and transitions generalize because their content changes independently of their implementation.
 
+These sources serve the explicitly selected Remotion route. The default HyperFrames route uses its own registry (`npx hyperframes catalog`) and frame presets. Remotion requires a company license for organizations above its free-use threshold; confirm the user's licensing before selecting this route for company work.
+
 | Source | Reuse | Integration |
 | --- | --- | --- |
-| [Motionite, NxrLabs](https://github.com/nxrskyaa/motionite) | Selected style example, `anim.ts`, `styles/kit.tsx`, typography, camera and transition examples | Installed from a pinned upstream revision by the Promptlings installer. Read its `LICENSE`, preserve notices and copy only needed source/assets into production. |
 | [snapcn, Shadcn Labs](https://github.com/shadcn-labs/snapcn) | Text reveals, captions, device frames, terminal illustrations and composed scenes | MIT source-copy registry. Select components and their declared dependencies. Its `@/` alias needs bundler configuration as well as TypeScript configuration. Do not adopt its separate production workflow. |
 | [Remotion Bits, av](https://github.com/av/remotion-bits) | Animated text, transitions, particles, 3D and motion utilities | Package imports or selective source retrieval. Package 0.2.1 declares React 18+ and Remotion 4+ peers and MIT licensing. At inspection its root license link was missing, so resolve applicable distribution notices before adoption. |
 | [Remotion transitions](https://www.remotion.dev/docs/transitions) | `TransitionSeries` and timing/presentation primitives | Pin to the production Remotion version. Remotion runtime terms apply. |
@@ -15,7 +16,7 @@ These are component sources, not mandatory dependencies. Check actual exports, p
 
 For `@remotion/media` video, check the actual recording's codec on the selected browser. Keep fallback explicit: use `onError={(error) => { console.error(error); return 'fail'; }}` for performance comparisons and strict rendering. If production needs the documented `OffthreadVideo` fallback, log the decoder failure and record that fallback in the production result before accepting it. A benchmark with undisclosed fallback does not measure the selected media path. Compare the footage interval and its joins after migration, including audio and timing, rather than assuming API similarity guarantees identical output.
 
-Motionite's code and documentation use MIT terms. Bundled fonts have separate SIL OFL notices, product images are copyrighted by NxrLabs, and Remotion has its own runtime terms. Installation is not permission to reuse product imagery. Supply rights-cleared subject assets, including replacements for the console/cartridge images expected by the Style 12 example. Do not treat preview images as freely reusable production assets.
+Installation is not permission to reuse third-party product imagery. Supply rights-cleared subject assets and do not treat preview images as freely reusable production assets.
 
 [Parameterized rendering](https://www.remotion.dev/docs/parameterized-rendering) separates reusable component code from input props. Pass text, media, theme and timing as typed props, and derive metadata with the existing Remotion API where needed. Keep composition code and the dependency lockfile stable when only content changes.
 

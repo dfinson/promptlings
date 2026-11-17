@@ -69,6 +69,8 @@ These examples show variety. They are illustrative only; never reuse their wordi
 
 - Orient the listener before each unfamiliar detail: what they are looking at, what matters about it, then the mechanism and its consequence. Keep the opening hook before extended background. Name the visible object rather than relying on an ambiguous "this" or an abstract system property.
 - Let one consequential thought land at a time. Use natural conversational sentences and contractions, with length varied for meaning and rhythm. Split overloaded utterances at real idea boundaries without deleting the causal link. Word or sentence counts do not prove comprehensibility.
+- State the situation before the action it prompts. Spoken explanation usually runs: when this happens, you can do that, and here is what it does. Lead with the general case or need that makes the action worth taking, then the action, then its effect. Explain what a feature does on its own before its options or variations. A line that jumps straight to the action ("she wants it shorter, so she asks the assistant to shorten it") is grammatical but unconnected: the listener hears a step without the reason anyone would take it.
+- Introduce every name and term before relying on it: people, firms, clients, products, features, on-screen regions such as "the side list", and placeholder conventions such as square-bracket fields. Give each one a short spoken introduction (who or what it is, and why it matters here) at its first mention, or show it while it is named. Do not assume the listener read the storyboard, the source or an earlier scene they did not hear.
 - Connect the changed behavior to why it matters and to the next visible step. Reuse the same terms for the same objects. Avoid a chain of isolated feature announcements, even when each sentence is accurate.
 - Give a new idea and its on-screen evidence time to be understood. Coordinate inspection holds with the production owner instead of filling every pause with another claim. Distinguish existing baseline behavior from the actual new contribution.
 - Remove unnecessary repetition and repeated transition formulas. Keep a useful hook payoff or necessary reminder, not a section-by-section recap. Follow the foundation's semantic repetition check.
@@ -90,7 +92,10 @@ review, run a whole-script first-listen pass at intended spoken pace against
 the screen sequence. Ask whether a listener unfamiliar with the investigation
 can identify the object, follow what changes, understand the consequence and
 connect each section to the overall story without rereading or reconstructing
-missing reasoning. Check the surrounding setup and transitions too.
+missing reasoning. Check the surrounding setup and transitions too. For every
+action line, confirm the listener has already heard the situation that prompts
+it. For every name, term, placeholder or screen region, confirm it was
+introduced at or before its first spoken use.
 
 If accurate prose still reads like compressed release notes, restructure and
 rewrite the complete affected passage now. Clarity, factual substance and the
@@ -113,6 +118,10 @@ These illustrate style, not evidence for a new script.
 Generic: "This update enhances robustness through improved error handling."
 
 Grounded alternative, only when supported: "This change moves validation earlier. Invalid requests are rejected before they reach the next stage, rather than failing later in the process."
+
+Unconnected: "The adviser wants the introduction to read better, so he asks the assistant to improve it."
+
+Connected alternative, only when supported: "If the adviser isn't happy with how a section reads, he can ask the assistant to improve it. On its own, Improve rewrites the section in place. He can also give it an instruction, such as making it shorter." The general situation comes first, then the action, then what it does by default, then the variation.
 
 Source: "I kept implementing while the earlier part was still under review, mainly because we had a short window to get the demo working."
 

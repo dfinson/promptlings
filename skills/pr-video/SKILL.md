@@ -17,15 +17,20 @@ This skill supplies the change-specific discovery and story practice. The `techn
 - Establish who watches and what they need to decide: approve, adopt, integrate or learn.
 - Write the change's intent in one sentence and confirm it with the author or user when the PR does not state it.
 - Rank changed files by consequence: entry points, public contracts, schemas, configuration and data shape first; internal implementation next; mechanical edits last.
+- When the change touches stored data, access or background work, establish from code where the data is stored, its saved shape, who can read it and which check enforces that, its lifecycle, the entry points that reach it (routes, jobs, external or AI calls) and what the change deliberately excludes. Each answer is a claim needing a source range.
+- For a stacked PR, cover only this layer's diff against its parent, sized by this layer's consequence, matching `pr-description-writing`.
 
 ## Shape the story
 
-1. **Why:** the problem and why it matters now, in one or two sentences.
-2. **Behavior:** when the change is visible to a user or an API caller, show the base and head behavior side by side or in sequence, captured from real builds of both commits.
-3. **Code tour:** one scene per hunk or tight hunk group, in consequence order, each with one takeaway: the problem the hunk addresses, shown by base behavior or a case the preceding scene showed on screen, and how the change addresses it.
-4. **Decisions to weigh:** design forks, migrations, compatibility and rollout steps the change actually carries.
+Open on the real product, code or result the change affects, with the hook narrated over it. Do not open on a title slide or logo card.
 
-Summarize mechanical churn such as renames, formatting and generated files in one line with a count. Scale length to the change: a small fix needs about a minute.
+1. **Why:** the problem and why it matters now, in one or two sentences.
+2. **Behavior:** when the change is visible to a user or an API caller, show the base and head behavior side by side or in sequence, captured from real builds of both commits. Use the same data, the same actions and the same pace for both, label each half, and show a visible elapsed timer when speed is the claim. Produce the "before" half by running the base commit from its own worktree on a separate port, against the same data snapshot, and record both halves with the same capture script, viewport and pointer seed. Remove that worktree when the video is done. When the change is not visible to a user or caller, skip this beat rather than staging a screen.
+3. **Architecture (optional):** when an invisible change is consequential, spend about 10 to 20 seconds on a source-backed diagram of the discovery answers. This is the one place for a scale-out reveal from the changed component to its surrounding system, used at most once per video.
+4. **Code tour:** one scene per hunk or tight hunk group, in consequence order, each with one takeaway: the problem the hunk addresses, shown by base behavior or a case the preceding scene showed on screen, and how the change addresses it.
+5. **Decisions to weigh:** design forks, migrations, compatibility and rollout steps the change actually carries.
+
+Summarize mechanical churn such as renames, formatting and generated files in one line with a count. Scale length to the change: about a minute for a small fix, two to four minutes for a feature with several behaviors. In the behavior beat, hold before and after stills for a small visible change, and record a short interaction of about 30 to 60 seconds when motion or flow is the evidence.
 
 ## Show code legibly
 
@@ -43,4 +48,4 @@ Handle a missing specialist as `cue-synced-demo` describes, and never hand-roll 
 
 ## Produce and deliver
 
-Use the director's approved treatment and production record instead of restarting discovery or approvals during realization. Write narration with `reasoning-first-narration`, user-facing prose with `reasoning-first-writing`, and story continuity with `narrative-transitions`. Use `tts-setup` for synthetic speech and `cue-synced-demo` for captured footage and timing. Composed scenes use `motionite` and Remotion by default, or `hyperframes` when explicitly selected. Without the Technical Demo agent, apply the same route selection directly and invoke `technical-demo-production` for reuse and rendering support. Every claim traces to a diff line, a test or observed behavior. Hand the finished video to the user for review, and offer to attach it to the pull request.
+Use the director's approved treatment and production record instead of restarting discovery or approvals during realization. Write narration with `reasoning-first-narration`, user-facing prose with `reasoning-first-writing`, and story continuity with `narrative-transitions`. Use `tts-setup` for synthetic speech and `cue-synced-demo` for captured footage and timing. Composed scenes use `hyperframes` by default, or Remotion when the user explicitly selects it. Without the Technical Demo agent, apply the same route selection directly and invoke `technical-demo-production` for reuse and rendering support. Every claim traces to a diff line, a test or observed behavior. Hand the finished video to the user for review, and offer to attach it to the pull request.

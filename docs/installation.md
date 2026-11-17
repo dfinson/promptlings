@@ -113,7 +113,7 @@ execution is restricted.
 | Basic Memory | uv tool, published memory skills, MCP registration, and user-login startup |
 | Playwright | Global npm application, published skill, and Chrome browser |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
-| Technical Demo | Pinned upstream Motionite skill and Markdown production/writing/capture guidance. A reusable user-local runtime includes Remotion 4.0.539 (CLI, Player, bundler, renderer and media), React, TypeScript and matching Chrome Headless Shell |
+| Technical Demo | Pinned upstream motion-art-direction and animation-principles skills (HyperFrames skills come from the HyperFrames row) and Markdown production/writing/capture guidance. A reusable user-local runtime for the opt-in Remotion route includes Remotion 4.0.539 (CLI, Player, bundler, renderer and media), React, TypeScript and matching Chrome Headless Shell |
 | Demo capture | VS Code when missing, pinned Demo Time extension and skills, vscode-playwright skill, document-rendering tools, and diff2html CLI |
 | Interactive Presentation | When the agent is selected: Playwright CLI with its browser and skill, the frontend-design and HyperFrames skills, and the pinned experience toolkit (esbuild, Shiki, Magic Move, Flubber, Rough.js, D3, dagre, Lucide, Tabler Icons, Fontsource fonts and axe-core) as global npm packages. These install regardless of opt-outs. Under `npx promptlings publish`, the default selection leaves the agent out, and naming it with `--agents` fails |
 
@@ -139,7 +139,7 @@ pinned package dependencies.
 | `--memory-port 8123` | Use a different Basic Memory port |
 | `--no-playwright` | Skip Playwright CLI, its browser, and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` | Skip HyperFrames, media binaries, and skills |
-| `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, Motionite, the Remotion runtime and Headless Shell, LibreOffice, Poppler, and diff2html |
+| `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, motion-art-direction, animation-principles, the Remotion runtime and Headless Shell, LibreOffice, Poppler, and diff2html |
 | `--no-skills` | Skip external published skills, not bundled Promptlings skills |
 | `--no-readside` | Skip the global memory read-side rule |
 | `--list` | List agent names and exit |
@@ -161,15 +161,17 @@ requires it. Ensemble readiness
 checks all required methods before dispatch; installing the skill does not
 add another reviewer.
 
-Technical Demo uses Motionite/Remotion by default and HyperFrames when explicitly
-selected. `install` and `tools` fetch Motionite from the revision pinned in
-[`lib/pins.js`](../lib/pins.js), with the other external demo skills. `--no-demo`
-or `--no-skills` skips it. `publish` supplies only our agent and
+Technical Demo uses HyperFrames by default and Remotion only when explicitly
+selected. HyperFrames skills are fetched unless `--no-hyperframes` or `--no-skills` is given; Interactive Presentation installs them regardless.
+`install` and `tools` fetch the other external demo skills from the revisions pinned in
+[`lib/pins.js`](../lib/pins.js), including
+[motion-art-direction and animation-principles](https://github.com/iart-ai/motion-design-skills)
+for motion direction, timing and review vocabulary. `--no-demo` or `--no-skills` skips them. `publish` supplies only our agent and
 [production support](../skills/technical-demo-production/SKILL.md), so it assumes
-the upstream toolchain is already installed. No Motionite checkout is bundled in
+the upstream toolchain is already installed. No upstream skill checkout is bundled in
 this package.
 
-With demo tools enabled, installation also prepares
+With demo tools enabled, installation also prepares the opt-in Remotion runtime at
 `~/.promptlings/runtimes/remotion-4.0.539` under the user's home directory on every
 OS. Exact package pins live in [`lib/pins.js`](../lib/pins.js).
 Matching packages and the browser cache are reused on subsequent installs.
