@@ -1,0 +1,12 @@
+{
+  "version": "v1-pilot",
+  "frozen": false,
+  "golden": {
+    "defect_class": ["logic", "error-handling", "concurrency", "security", "api-contract", "data-persistence", "tests", "performance", "documentation", "maintainability"],
+    "locality": ["single-hunk", "single-file", "cross-file", "outside-diff"],
+    "detection": ["diff", "unchanged-code", "execution", "history-conventions"]
+  },
+  "unmatched": {
+    "verdict": ["real-missing-from-golden", "plausible-unverifiable", "wrong"]
+  }
+}

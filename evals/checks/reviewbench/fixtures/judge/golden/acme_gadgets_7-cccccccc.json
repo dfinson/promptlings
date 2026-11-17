@@ -1,0 +1,21 @@
+{
+  "pr_key": "acme_gadgets_7-cccccccc",
+  "pr": {
+    "repo": "https://github.com/acme/gadgets",
+    "pr_number": 7,
+    "base": "0000000000000000000000000000000000000000",
+    "head": "cccccccccccccccccccccccccccccccccccccccc"
+  },
+  "findings": [
+    {
+      "file": "main.go",
+      "start_line": 10,
+      "end_line": 12,
+      "message": "synthetic finding c0",
+      "tp_fp": "fp",
+      "severity": "low",
+      "category": "style",
+      "producer": "human:reviewer"
+    }
+  ]
+}

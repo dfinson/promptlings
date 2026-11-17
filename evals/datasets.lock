@@ -1,0 +1,20 @@
+{
+  "datasets": {
+    "reviewbench": {
+      "source": { "type": "git", "url": "https://github.com/review-bench/ReviewBench.git" },
+      "commit": "f223ce33558a6d211fd222b1f7ff2fd7b44403d4",
+      "contentHash": "sha256:f0a6c85ee9840295f05cc032974c522399dbb071c52ac111ec0b4504686d028b",
+      "contentPaths": ["corpus", "golden", "scripts", "schema", "package.json", "package-lock.json", "tsconfig.json"],
+      "codeLicense": "MIT",
+      "dataLicense": null,
+      "licenseDecision": {
+        "decision": "approved: local benchmark use under the repository MIT license (README and LICENSE at f223ce3); corpus and golden data used locally only, never committed or published",
+        "by": "dfinson",
+        "date": "2026-11-11"
+      },
+      "mirrorOrg": "review-bench",
+      "counts": { "full": 219, "test": 25, "heldout": 194, "testGoldenFindings": 565, "testGoldenTruePositives": 352 },
+      "notes": "Code is MIT. ReviewBench states no separate license for corpus and golden data; the adapter refuses to run without a maintainer licenseDecision {decision, by, date}, recorded above. contentHash is sha256 over sorted 'path<TAB>sha256(bytes)' lines of contentPaths in an LF checkout (core.autocrlf=false). Data stays under EVALS_ARTIFACT_ROOT and is never committed."
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "pr_key": "acme_widgets_2-bbbbbbbb",
+  "pr": {
+    "repo": "https://github.com/acme/widgets",
+    "pr_number": 2,
+    "base": "0000000000000000000000000000000000000000",
+    "head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "findings": [
+    {
+      "file": "lib/x.py",
+      "start_line": 10,
+      "end_line": 12,
+      "message": "synthetic finding b0",
+      "tp_fp": "tp",
+      "severity": "medium",
+      "category": "security",
+      "producer": "human:reviewer"
+    },
+    {
+      "file": "lib/y.py",
+      "start_line": 10,
+      "end_line": 12,
+      "message": "synthetic finding b1",
+      "tp_fp": "tp",
+      "severity": "high",
+      "category": "bug",
+      "producer": "agent:other"
+    }
+  ]
+}
