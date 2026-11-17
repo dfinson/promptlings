@@ -185,6 +185,21 @@ export function prefetch(split = 'offline', ctx = {}) {
   return out;
 }
 
+/**
+ * A seeded arm starts from its source trial's review of the same PR: the source's final answer
+ * goes to previous-review.md and its normalized findings to previous-findings.json.
+ */
+export function writeSeed(prDir, seed) {
+  const local = join(seed.trialDir, 'output.md');
+  const output = existsSync(local) ? local : seed.record?.outputPath;
+  const candidate = join(seed.trialDir, 'candidate.json');
+  if (!output || !existsSync(output) || !existsSync(candidate)) throw new Error(`seed: ${seed.sourceArm} trial at ${seed.trialDir} has no output.md or candidate.json`);
+  copyFileSync(output, join(prDir, 'previous-review.md'));
+  const { findings } = JSON.parse(readFileSync(candidate, 'utf8'));
+  const kept = findings.map(({ file, start_line, end_line, message }) => ({ file, start_line, end_line, message }));
+  writeFileSync(join(prDir, 'previous-findings.json'), `${JSON.stringify({ findings: kept }, null, 2)}\n`);
+}
+
 /** Checks the PR out at its head with its PR history and the merge base, with no remote configured. */
 export function materialize(task, workspace, ctx = {}) {
   mkdirSync(workspace, { recursive: true });
@@ -204,6 +219,7 @@ export function materialize(task, workspace, ctx = {}) {
   writeFileSync(join(prDir, 'pr.json'), `${JSON.stringify(meta, null, 2)}\n`);
   // Two-dot from the merge base: the shallow history may not reach a common ancestor for three-dot.
   writeFileSync(join(prDir, 'diff.patch'), git(['diff', '--no-color', BASE_BRANCH, HEAD_BRANCH], workspace));
+  if (ctx.seed) writeSeed(prDir, ctx.seed);
   appendFileSync(join(workspace, '.git', 'info', 'exclude'), `\n/${PR_DIR}/\n/.copilot-tracking/\n`);
   return { workspace, base: BASE_BRANCH, head: HEAD_BRANCH, baseSha: task.base, headSha: task.head };
 }

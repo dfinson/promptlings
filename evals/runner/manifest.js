@@ -87,6 +87,14 @@ export function validateManifest(manifest, { suiteName } = {}) {
     m.arms.forEach((arm, i) => validateArm(arm, i, errors));
     const ids = m.arms.map((a) => a?.id);
     if (new Set(ids).size !== ids.length) fail(errors, "arms", "ids must be unique");
+    // Arms run in declaration order, so a seed source declared earlier is always dispatched first.
+    m.arms.forEach((arm, i) => {
+      if (arm?.seedFrom === undefined) return;
+      const at = ids.indexOf(arm.seedFrom);
+      if (typeof arm.seedFrom !== "string" || at < 0) fail(errors, `arms[${i}].seedFrom`, "must name another arm");
+      else if (at >= i) fail(errors, `arms[${i}].seedFrom`, `must name an arm declared before ${arm.id}`);
+      else if (m.arms[at].seedFrom !== undefined) fail(errors, `arms[${i}].seedFrom`, "cannot name an arm that is itself seeded");
+    });
   }
   if (typeof m.prompt !== "string" || !m.prompt.trim()) fail(errors, "prompt", "is required");
   if (!isObject(m.limits)) fail(errors, "limits", "is required");
@@ -125,6 +133,11 @@ export function validateManifest(manifest, { suiteName } = {}) {
         if (stage.arms !== undefined) {
           if (!Array.isArray(stage.arms)) fail(errors, `stages.${name}.arms`, "must list arm ids");
           else for (const id of stage.arms) if (!armIds.has(id)) fail(errors, `stages.${name}.arms`, `unknown arm ${id}`);
+          if (Array.isArray(stage.arms)) {
+            for (const arm of m.arms ?? []) {
+              if (stage.arms.includes(arm?.id) && arm.seedFrom && !stage.arms.includes(arm.seedFrom)) fail(errors, `stages.${name}.arms`, `${arm.id} is seeded from ${arm.seedFrom}, which the stage does not run`);
+            }
+          }
         }
         if (stage.repeats !== undefined && !positiveInteger(stage.repeats)) fail(errors, `stages.${name}.repeats`, "must be a positive integer");
         if (stage.concurrency !== undefined && !positiveInteger(stage.concurrency)) fail(errors, `stages.${name}.concurrency`, "must be a positive integer");

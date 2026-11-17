@@ -5,6 +5,7 @@ import { creditDerivation, runTrial } from "./index.js";
 import { preflightArms, resolveArmRefs } from "./install.js";
 import { pluginSummary, preparePlugins } from "./plugin.js";
 import { resolveStage } from "./manifest.js";
+import { awaitSeed } from "./seed.js";
 import { artifactRoot as defaultArtifactRoot, suitesRoot as defaultSuitesRoot } from "./paths.js";
 import { loadSuite } from "./suites.js";
 
@@ -175,7 +176,10 @@ export async function runSuite({
     try {
       mkdirSync(workspace, { recursive: true });
       mkdirSync(trialDir, { recursive: true });
-      await adapter.materialize(task, workspace, { ...ctx, arm });
+      const seed = arm.seedFrom
+        ? await awaitSeed({ sourceTrialDir: join(runDir, "trials", safeSegment(task.id), safeSegment(arm.seedFrom), String(repeat)), sourceArm: arm.seedFrom })
+        : undefined;
+      await adapter.materialize(task, workspace, { ...ctx, arm, seed });
       const prompt = typeof adapter.buildPrompt === "function"
         ? await adapter.buildPrompt(task, arm, manifest)
         : renderPrompt(arm.prompt ?? manifest.prompt, task, workspace);

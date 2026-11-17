@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { loadRunner } from './runner.js';
 import { trialStatus } from '../scoring/scores.js';
 import { reviewDenials } from '../scoring/denial-review.js';
+import { awaitSeed } from '../runner/seed.js';
 
 export function safeSegment(value) {
   const text = String(value ?? '').replace(/[^A-Za-z0-9._-]/g, '_');
@@ -78,6 +79,10 @@ export default class CopilotTrialProvider {
       fs.mkdirSync(workspace);
       const adapter = await importAdapter(adapterModule);
       const ctx = { workspace, trialDir, arm, artifactRoot, runDir: path.resolve(runDir), suite };
+      if (arm.seedFrom) {
+        const sourceTrialDir = path.join(path.resolve(runDir), 'trials', safeSegment(taskId), safeSegment(arm.seedFrom), String(repeat));
+        ctx.seed = await awaitSeed({ sourceTrialDir, sourceArm: arm.seedFrom });
+      }
       if (adapter?.materialize) await adapter.materialize(task, workspace, ctx);
       // An adapter that words the request per arm (ReviewBench's reviewRequests) owns the prompt;
       // otherwise the suite's prompt is used verbatim, and Promptfoo's rendered prompt only without a suite prompt.

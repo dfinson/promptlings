@@ -141,6 +141,29 @@ arms:
     sandbox: true
     customInstructions: false
     limits: { maxAiCredits: 1000 }
+  # Second pass: a fresh sparring-partner session that starts from the sparring-partner trial's
+  # review of the same PR (seedFrom), verifies each finding and looks for problems it missed. Its
+  # credits are the second pass alone; the two-pass cost is this arm's plus sparring-partner's.
+  - id: sparring-partner-2pass
+    ref: candidate
+    selection: --review
+    agent: sparring-partner
+    seedFrom: sparring-partner
+    model: gpt-6.1-sol
+    reasoningEffort: high
+    tools: *noLeakTools
+    sandbox: true
+    customInstructions: false
+    limits: { maxAiCredits: 1000 }
+    promptPreamble: &secondPassPreamble |
+      A previous review of this pull request, from an independent session, is in
+      `.review/previous-review.md`, and its findings are in `.review/previous-findings.json`.
+      Treat it as a starting point, not as settled. First check every previous finding against
+      the code: keep it when the code confirms it, correct its location or explanation when
+      needed, and drop it when the code does not support it. Then review the change for problems
+      the previous review missed, including files, code paths and kinds of issue it did not
+      cover. The findings file and final JSON block must list the complete final set: the
+      confirmed or corrected previous findings and every new one.
   - id: ensemble
     ref: candidate
     selection: --review
@@ -243,14 +266,15 @@ stages:
     # Holm over five comparisons at 5%, power 0.80, per-PR recall SD 0.22: 50 PRs detect about an
     # 11-point difference; fewer than 40 usable pairs gives no verdict.
     analysis: { verdict: true, minPairedN: 40 }
-  # Fast iteration: sparring-partner against both stock baselines on the same 50 PRs. At the
-  # mt-main-2 rates (stock 46, copilot-code-review 40, sparring-partner 68 credits per trial) the
-  # stage plans about 7700 credits and roughly a quarter of the main stage's wall time.
+  # Fast iteration, now the main lane: sparring-partner single and two-pass against both stock
+  # baselines on the same 50 PRs. At the mt-main-2 rates (stock 46, copilot-code-review 40,
+  # sparring-partner 68 credits per trial) and an assumed 100 for the second pass, the stage plans
+  # about 12700 credits.
   fast:
     split: offline
-    arms: [stock, copilot-code-review, sparring-partner]
+    arms: [stock, copilot-code-review, sparring-partner, sparring-partner-2pass]
     repeats: 1
-    maxAiCredits: 15000
+    maxAiCredits: 25000
     analysis: { verdict: true, minPairedN: 40 }
   smoke:
     split: smoke
@@ -258,13 +282,19 @@ stages:
     repeats: 1
     maxAiCredits: 1000
     analysis: { verdict: false }
+  fast-smoke:
+    split: smoke
+    arms: [stock, copilot-code-review, sparring-partner, sparring-partner-2pass]
+    repeats: 1
+    maxAiCredits: 4000
+    analysis: { verdict: false }
 
 limits:
   timeoutMs: 5400000
   maxAiCredits: 1000
   stageCeilings:
     main: 80000
-    fast: 15000
+    fast: 25000
     smoke: 1000
 
 repeats: 1
@@ -287,6 +317,9 @@ analysis:
     - [ensemble, stock]
     - [hve-full, stock]
     - [hve-standard, stock]
+    - [sparring-partner-2pass, stock]
+    - [sparring-partner-2pass, sparring-partner]
+    - [sparring-partner-2pass, copilot-code-review]
   multipleComparisons: holm
   familywiseAlpha: 0.05
   interval: paired-bootstrap-by-pr
@@ -294,8 +327,17 @@ analysis:
   # rules on every finding the judges matched to no golden comment, on every judged PR.
   guardrail: verified_precision
   secondary: [verified, wrong, unverifiable, unverifiable_rate, recall_medplus, recall_core, recall_strict, precision, candidate_count]
-  declaredDifferences: [plugin, external, promptPreamble, requiredTeam, qualificationChecks]
+  declaredDifferences: [plugin, external, promptPreamble, requiredTeam, qualificationChecks, seedFrom]
   disclosures:
+    - arm: sparring-partner-2pass
+      kind: prompt-preamble
+      preamble: *secondPassPreamble
+      text: >-
+        The sparring-partner-2pass arm is a second, fresh sparring-partner session seeded with
+        the sparring-partner trial's review of the same PR (its final answer and findings). Its
+        prompt is the shared task prompt preceded by a preamble asking it to verify every
+        previous finding and then look for problems the previous review missed. Its credits
+        cover the second pass only; the full two-pass cost adds the sparring-partner trial's.
     - arm: hve-full
       kind: prompt-preamble
       preamble: *hveFullPreamble
