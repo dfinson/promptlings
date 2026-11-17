@@ -10,7 +10,7 @@
     {
       "name": "promptlings-code-review",
       "source": "./plugins/promptlings-code-review",
-      "description": "Two pull request review agents. the-nitcracker flags defects inline and writes a narrative walkthrough; pr-walkthrough writes orientation only. Both split output into defects, design forks, and implicit bets, and render judgment on defects alone.",
+      "description": "Two pull request review agents and the design-forks-and-bets skill they share. the-nitcracker flags defects inline and writes a narrative walkthrough; pr-walkthrough writes orientation only. Both split output into defects, design forks, and implicit bets, and render judgment on defects alone.",
       "category": "development",
       "homepage": "https://github.com/dfinson/promptlings/tree/main/plugins/promptlings-code-review"
     }

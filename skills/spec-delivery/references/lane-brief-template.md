@@ -5,6 +5,10 @@ verbatim excerpt of the approved human specification or execution plan, so
 the lane reads the exact artifact versions the human approved. Supply readable
 snapshots when the source location is not accessible from the child.
 
+Use a lane only after the coordinator has justified a delivery split.
+Do not turn every research heading into an assignment. A single bounded change
+normally remains with its existing owner, without this handoff ceremony.
+
 ```markdown
 You own <meaningful task name> of <slug>. Implement only this task.
 
@@ -27,6 +31,11 @@ Authorized scratch: <actual location accessible from this lane worktree>.
 <verbatim named task section from the human specification>
 <verbatim approved functionality, contracts changed, contracts used>
 
+## Size and mechanism constraints
+<selected mechanism and existing capabilities to reuse>
+<user's overall size/complexity constraint and this lane's bounded responsibility>
+<unselected opportunities, experiments and excluded new infrastructure>
+
 ## Your acceptance criteria
 <verbatim approved criteria and exact commands this task owns>
 
@@ -42,8 +51,13 @@ explanation of their behavior and any decision that constrains them>
 
 ## Rules
 - Write only inside the write set. If you need to cross it, stop and send the
-  master a graph amendment request with the reason. Never edit the approved
+  coordinator the concrete scope conflict and minimum necessary correction.
+  Never edit the approved
   planning artifacts.
+- Implement the minimum sufficient change. Do not invent further PRs,
+  supervisors, manifests, services or reporting systems from an opportunity
+  inventory. If essential correctness cannot fit the assigned constraints,
+  return that conflict with evidence instead of silently expanding the work.
 - Keep planning artifacts and evidence outside product Git history unless
   explicitly authorized. Share the supplied approved snapshots, not invented
   repository paths or approval commits.
@@ -61,7 +75,8 @@ explanation of their behavior and any decision that constrains them>
   or have the master apply them for you.
 - Never modify or delete an existing test outside the write set. Never add skip,
   xfail or focus markers.
-- Subagents are allowed for transient work inside this lane.
+- Use a transient subagent only for substantial independent work that benefits
+  from separate context, within the same scope and complexity boundary.
 - Commit with messages prefixed `<task-key>:`. Open a PR only when the user
   authorized publication, using the stated target and accessible spec reference.
   Load `pr-description-writing` for the PR title, description, and

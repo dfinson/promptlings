@@ -15,7 +15,8 @@ Determine which claims the evidence supports, contradicts, or leaves unresolved.
 2. Identify a falsifiable check for each claim: source inspection, a contract reference, a focused test, or a bounded runtime observation. Perform only authorized checks and record what actually ran.
 3. Search for counterevidence, such as a guard, alternate caller, rollback, schema constraint, or test path that invalidates the proposed mechanism. Check applicability rather than accepting a matching pattern.
 4. Classify the claim as supported, contradicted, or unresolved. Keep missing evidence distinct from evidence of failure. Revise or reject an objection when its mechanism is disproved.
-5. Reconcile conflicting observations using the target and underlying evidence. Preserve a supported singleton finding. Deduplicate the same root cause without discarding distinct triggering conditions or consequences.
+5. Before closing a supported defect, sweep for its siblings: search the change and related files for every other instance of the same pattern, such as the same edit in sibling workflows, configs, handlers, or implementations of one interface. Verify each instance and report it, or record that the search found none.
+6. Reconcile conflicting observations using the target and underlying evidence. Preserve a supported singleton finding. Deduplicate the same root cause without discarding distinct triggering conditions or consequences.
 
 ## Return and stop
 
