@@ -202,7 +202,7 @@ export function collect(trialRecord, task, ctx = {}) {
   const armId = armIdOf(trialRecord, ctx) ?? trialDir.split(/[\\/]/).at(-2);
   const suite = ctx.suite ?? loadSuite();
   const armConfig = suite.arms?.find((a) => a.id === armId) ?? ctx.arm ?? null;
-  const workspace = ctx.workspace ?? join(trialDir, 'workspace');
+  const workspace = ctx.workspace ?? trialRecord?.workspacePath ?? join(trialDir, 'workspace');
   const findingsPath = join(workspace, PR_DIR, 'findings.json');
   const base = { trialDir, leakage: audited.leakage };
   if (armConfig?.promptPreamble) {
