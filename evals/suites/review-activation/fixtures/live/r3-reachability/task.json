@@ -1,0 +1,17 @@
+{
+  "id": "r3-reachability",
+  "seed": "tests/review-regressions.md R3",
+  "summary": "An empty-list guard makes a plausible division-by-zero finding unreachable.",
+  "requirements": "# Requirements\n\n`values` is an ordinary Python list of numbers. Empty input must return `None`, and non-empty input must return its arithmetic mean. `_mean` is private and its only caller is `summarize`. Explain the behavior for `summarize([])` and `summarize([2, 4])`.\n\nNo live PR, provider, or CI is available for this branch.\n",
+  "base": {
+    "summary.py": "def _mean(values):\n    return sum(values) / len(values)\ndef summarize(values):\n    return _mean(values)\n"
+  },
+  "head": {
+    "summary.py": "def _mean(values):\n    return sum(values) / len(values)\ndef summarize(values):\n    if not values:\n        return None\n    return _mean(values)\n"
+  },
+  "commitMessage": "Return None for empty summaries",
+  "expect": {
+    "mentions": ["summary.py"],
+    "nitcrackerAnchors": []
+  }
+}
