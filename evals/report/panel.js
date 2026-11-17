@@ -527,6 +527,7 @@ export async function runPanelAnalysis({
   designTextFor,
   seed = 20251111,
   resamples = DEFAULT_RESAMPLES,
+  concurrency,
 }) {
   const judged = loadJudged({ runDir, goldenDir, variant, arms: arms?.map((a) => (typeof a === 'string' ? a : a.id)), ...(judgeRoot ? { judgeRoot } : {}) });
   const names = blindNames(arms ?? judged.arms, aliases);
@@ -544,7 +545,7 @@ export async function runPanelAnalysis({
     }
     // Tasks with no unmatched finding need no grouping: every finding there is already matched.
     for (const task of [...byTask.keys()]) if (!judged.unmatched.some((u) => u.task === task)) byTask.delete(task);
-    clustering = await clusterByTask({ entriesByTask: byTask, grade: ask, model: helperModel, cacheDir: path.join(outDir, 'clusters'), prefix: 'findings', subject: 'code review comments', names });
+    clustering = await clusterByTask({ entriesByTask: byTask, grade: ask, model: helperModel, cacheDir: path.join(outDir, 'clusters'), prefix: 'findings', subject: 'code review comments', names, ...(concurrency ? { concurrency } : {}) });
   }
   let design = [];
   let designExtraction = null;
@@ -553,13 +554,13 @@ export async function runPanelAnalysis({
       const d = designTextFor({ task: t.task, arm: t.arm, repeat: t.repeat }) ?? {};
       return { task: t.task, arm: t.arm, repeat: t.repeat, text: d.text ?? '', findings: d.findings ?? judged.findings.filter((f) => f.task === t.task && f.arm === t.arm && f.repeat === t.repeat) };
     });
-    const extracted = await extractDesign({ trials, grade: ask, model: helperModel, cacheDir: path.join(outDir, 'design'), names });
+    const extracted = await extractDesign({ trials, grade: ask, model: helperModel, cacheDir: path.join(outDir, 'design'), names, ...(concurrency ? { concurrency } : {}) });
     const byTask = new Map();
     extracted.items.forEach((it) => {
       if (!byTask.has(it.task)) byTask.set(it.task, []);
       byTask.get(it.task).push({ key: findingKey(it), file: it.file, lines: it.lines, start: Number.parseInt(it.lines, 10) || 0, text: `(${it.kind}) ${it.summary}`, item: it });
     });
-    const grouped = await clusterByTask({ entriesByTask: byTask, grade: ask, model: helperModel, cacheDir: path.join(outDir, 'clusters'), prefix: 'design', subject: 'design commentary points (forks and implicit bets)', names });
+    const grouped = await clusterByTask({ entriesByTask: byTask, grade: ask, model: helperModel, cacheDir: path.join(outDir, 'clusters'), prefix: 'design', subject: 'design commentary points (forks and implicit bets)', names, ...(concurrency ? { concurrency } : {}) });
     for (const [task, groups] of Object.entries(grouped.clusters)) {
       const byKey = new Map(byTask.get(task).map((e) => [e.key, e.item]));
       for (const group of groups) {
@@ -582,7 +583,7 @@ export async function runPanelAnalysis({
     designExtraction = { model: helperModel, trials: extracted.trials, items: extracted.items.length, clusters: design.length, failures: [...extracted.failures, ...grouped.failures.map((f) => ({ ...f, stage: 'grouping' }))] };
   }
   const items = panelItems(judged, { arms: arms ?? judged.arms, aliases, seed, contextFor, ...(clustering ? { clusters: clustering.clusters } : {}), design });
-  const panel = await runPanel({ items, panelists, ...(taxonomy ? { taxonomy } : {}), requireFrozen, names, grade: ask, evidenceDir, seed });
+  const panel = await runPanel({ items, panelists, ...(taxonomy ? { taxonomy } : {}), requireFrozen, names, grade: ask, evidenceDir, seed, ...(concurrency ? { concurrency } : {}) });
   if (clustering) {
     const { clusterMatched } = splitClusters(judged, clustering.clusters);
     panel.clusterMatched = clusterMatched;

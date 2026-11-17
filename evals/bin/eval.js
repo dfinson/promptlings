@@ -209,6 +209,7 @@ async function panelStage(adapter, run, manifest, artifactRoot) {
       requireFrozen,
       ...(panel.aliases ? { aliases: panel.aliases } : {}),
       ...(panel.graderConfig ? { graderConfig: panel.graderConfig } : {}),
+      ...(panel.concurrency ? { concurrency: panel.concurrency } : {}),
       goldenDir: inputs.goldenDir,
       diffFilesFor: inputs.diffFilesFor,
       ...(inputs.contextFor ? { contextFor: inputs.contextFor } : {}),

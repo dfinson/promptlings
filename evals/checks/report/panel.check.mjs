@@ -10,7 +10,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const fakePanelRunner = path.join(here, 'fake-panel-runner.mjs');
 const ARMS = ['plain-review', 'the-nitcracker'];
 const TASKS = ['pr-1', 'pr-2', 'pr-3', 'pr-4', 'pr-5', 'pr-6'];
-const PANEL = ['claude-opus-5.5', 'grok-4.7', 'gpt-6.1-terra'];
+const PANEL = ['claude-opus-5.5', 'claude-sonnet-5.5', 'gpt-6.1-terra'];
 
 async function load(relative) {
   try {
@@ -100,8 +100,8 @@ function itemsInPrompt(prompt) {
   return prompt.split('\n').filter((l) => l.startsWith('{"id":"item-')).map((l) => JSON.parse(l));
 }
 
-// claude and grok classify by content; gpt-6.1-terra always differs on defect_class. On unmatched
-// verdicts claude and terra agree and grok dissents, so the view without terra is disputed.
+// The two Claude panelists classify by content; gpt-6.1-terra always differs on defect_class. On unmatched
+// verdicts claude-opus-5.5 and terra agree and claude-sonnet-5.5 dissents, so the view without terra is disputed.
 function scriptedGrade(calls = []) {
   return async (model, prompt) => {
     calls.push({ model, prompt });
@@ -112,7 +112,7 @@ function scriptedGrade(calls = []) {
         const cls = model === 'gpt-6.1-terra' ? 'security' : persistence ? 'data-persistence' : 'logic';
         return { id: it.id, defect_class: cls, locality: persistence ? 'single-file' : 'single-hunk', detection: 'diff' };
       }
-      return { id: it.id, verdict: model === 'grok-4.7' ? 'wrong' : 'real-missing-from-golden' };
+      return { id: it.id, verdict: model === 'claude-sonnet-5.5' ? 'wrong' : 'real-missing-from-golden' };
     });
     return `Here you go:\n\`\`\`json\n${JSON.stringify({ annotations })}\n\`\`\``;
   };
@@ -144,7 +144,7 @@ test('panel consensus accepts a 2-of-3 label and disputes a three-way split', as
   assert.equal(all.items.get('item-0002').labels.defect_class.status, 'disputed');
   assert.equal(all.items.get('item-0003').labels.defect_class.label, 'logic');
   const withoutGpt = consensusLabels(panel, { exclude: ['gpt-6.1-terra'] });
-  assert.deepEqual(withoutGpt.panelists, ['claude-opus-5.5', 'grok-4.7']);
+  assert.deepEqual(withoutGpt.panelists, ['claude-opus-5.5', 'claude-sonnet-5.5']);
   assert.equal(withoutGpt.items.get('item-0001').labels.defect_class.label, 'logic');
   assert.equal(withoutGpt.items.get('item-0003').labels.defect_class.status, 'disputed');
   const stats = agreementStats(panel).dimensions.find((d) => d.dimension === 'defect_class');
@@ -187,7 +187,7 @@ test('panel records an annotation or an explicit failure for every item and pane
   const items = Array.from({ length: 4 }, (_, i) => ({ id: `item-000${i + 1}`, kind: 'golden', source: {}, content: { file: 'a.js', lines: '1', finding: `finding ${i}` } }));
   items.push({ id: 'item-0005', kind: 'unmatched', source: {}, content: { file: 'b.js', lines: '2', finding: 'maybe' } });
   const grade = async (model, prompt) => {
-    if (model === 'grok-4.7' && prompt.includes('defect_class')) throw new Error('rate limited');
+    if (model === 'claude-sonnet-5.5' && prompt.includes('defect_class')) throw new Error('rate limited');
     const ids = itemsInPrompt(prompt).map((it) => it.id);
     if (model === 'gpt-6.1-terra') return 'I cannot answer in JSON';
     return JSON.stringify({
@@ -205,11 +205,11 @@ test('panel records an annotation or an explicit failure for every item and pane
     }
   }
   const reason = (item, panelist) => panel.failures.find((f) => f.item === item && f.panelist === panelist)?.reason ?? '';
-  assert.match(reason('item-0001', 'grok-4.7'), /panelist call failed: rate limited/);
+  assert.match(reason('item-0001', 'claude-sonnet-5.5'), /panelist call failed: rate limited/);
   assert.match(reason('item-0001', 'gpt-6.1-terra'), /no JSON object/);
   assert.match(reason('item-0002', 'claude-opus-5.5'), /no annotation returned/);
   assert.match(reason('item-0003', 'claude-opus-5.5'), /outside taxonomy .*defect_class="not-a-class"/);
-  assert.ok(panel.annotations.some((a) => a.item === 'item-0005' && a.panelist === 'grok-4.7'));
+  assert.ok(panel.annotations.some((a) => a.item === 'item-0005' && a.panelist === 'claude-sonnet-5.5'));
   await assert.rejects(runPanel({ items, panelists: PANEL.slice(0, 2), grade }), /at least three distinct panelists/);
   await assert.rejects(runPanel({ items, panelists: PANEL, grade, requireFrozen: true }), /not frozen/);
 });
@@ -353,7 +353,7 @@ test('panel re-asks an unparsable answer once, keeps every raw answer and record
   const { runPanel, JSON_ONLY_REMINDER } = await load('scoring/panel.js');
   const runner = await import(new URL('./fake-panel-runner.mjs', import.meta.url).href);
   runner.calls.length = 0;
-  runner.unparsableFirst.add('grok-4.7');
+  runner.unparsableFirst.add('claude-sonnet-5.5');
   runner.unparsableAlways.add('gpt-6.1-terra');
   const evidenceDir = scratch('panel-retry');
   const items = [
@@ -373,25 +373,25 @@ test('panel re-asks an unparsable answer once, keeps every raw answer and record
   }
   const callsFor = (model) => runner.calls.filter((c) => c.model === model);
   assert.equal(callsFor('claude-opus-5.5').length, 2, 'a parsable answer is not re-asked');
-  assert.equal(callsFor('grok-4.7').length, 4);
+  assert.equal(callsFor('claude-sonnet-5.5').length, 4);
   assert.equal(callsFor('gpt-6.1-terra').length, 4, 'one retry only');
-  const [first, retry] = callsFor('grok-4.7');
+  const [first, retry] = callsFor('claude-sonnet-5.5').filter((c) => c.prompt.includes('defect_class'));
   assert.equal(retry.prompt, `${first.prompt}\n${JSON_ONLY_REMINDER}`, 'the retry repeats the same blind prompt plus the reminder');
 
   for (const it of items) {
-    const grok = panel.annotations.find((a) => a.item === it.id && a.panelist === 'grok-4.7');
-    assert.ok(grok, `${it.id} grok annotated after its retry`);
-    assert.equal(grok.answers.length, 2);
+    const second = panel.annotations.find((a) => a.item === it.id && a.panelist === 'claude-sonnet-5.5');
+    assert.ok(second, `${it.id} annotated by the second panelist after its retry`);
+    assert.equal(second.answers.length, 2);
     const gpt = panel.failures.find((f) => f.item === it.id && f.panelist === 'gpt-6.1-terra');
     assert.match(gpt.reason, /unparsable after retry: panelist answer has no JSON object; then panelist answer has no JSON object/);
     assert.equal(gpt.answers.length, 2);
-    assert.ok(!panel.failures.some((f) => f.item === it.id && f.panelist === 'grok-4.7'));
+    assert.ok(!panel.failures.some((f) => f.item === it.id && f.panelist === 'claude-sonnet-5.5'));
   }
   assert.equal(panel.answers.length, 10);
-  const grokFirst = panel.answers.find((a) => a.panelist === 'grok-4.7' && a.kind === 'golden' && a.attempt === 1);
-  assert.match(grokFirst.error, /no JSON object/);
-  assert.equal(fs.readFileSync(path.join(evidenceDir, grokFirst.file), 'utf8'), 'These findings look like logic problems in a single hunk.');
-  const perItem = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'grok-4.7', 'items', 'item-0001.json'), 'utf8'));
+  const secondFirst = panel.answers.find((a) => a.panelist === 'claude-sonnet-5.5' && a.kind === 'golden' && a.attempt === 1);
+  assert.match(secondFirst.error, /no JSON object/);
+  assert.equal(fs.readFileSync(path.join(evidenceDir, secondFirst.file), 'utf8'), 'These findings look like logic problems in a single hunk.');
+  const perItem = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'claude-sonnet-5.5', 'items', 'item-0001.json'), 'utf8'));
   assert.deepEqual(perItem.attempts.map((a) => [a.attempt, a.error === null]), [[1, false], [2, true]]);
   assert.ok(perItem.outcome.labels.defect_class);
   for (const a of perItem.attempts) assert.ok(fs.existsSync(path.join(evidenceDir, a.file)), a.file);
@@ -404,7 +404,7 @@ test('panel tells panelists they have no tools and re-asks a tool-intent answer 
   const { runPanel, assertBlind, blindNames, JSON_ONLY_REMINDER } = await load('scoring/panel.js');
   const runner = await import(new URL('./fake-panel-runner.mjs', import.meta.url).href);
   runner.calls.length = 0;
-  runner.toolIntentFirst.add('grok-4.7');
+  runner.toolIntentFirst.add('claude-sonnet-5.5');
   runner.toolIntentAlways.add('gpt-6.1-terra');
   const evidenceDir = scratch('panel-tool-intent');
   const names = blindNames(ARMS);
@@ -423,15 +423,15 @@ test('panel tells panelists they have no tools and re-asks a tool-intent answer 
     else process.env.COPILOT_GITHUB_TOKEN = saved;
   }
   const callsFor = (model) => runner.calls.filter((c) => c.model === model);
-  const [first, retry] = callsFor('grok-4.7');
+  const [first, retry] = callsFor('claude-sonnet-5.5');
   assert.match(first.prompt, /No tools, files, repository or network are available/);
   assert.match(first.prompt, /Every input you need is inline below/);
   assert.match(JSON_ONLY_REMINDER, /Do not announce, plan or attempt tool use/);
-  assert.equal(callsFor('grok-4.7').length, 2, 'a tool-intent answer is re-asked once');
+  assert.equal(callsFor('claude-sonnet-5.5').length, 2, 'a tool-intent answer is re-asked once');
   assert.equal(retry.prompt, `${first.prompt}\n${JSON_ONLY_REMINDER}`);
   assert.equal(assertBlind(retry.prompt, names), retry.prompt, 'the retry prompt stays blind');
   for (const name of names) assert.ok(!retry.prompt.includes(name));
-  assert.ok(panel.annotations.find((a) => a.item === 'item-0001' && a.panelist === 'grok-4.7'), 'grok answers after the stronger reminder');
+  assert.ok(panel.annotations.find((a) => a.item === 'item-0001' && a.panelist === 'claude-sonnet-5.5'), 'the second panelist answers after the stronger reminder');
 
   assert.equal(callsFor('gpt-6.1-terra').length, 2, 'one retry only');
   const failure = panel.failures.find((f) => f.item === 'item-0001' && f.panelist === 'gpt-6.1-terra');
@@ -446,8 +446,8 @@ test('panel splits a batch whose call fails without an answer and retries each h
   const runner = await import(new URL('./fake-panel-runner.mjs', import.meta.url).href);
   assert.ok(runner.failAboveItems && runner.failOnItems, 'the fake runner can stall a call');
   runner.calls.length = 0;
-  runner.failAboveItems.set('grok-4.7', 1);
-  runner.failOnItems.set('grok-4.7', new Set(['item-0003']));
+  runner.failAboveItems.set('claude-sonnet-5.5', 1);
+  runner.failOnItems.set('claude-sonnet-5.5', new Set(['item-0003']));
   const evidenceDir = scratch('panel-split');
   const names = blindNames(ARMS);
   const items = Array.from({ length: 4 }, (_, i) => ({ id: `item-000${i + 1}`, kind: 'golden', source: {}, content: { file: 'src/a.js', lines: String(i + 1), finding: `finding ${i}` } }));
@@ -462,35 +462,35 @@ test('panel splits a batch whose call fails without an answer and retries each h
     if (saved === undefined) delete process.env.COPILOT_GITHUB_TOKEN;
     else process.env.COPILOT_GITHUB_TOKEN = saved;
   }
-  const grok = runner.calls.filter((c) => c.model === 'grok-4.7');
-  const sizes = grok.map((c) => itemsInPrompt(c.prompt).length);
+  const sonnet = runner.calls.filter((c) => c.model === 'claude-sonnet-5.5');
+  const sizes = sonnet.map((c) => itemsInPrompt(c.prompt).length);
   assert.deepEqual(sizes, [4, 2, 1, 1, 2, 1, 1], 'the batch of 4 splits into halves, then single items, each asked once');
-  for (const c of grok) {
+  for (const c of sonnet) {
     assert.equal(assertBlind(c.prompt, names), c.prompt);
     for (const name of names) assert.ok(!c.prompt.includes(name));
   }
-  assert.equal(new Set(grok.map((c) => c.prompt)).size, grok.length, 'no prompt is asked twice');
+  assert.equal(new Set(sonnet.map((c) => c.prompt)).size, sonnet.length, 'no prompt is asked twice');
   assert.equal(runner.calls.filter((c) => c.model === 'claude-opus-5.5').length, 1);
 
   for (const id of ['item-0001', 'item-0002', 'item-0004']) {
-    assert.ok(panel.annotations.find((a) => a.item === id && a.panelist === 'grok-4.7'), `${id} is labelled after the split`);
-    const rec = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'grok-4.7', 'items', `${id}.json`), 'utf8'));
+    assert.ok(panel.annotations.find((a) => a.item === id && a.panelist === 'claude-sonnet-5.5'), `${id} is labelled after the split`);
+    const rec = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'claude-sonnet-5.5', 'items', `${id}.json`), 'utf8'));
     assert.deepEqual(rec.attempts.map((a) => a.items.length), [4, 2, 1], `${id} records every attempt`);
     assert.match(rec.attempts[0].error, /panelist call failed: Copilot grader exited 1/);
     assert.match(rec.attempts[1].error, /panelist call failed/);
     assert.equal(rec.attempts[2].error, null);
     assert.ok(rec.outcome.labels);
   }
-  const failure = panel.failures.find((f) => f.item === 'item-0003' && f.panelist === 'grok-4.7');
+  const failure = panel.failures.find((f) => f.item === 'item-0003' && f.panelist === 'claude-sonnet-5.5');
   assert.ok(failure, 'the single item that still fails is the recorded failure');
   assert.match(failure.reason, /panelist call failed: Copilot grader exited 1/);
   assert.match(failure.reason, /batches of 4, 2 and 1 item/);
   assert.equal(failure.answers.length, 3);
-  const rec3 = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'grok-4.7', 'items', 'item-0003.json'), 'utf8'));
+  const rec3 = JSON.parse(fs.readFileSync(path.join(evidenceDir, 'claude-sonnet-5.5', 'items', 'item-0003.json'), 'utf8'));
   assert.deepEqual(rec3.attempts.map((a) => a.items.length), [4, 2, 1]);
   assert.ok(rec3.attempts.every((a) => /panelist call failed/.test(a.error)));
   assert.equal(rec3.outcome.failure, failure.reason);
-  assert.equal(panel.failures.filter((f) => f.panelist === 'grok-4.7').length, 1, 'only the failing item is lost');
+  assert.equal(panel.failures.filter((f) => f.panelist === 'claude-sonnet-5.5').length, 1, 'only the failing item is lost');
 });
 
 test('panel excludes errored and invalidated trials from behaviour features and per-arm aggregates', async () => {

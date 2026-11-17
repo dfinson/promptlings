@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { JSON_ONLY_REMINDER, assertBlind, sanitizeText } from './panel.js';
+import { DEFAULT_PANEL_CONCURRENCY, mapPool } from './pool.js';
 
 export const MIN_DESIGN_TEXT = 200;
 const MAX_TEXT = 20000;
@@ -49,49 +50,47 @@ export function parseDesignItems(answer) {
  * repeat, text, findings}]. Returns { items: [{task, arm, repeat, index, file, lines, kind,
  * summary}], trials: {extracted, skipped}, failures }.
  */
-export async function extractDesign({ trials, grade, model, cacheDir, names = [] }) {
+export async function extractDesign({ trials, grade, model, cacheDir, names = [], concurrency = DEFAULT_PANEL_CONCURRENCY }) {
   const items = [];
   const failures = [];
   let extracted = 0;
   let skipped = 0;
-  for (const t of trials) {
+  const outcomes = await mapPool(trials, concurrency, async (t) => {
     const prose = reviewProse(t.text);
-    if (prose.length < MIN_DESIGN_TEXT) {
-      skipped += 1;
-      continue;
-    }
+    if (prose.length < MIN_DESIGN_TEXT) return { skipped: true };
     const prompt = assertBlind(designPrompt(prose, t.findings ?? [], names), names);
     const hash = crypto.createHash('sha256').update(`${model}\u0000${prompt}`).digest('hex');
     const cacheFile = cacheDir ? path.join(cacheDir, t.task, t.arm, `r${t.repeat}.json`) : null;
-    let found = null;
     if (cacheFile && fs.existsSync(cacheFile)) {
       const cached = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
-      if (cached.hash === hash) found = cached.items;
+      if (cached.hash === hash) return { found: cached.items };
     }
-    if (!found) {
-      const errors = [];
-      const answers = [];
-      for (const asked of [prompt, `${prompt}\n${JSON_ONLY_REMINDER}`]) {
-        try {
-          const answer = await grade(model, asked);
-          answers.push(String(answer ?? ''));
-          found = parseDesignItems(answer);
-          break;
-        } catch (err) {
-          errors.push(err.message);
+    const errors = [];
+    const answers = [];
+    for (const asked of [prompt, `${prompt}\n${JSON_ONLY_REMINDER}`]) {
+      try {
+        const answer = await grade(model, asked);
+        answers.push(String(answer ?? ''));
+        const found = parseDesignItems(answer);
+        if (cacheFile) {
+          fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+          fs.writeFileSync(cacheFile, `${JSON.stringify({ hash, model, items: found, answers }, null, 2)}\n`);
         }
-      }
-      if (!found) {
-        failures.push({ task: t.task, arm: t.arm, repeat: t.repeat, reason: errors.join('; then ') });
-        continue;
-      }
-      if (cacheFile) {
-        fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
-        fs.writeFileSync(cacheFile, `${JSON.stringify({ hash, model, items: found, answers }, null, 2)}\n`);
+        return { found };
+      } catch (err) {
+        errors.push(err.message);
       }
     }
-    extracted += 1;
-    found.forEach((it, index) => items.push({ task: t.task, arm: t.arm, repeat: t.repeat, index, ...it }));
-  }
+    return { failure: { task: t.task, arm: t.arm, repeat: t.repeat, reason: errors.join('; then ') } };
+  });
+  trials.forEach((t, i) => {
+    const o = outcomes[i];
+    if (o.skipped) skipped += 1;
+    else if (o.failure) failures.push(o.failure);
+    else {
+      extracted += 1;
+      o.found.forEach((it, index) => items.push({ task: t.task, arm: t.arm, repeat: t.repeat, index, ...it }));
+    }
+  });
   return { model, items, trials: { extracted, skipped }, failures };
 }

@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { MAX_PROMPT_CHARS } from '../providers/copilot-grader.js';
 import { JSON_ONLY_REMINDER, assertBlind, sanitizeText } from './panel.js';
+import { DEFAULT_PANEL_CONCURRENCY, mapPool } from './pool.js';
 
 const MESSAGE_CHARS = 500;
 
@@ -140,16 +141,19 @@ export async function clusterTask({ entries, grade, model, cacheFile, subject, n
  * Clusters entries per task. entriesByTask maps a task id to its entries. Returns
  * { clusters: { [task]: [[key, ...], ...] }, failures, repairs }.
  */
-export async function clusterByTask({ entriesByTask, grade, model, cacheDir, prefix, subject, names = [], maxChars }) {
+export async function clusterByTask({ entriesByTask, grade, model, cacheDir, prefix, subject, names = [], maxChars, concurrency = DEFAULT_PANEL_CONCURRENCY }) {
   const clusters = {};
   const failures = [];
   let repairs = 0;
-  for (const [task, entries] of entriesByTask) {
-    if (!entries.length) continue;
-    const r = await clusterTask({ entries, grade, model, subject, names, ...(maxChars ? { maxChars } : {}), ...(cacheDir ? { cacheFile: path.join(cacheDir, `${prefix}-${task}.json`) } : {}) });
+  const tasks = [...entriesByTask].filter(([, entries]) => entries.length);
+  const results = await mapPool(tasks, concurrency, ([task, entries]) =>
+    clusterTask({ entries, grade, model, subject, names, ...(maxChars ? { maxChars } : {}), ...(cacheDir ? { cacheFile: path.join(cacheDir, `${prefix}-${task}.json`) } : {}) }),
+  );
+  tasks.forEach(([task], i) => {
+    const r = results[i];
     clusters[task] = r.groups;
     repairs += r.repairs;
     for (const f of r.failures) failures.push({ task, ...f });
-  }
+  });
   return { model, clusters, failures, repairs };
 }

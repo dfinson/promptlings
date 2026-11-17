@@ -302,9 +302,9 @@ concurrency: 4
 
 judge:
   provider: github-copilot
-  # Three judges from different model families; a finding matches a golden comment when at least
-  # minVotes of them pair the two.
-  models: [claude-opus-5.5, grok-4.7, gpt-6.1-terra]
+  # Three judges; a finding matches a golden comment when at least minVotes of them pair the two.
+  # Two are Claude models, so no two judges share the OpenAI family of the arms' reviewer model.
+  models: [claude-opus-5.5, claude-sonnet-5.5, gpt-6.1-terra]
   minVotes: 2
   concurrency: 4
 
@@ -357,8 +357,8 @@ analysis:
     - arm: stock
       kind: judge
       text: >-
-        Matching uses one blind call per trial and judge model (claude-opus-5.5, grok-4.7,
-        gpt-6.1-terra) that lists the PR's golden comments and the trial's findings, not Martian's
+        Matching uses one blind call per trial and judge model (claude-opus-5.5,
+        claude-sonnet-5.5, gpt-6.1-terra) that lists the PR's golden comments and the trial's findings, not Martian's
         pairwise judge; a finding matches a golden comment when at least two judges pair them.
         Findings that matched no golden comment are then grouped per PR by the problem they
         describe, across all arms, and a blind three-model panel (the same three models; two must
@@ -382,6 +382,8 @@ panel:
   cluster: true
   design: true
   clusterModel: claude-opus-5.5
+  # Labelling, grouping and extraction calls in flight at once.
+  concurrency: 8
   requireFrozen:
     main: false
     smoke: false

@@ -1,14 +1,16 @@
-// Post-experiment analysis panel (spec lane 10). Three tool-less Copilot graders from different
-// model families annotate golden findings and judge-unmatched arm findings blind to arm identity;
-// only labels at least two panelists agree on are kept.
+// Post-experiment analysis panel (spec lane 10). Three tool-less Copilot graders annotate golden
+// findings and judge-unmatched arm findings blind to arm identity; only labels at least two
+// panelists agree on are kept. Two panelists are Claude models, so no two panelists share the OpenAI
+// family of the arms' reviewer model.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import CopilotGraderProvider, { MAX_PROMPT_CHARS } from '../providers/copilot-grader.js';
 import { trialExclusion } from './behaviour.js';
+import { DEFAULT_PANEL_CONCURRENCY, mapPool } from './pool.js';
 import { mulberry32 } from './stats.js';
 
-export const PANEL_MODELS = ['claude-opus-5.5', 'grok-4.7', 'gpt-6.1-terra'];
+export const PANEL_MODELS = ['claude-opus-5.5', 'claude-sonnet-5.5', 'gpt-6.1-terra'];
 // Shares the OpenAI family with every arm's reviewer model; conclusions are also reported without it.
 export const SHARED_FAMILY_PANELIST = 'gpt-6.1-terra';
 export const MIN_AGREEING_VOTES = 2;
@@ -378,6 +380,7 @@ export async function runPanel({
   seed = 20251111,
   maxItems = 25,
   maxChars = MAX_PROMPT_CHARS - 4000,
+  concurrency = DEFAULT_PANEL_CONCURRENCY,
 }) {
   validateTaxonomy(taxonomy, { requireFrozen });
   if (items.some((it) => it.kind === 'design')) taxonomy = withDesignRubric(taxonomy);
@@ -398,90 +401,103 @@ export async function runPanel({
     fs.writeFileSync(file, typeof content === 'string' ? content : `${JSON.stringify(content, null, 2)}\n`);
     return path.relative(evidenceDir, file).split(path.sep).join('/');
   };
+  // A call that fails without an answer (timeout or nonzero exit) splits its batch in half and
+  // asks each half once, down to single items; `inherited` carries the parent attempts. Every
+  // record goes to `sink`, so concurrent batches merge back in a fixed order.
+  const askBatch = async (model, kind, batch, label, inherited, sink) => {
+    const dims = dimensionsFor(taxonomy, kind);
+    const prompt = assertBlind(buildPanelPrompt(kind, batch, taxonomy), names);
+    sink.prompts.push({ panelist: model, kind, items: batch.map((it) => it.id), sha256: crypto.createHash('sha256').update(prompt).digest('hex'), text: prompt });
+    const attempts = [];
+    let returned = null;
+    let outcome = null;
+    let callFailed = false;
+    for (const attempt of [1, 2]) {
+      const asked = attempt === 1 ? prompt : assertBlind(`${prompt}\n${JSON_ONLY_REMINDER}`, names);
+      const record = { id: `${model}/${kind}-${label}-a${attempt}`, panelist: model, kind, batch: label, attempt, items: batch.map((it) => it.id), promptSha256: crypto.createHash('sha256').update(asked).digest('hex'), text: null, error: null, file: null };
+      sink.answers.push(record);
+      attempts.push(record);
+      let raw;
+      try {
+        raw = await grade(model, asked);
+      } catch (err) {
+        record.error = `panelist call failed: ${err.message}`;
+        outcome = attempt === 1 ? record.error : `panelist answer unparsable (${attempts[0].error}); retry ${record.error}`;
+        callFailed = true;
+        break;
+      }
+      record.text = String(raw ?? '');
+      record.file = writeEvidence(model, `answers/${kind}-${label}-a${attempt}.txt`, record.text);
+      try {
+        returned = parseAnnotations(raw);
+        break;
+      } catch (err) {
+        record.error = err.message;
+        outcome = attempt === 1 ? null : `panelist answer unparsable after retry: ${attempts.map((a) => a.error).join('; then ')}`;
+      }
+    }
+    const history = [...inherited, ...attempts];
+    if (callFailed && batch.length > 1) {
+      const half = Math.ceil(batch.length / 2);
+      await askBatch(model, kind, batch.slice(0, half), `${label}.1`, history, sink);
+      await askBatch(model, kind, batch.slice(half), `${label}.2`, history, sink);
+      return;
+    }
+    if (callFailed && inherited.length) {
+      const sizes = [...new Set(history.map((a) => a.items.length))];
+      outcome = `${outcome}; every call failed across batches of ${sizes.slice(0, -1).join(', ')} and ${sizes.at(-1)} item(s)`;
+    }
+    const answerIds = history.map((a) => a.id);
+    const finish = (it, result) => {
+      if (result.reason) sink.failures.push({ item: it.id, panelist: model, reason: result.reason, answers: answerIds });
+      else sink.annotations.push({ item: it.id, panelist: model, labels: result.labels, answers: answerIds });
+      writeEvidence(model, `items/${it.id}.json`, {
+        item: it.id,
+        panelist: model,
+        kind,
+        attempts: history.map(({ id, attempt, items: asked, promptSha256, file, error }) => ({ id, attempt, items: asked, promptSha256, file, error })),
+        outcome: result.reason ? { failure: result.reason } : { labels: result.labels },
+      });
+    };
+    if (!returned) {
+      for (const it of batch) finish(it, { reason: outcome });
+      return;
+    }
+    const byId = new Map();
+    for (const a of returned) if (a && typeof a.id === 'string' && !byId.has(a.id)) byId.set(a.id, a);
+    for (const it of batch) {
+      const a = byId.get(it.id);
+      if (!a) {
+        finish(it, { reason: 'no annotation returned for this item' });
+        continue;
+      }
+      const bad = dims.filter((d) => !taxonomy[kind][d].includes(a[d]));
+      if (bad.length) {
+        finish(it, { reason: `labels outside taxonomy ${taxonomy.version}: ${bad.map((d) => `${d}=${JSON.stringify(a[d] ?? null)}`).join(', ')}` });
+        continue;
+      }
+      finish(it, { labels: Object.fromEntries(dims.map((d) => [d, a[d]])) });
+    }
+  };
+  const jobs = [];
   for (const [p, model] of panelists.entries()) {
     for (const kind of kinds) {
       const pool = shuffle(items.filter((it) => it.kind === kind), seed + 7919 * (p + 1));
-      const dims = dimensionsFor(taxonomy, kind);
-      // A call that fails without an answer (timeout or nonzero exit) splits its batch in half and
-      // asks each half once, down to single items; `inherited` carries the parent attempts.
-      const askBatch = async (batch, label, inherited) => {
-        const prompt = assertBlind(buildPanelPrompt(kind, batch, taxonomy), names);
-        prompts.push({ panelist: model, kind, items: batch.map((it) => it.id), sha256: crypto.createHash('sha256').update(prompt).digest('hex'), text: prompt });
-        const attempts = [];
-        let returned = null;
-        let outcome = null;
-        let callFailed = false;
-        for (const attempt of [1, 2]) {
-          const asked = attempt === 1 ? prompt : assertBlind(`${prompt}\n${JSON_ONLY_REMINDER}`, names);
-          const record = { id: `${model}/${kind}-${label}-a${attempt}`, panelist: model, kind, batch: label, attempt, items: batch.map((it) => it.id), promptSha256: crypto.createHash('sha256').update(asked).digest('hex'), text: null, error: null, file: null };
-          answers.push(record);
-          attempts.push(record);
-          let raw;
-          try {
-            raw = await grade(model, asked);
-          } catch (err) {
-            record.error = `panelist call failed: ${err.message}`;
-            outcome = attempt === 1 ? record.error : `panelist answer unparsable (${attempts[0].error}); retry ${record.error}`;
-            callFailed = true;
-            break;
-          }
-          record.text = String(raw ?? '');
-          record.file = writeEvidence(model, `answers/${kind}-${label}-a${attempt}.txt`, record.text);
-          try {
-            returned = parseAnnotations(raw);
-            break;
-          } catch (err) {
-            record.error = err.message;
-            outcome = attempt === 1 ? null : `panelist answer unparsable after retry: ${attempts.map((a) => a.error).join('; then ')}`;
-          }
-        }
-        const history = [...inherited, ...attempts];
-        if (callFailed && batch.length > 1) {
-          const half = Math.ceil(batch.length / 2);
-          await askBatch(batch.slice(0, half), `${label}.1`, history);
-          await askBatch(batch.slice(half), `${label}.2`, history);
-          return;
-        }
-        if (callFailed && inherited.length) {
-          const sizes = [...new Set(history.map((a) => a.items.length))];
-          outcome = `${outcome}; every call failed across batches of ${sizes.slice(0, -1).join(', ')} and ${sizes.at(-1)} item(s)`;
-        }
-        const answerIds = history.map((a) => a.id);
-        const finish = (it, result) => {
-          if (result.reason) failures.push({ item: it.id, panelist: model, reason: result.reason, answers: answerIds });
-          else annotations.push({ item: it.id, panelist: model, labels: result.labels, answers: answerIds });
-          writeEvidence(model, `items/${it.id}.json`, {
-            item: it.id,
-            panelist: model,
-            kind,
-            attempts: history.map(({ id, attempt, items: asked, promptSha256, file, error }) => ({ id, attempt, items: asked, promptSha256, file, error })),
-            outcome: result.reason ? { failure: result.reason } : { labels: result.labels },
-          });
-        };
-        if (!returned) {
-          for (const it of batch) finish(it, { reason: outcome });
-          return;
-        }
-        const byId = new Map();
-        for (const a of returned) if (a && typeof a.id === 'string' && !byId.has(a.id)) byId.set(a.id, a);
-        for (const it of batch) {
-          const a = byId.get(it.id);
-          if (!a) {
-            finish(it, { reason: 'no annotation returned for this item' });
-            continue;
-          }
-          const bad = dims.filter((d) => !taxonomy[kind][d].includes(a[d]));
-          if (bad.length) {
-            finish(it, { reason: `labels outside taxonomy ${taxonomy.version}: ${bad.map((d) => `${d}=${JSON.stringify(a[d] ?? null)}`).join(', ')}` });
-            continue;
-          }
-          finish(it, { labels: Object.fromEntries(dims.map((d) => [d, a[d]])) });
-        }
-      };
       for (const [b, batch] of batches(kind, pool, taxonomy, { maxChars, maxItems }).entries()) {
-        await askBatch(batch, `b${String(b + 1).padStart(2, '0')}`, []);
+        jobs.push({ model, kind, batch, label: `b${String(b + 1).padStart(2, '0')}` });
       }
     }
+  }
+  const sinks = await mapPool(jobs, concurrency, async ({ model, kind, batch, label }) => {
+    const sink = { annotations: [], failures: [], prompts: [], answers: [] };
+    await askBatch(model, kind, batch, label, [], sink);
+    return sink;
+  });
+  for (const sink of sinks) {
+    annotations.push(...sink.annotations);
+    failures.push(...sink.failures);
+    prompts.push(...sink.prompts);
+    answers.push(...sink.answers);
   }
   return { taxonomy: { version: taxonomy.version, frozen: taxonomy.frozen === true, dimensions: Object.fromEntries(kinds.map((k) => [k, taxonomy[k]])) }, panelists, sharedFamily: panelists.includes(SHARED_FAMILY_PANELIST) ? SHARED_FAMILY_PANELIST : null, items, annotations, failures, prompts, answers };
 }
