@@ -95,15 +95,17 @@ export default class CopilotTrialProvider {
         limits: this.config.limits ?? arm.limits ?? {},
         env: this.config.env ?? {},
       });
-      if (record?.status === 'invalidated' && record.environmentDenials?.length && record.exitCode === 0 && this.config.denialReview !== false) {
+      // Only a trial that would otherwise have completed can be restored; capped or errored runs keep their failure.
+      if (record?.status === 'invalidated' && record.environmentDenials?.length && record.preDenialStatus === 'completed' && this.config.denialReview !== false) {
         // An environment denial invalidates only when the panel finds it material; a failed review keeps the invalidation.
         try {
           const review = await reviewDenials(record, { trialDir, graderConfig: suite?.panel?.graderConfig ?? {} });
           record.denialReview = review;
           if (review.decision === 'not material') {
-            record.status = 'completed';
+            record.status = record.preDenialStatus;
             delete record.invalidated;
             delete record.reason;
+            if (record.preDenialReason !== undefined) record.reason = record.preDenialReason;
           }
         } catch (err) {
           record.denialReview = { decision: 'failed', error: String(err?.message ?? err) };
