@@ -162,7 +162,7 @@ checks all required methods before dispatch; installing the skill does not
 add another reviewer.
 
 Technical Demo uses HyperFrames by default and Remotion only when explicitly
-selected. HyperFrames skills are fetched unless `--no-hyperframes` is given.
+selected. HyperFrames skills are fetched unless `--no-hyperframes` or `--no-skills` is given; Interactive Presentation installs them regardless.
 `install` and `tools` fetch the other external demo skills from the revisions pinned in
 [`lib/pins.js`](../lib/pins.js), including
 [motion-art-direction and animation-principles](https://github.com/iart-ai/motion-design-skills)
