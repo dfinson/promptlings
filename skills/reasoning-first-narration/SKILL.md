@@ -11,7 +11,12 @@ Produce conversational narration that develops an explanation instead of announc
 
 Before drafting or revising, invoke `reasoning-first-writing` through the host's skill mechanism and apply its evidence, meaning, attribution, reasoning, and language rules. If the host has no invocation mechanism, read that skill's `SKILL.md` through its documented discovery location. Do not assume a personal installation path or reach through another skill's private resources. If the foundation cannot be loaded, report the missing dependency and stop the writing task. Do not install it or silently substitute another editor.
 
-The shared foundation owns those rules. This skill adds spoken delivery and visual truth. Apply priorities in this order: source accuracy, intended meaning and attribution, visual or argument sequence, delivery requirements, style. A lower priority never overrides a higher one.
+The shared foundation owns those rules. This skill adds spoken delivery and visual truth. Preserve source accuracy, meaningful substance, attribution and explicit scope. Within those constraints, prioritize first-listen comprehension and narrative flow over brevity or an exhaustive feature inventory. Respect delivery requirements without compressing away the reasoning. When required coverage cannot fit the requested duration, return that concrete tradeoff to the director instead of silently dropping scope or racing through it.
+
+The target is a knowledgeable engineer naturally walking colleagues through
+what they are seeing. Accurate short sentences can still sound like compressed
+release notes. Review the complete story and its surrounding context, not
+only the wording of individual blocks.
 
 ## Opening hook
 
@@ -62,9 +67,11 @@ These examples show variety. They are illustrative only; never reuse their wordi
 
 ### G3. Spoken text
 
-- Keep spoken sentences short, roughly fifteen words or fewer, with one idea per sentence and natural contractions; vary length for rhythm. Never exceed 40 words. Split longer sentences at a real clause boundary without losing meaning.
-- Do not produce three consecutive one-sentence paragraphs or repeat the same opening transition in adjacent paragraphs.
-- Never repeat the same sentence after ignoring case, punctuation, and spacing. Also apply the foundation's semantic repetition check. Append a recap only when requested.
+- Orient the listener before each unfamiliar detail: what they are looking at, what matters about it, then the mechanism and its consequence. Keep the opening hook before extended background. Name the visible object rather than relying on an ambiguous "this" or an abstract system property.
+- Let one consequential thought land at a time. Use natural conversational sentences and contractions, with length varied for meaning and rhythm. Split overloaded utterances at real idea boundaries without deleting the causal link. Word or sentence counts do not prove comprehensibility.
+- Connect the changed behavior to why it matters and to the next visible step. Reuse the same terms for the same objects. Avoid a chain of isolated feature announcements, even when each sentence is accurate.
+- Give a new idea and its on-screen evidence time to be understood. Coordinate inspection holds with the production owner instead of filling every pause with another claim. Distinguish existing baseline behavior from the actual new contribution.
+- Remove unnecessary repetition and repeated transition formulas. Keep a useful hook payoff or necessary reminder, not a section-by-section recap. Follow the foundation's semantic repetition check.
 - Exclude these strings from spoken output, case-insensitive: "let's dive in", "without further ado", "it is important to note", "we will now proceed", "this functionality enables", "game-changing", "seamless", and "in summary". Replace filler with precise information rather than a synonym of the cliche.
 - Do not insert a scripted "Not X, not Y, but Z" sequence. Retain contrasts when both sides and their relevance are supported.
 
@@ -77,7 +84,25 @@ These examples show variety. They are illustrative only; never reuse their wordi
 
 ### G5. Release
 
-Recheck the shared foundation against the evidence, then the opening hook check when the narration includes the opening, then visual and argument sequence, spoken text, and delivery. Revise any failure and check again. Remove or qualify unsupported claims. If that leaves no usable explanation, return the specific missing evidence instead of a fabricated script.
+Recheck the shared foundation against the evidence, then the opening hook,
+visual/argument sequence, spoken text and delivery. In the existing script
+review, run a whole-script first-listen pass at intended spoken pace against
+the screen sequence. Ask whether a listener unfamiliar with the investigation
+can identify the object, follow what changes, understand the consequence and
+connect each section to the overall story without rereading or reconstructing
+missing reasoning. Check the surrounding setup and transitions too.
+
+If accurate prose still reads like compressed release notes, restructure and
+rewrite the complete affected passage now. Clarity, factual substance and the
+selected scope must survive together. Prefer concrete visible explanation over
+abstract phrasing, marketing, artificial polish or filler. This is part of
+script review, not another approval stage or permission for early full synthesis.
+Actual produced speech must still be listened to with its visuals by the
+production owner. A text pass is not evidence that that listening occurred.
+
+Revise failures and check again. Remove or qualify unsupported claims. If that
+leaves no usable explanation, return the specific missing evidence rather than
+a fabricated script.
 
 Return the complete ready-to-use narration without a preface or change report unless requested. A missing dependency or blocking evidence gap is a task-status response, not spoken script.
 
