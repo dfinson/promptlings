@@ -594,6 +594,8 @@ function finishTrial({ record, result, built, paths, prompt, token, workspace, b
   record.environmentWarnings = classified.warnings;
   if (record.environmentDenials.length) {
     const [first] = record.environmentDenials;
+    record.preDenialStatus = record.status;
+    if (record.reason !== undefined) record.preDenialReason = record.reason;
     record.status = "invalidated";
     record.invalidated = true;
     record.reason = `Environment denial (${first.source}${first.toolCallId ? ` ${first.toolCallId}` : ""}): ${first.excerpt}`;
