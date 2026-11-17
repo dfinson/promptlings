@@ -118,7 +118,9 @@ reasoning-first skills. Revisions address specific defects instead of restarting
 briefing or running fixed-count review loops.
 
 The installer fetches [Motionite](https://github.com/nxrskyaa/motionite) from the
-upstream revision in [the tool pins](lib/pins.js), just like other external skills.
+upstream revision in [the tool pins](lib/pins.js), just like other external skills,
+along with the [animation-principles](https://github.com/iart-ai/motion-design-skills)
+skill for motion timing and review vocabulary.
 Its source and assets are not vendored here. Demo installation also prepares a
 reusable version-pinned Remotion/React runtime, media component and matching
 Headless Shell through Remotion's own CLI. `--no-demo` skips these. The producing
