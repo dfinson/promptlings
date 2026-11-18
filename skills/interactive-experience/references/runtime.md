@@ -23,7 +23,7 @@ subsystems. Do not omit a capability the user actually requested.
 ```text
 <talk>/
   index.html        audience view; ?view=presenter opens the presenter view
-  app.css           all styles, fonts referenced as url(assets/fonts/...)
+  app.css           all styles, fonts referenced as url(assets/fonts/...); when stops are written in parallel, build.mjs assembles it from the base styles and one stylesheet per stop in src/
   src/              the runtime and one ES module per stop, the build input
   build.mjs         pre-renders code and layouts into src/generated/, then bundles with esbuild
   app.js            build output: one IIFE script with the runtime, stops and libraries
