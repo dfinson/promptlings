@@ -36,6 +36,49 @@ async function importAdapter(adapterModule) {
   return import(url);
 }
 
+function trialResponse(record, collected, metadata) {
+  const { trialDir } = metadata;
+  let output = collected.output;
+  if (output == null && record?.outputPath && fs.existsSync(record.outputPath)) output = fs.readFileSync(record.outputPath, 'utf8');
+  const status = trialStatus(record, collected);
+  const response = {
+    output: output ?? '',
+    cached: false,
+    tokenUsage: usageToTokens(record?.usage),
+    metadata: { ...metadata, status, nanoAiu: record?.usage?.totalNanoAiu ?? null, reason: collected.reason ?? record?.reason ?? null },
+  };
+  if (status !== 'completed') response.error = `Trial ${status}${response.metadata.reason ? `: ${response.metadata.reason}` : ''} (${trialDir})`;
+  return response;
+}
+
+function readJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+let resumeStamp = null;
+
+// Resuming a run: a trial that finished (trial.json and collected.json, not stopped by the ceiling) is
+// reused as recorded, and its charge is carried into this run's budget. Any other existing trial
+// directory was interrupted; it moves to <runDir>/interrupted/<stamp>/ so the trial reruns from scratch.
+async function resumeTrial({ trialDir, runDir, runnerModule, taskId, armId, repeat }) {
+  const record = readJson(path.join(trialDir, 'trial.json'));
+  const collected = readJson(path.join(trialDir, 'collected.json'));
+  if (record && collected && record.status !== 'stopped_by_ceiling' && !fs.existsSync(path.join(trialDir, 'harness-error.txt'))) {
+    const runner = await loadRunner(runnerModule);
+    runner.reuseTrial?.(record);
+    return trialResponse(record, normalizeCollected(collected), { trialDir, taskId, arm: armId, repeat, resumed: true });
+  }
+  resumeStamp ??= new Date().toISOString().replace(/[:.]/g, '-');
+  const target = path.join(path.resolve(runDir), 'interrupted', resumeStamp, safeSegment(taskId), safeSegment(armId), String(repeat));
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.renameSync(trialDir, target);
+  return null;
+}
+
 export default class CopilotTrialProvider {
   constructor(options = {}) {
     this.config = { ...(options.config ?? {}) };
@@ -64,6 +107,10 @@ export default class CopilotTrialProvider {
     const repeat = Number.isInteger(context.repeatIndex) ? context.repeatIndex : 0;
     const trialDir = path.join(path.resolve(runDir), 'trials', safeSegment(taskId), safeSegment(arm.id), String(repeat));
     fs.mkdirSync(path.dirname(trialDir), { recursive: true });
+    if (this.config.resume && fs.existsSync(trialDir)) {
+      const reused = await resumeTrial({ trialDir, runDir, runnerModule, taskId, armId: arm.id, repeat });
+      if (reused) return reused;
+    }
     try {
       fs.mkdirSync(trialDir);
     } catch (err) {
@@ -119,18 +166,7 @@ export default class CopilotTrialProvider {
       }
       const collected = normalizeCollected(adapter?.collect ? await adapter.collect(record, task, ctx) : null);
       fs.writeFileSync(path.join(trialDir, 'collected.json'), JSON.stringify(collected, null, 2));
-
-      let output = collected.output;
-      if (output == null && record?.outputPath && fs.existsSync(record.outputPath)) output = fs.readFileSync(record.outputPath, 'utf8');
-      const status = trialStatus(record, collected);
-      const response = {
-        output: output ?? '',
-        cached: false,
-        tokenUsage: usageToTokens(record?.usage),
-        metadata: { ...metadata, status, nanoAiu: record?.usage?.totalNanoAiu ?? null, reason: collected.reason ?? record?.reason ?? null },
-      };
-      if (status !== 'completed') response.error = `Trial ${status}${response.metadata.reason ? `: ${response.metadata.reason}` : ''} (${trialDir})`;
-      return response;
+      return trialResponse(record, collected, metadata);
     } catch (err) {
       fs.writeFileSync(path.join(trialDir, 'harness-error.txt'), String(err?.stack ?? err));
       return { error: `Trial harness failed: ${err?.message ?? err} (${trialDir})`, cached: false, metadata: { ...metadata, status: 'errored' } };

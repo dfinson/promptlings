@@ -89,6 +89,7 @@ export function buildPromptfooConfig({
   repeats = 1,
   concurrency = 1,
   env,
+  resume = false,
 }) {
   prompt = prompt ?? suite?.prompt;
   if (!prompt) throw new Error('Suite prompt is required');
@@ -107,6 +108,7 @@ export function buildPromptfooConfig({
     if (runnerModule) config.runnerModule = runnerModule;
     if (limits) config.limits = limits;
     if (env) config.env = env;
+    if (resume) config.resume = true;
     return config;
   };
   return {

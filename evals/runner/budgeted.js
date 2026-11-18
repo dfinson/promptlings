@@ -27,6 +27,13 @@ export function budgetState() {
   return active ? { stoppedByCeiling: active.stopped, budget: active.budget.summary() } : null;
 }
 
+/** A trial reused by a resumed run: charges what it already cost and reports it like a fresh trial. */
+export function reuseTrial(record) {
+  if (!active) return;
+  active.budget.settle(0, { credits: record.creditsCharged ?? record.aiCredits ?? 0, estimated: record.creditsEstimated === true });
+  active.onTrial(record);
+}
+
 export async function runTrial(options) {
   if (!active) return baseRunTrial(options);
   const { trialDir, arm, limits = {} } = options;

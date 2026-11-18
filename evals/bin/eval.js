@@ -29,6 +29,7 @@ Options:
   --engine <name>         harness (Promptfoo, default when installed) or native.
   --diagnostic            Ask the suite's scoreRun for its diagnostic variants as well.
   --dry-run               Plan the trials without running Copilot.
+  --resume                Continue the --run-id run: reuse finished trials, rerun interrupted ones.
   --list                  List suites and their stages.
 
 Environment:
@@ -133,6 +134,7 @@ async function runWithHarness(options, token) {
       concurrency: run.concurrency,
       analysis: stageAnalysis(manifest, options.stage),
       context: { stage: options.stage, refs },
+      resume: options.resume === true,
     });
   } finally {
     run.stoppedByCeiling = budgeted.budgetState()?.stoppedByCeiling ?? false;
@@ -269,6 +271,7 @@ async function main() {
       engine: { type: "string" },
       diagnostic: { type: "boolean", default: false },
       "dry-run": { type: "boolean", default: false },
+      resume: { type: "boolean", default: false },
       list: { type: "boolean", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -285,6 +288,13 @@ async function main() {
   const concurrency = values.concurrency === undefined ? undefined : Number(values.concurrency);
   if (concurrency !== undefined && !(Number.isInteger(concurrency) && concurrency > 0)) throw new Error("--concurrency must be a positive integer.");
   const dryRun = values["dry-run"];
+  const resume = values.resume;
+  if (resume) {
+    if (engine !== "harness") throw new Error("--resume needs the harness engine.");
+    if (!values["run-id"]) throw new Error("--resume needs the --run-id of the run to continue.");
+    const dir = join(resolve(values["artifact-root"] ?? defaultArtifactRoot()), values["run-id"]);
+    if (!existsSync(join(dir, "trials"))) throw new Error(`--resume found no trials to continue in ${dir}.`);
+  }
   const token = dryRun ? null : resolveToken();
   const artifactRoot = resolve(values["artifact-root"] ?? defaultArtifactRoot());
   const options = {
@@ -296,6 +306,7 @@ async function main() {
     previousRef: values["previous-ref"],
     concurrency,
     dryRun,
+    resume,
   };
 
   let run;

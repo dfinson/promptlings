@@ -34,6 +34,7 @@ npm --prefix evals run eval -- --list
 | `--diagnostic` | Asks the suite's `scoreRun` for its diagnostic variants too. |
 | `--concurrency <n>` | Trials run at once. Overrides `stages.<name>.concurrency`, which overrides the suite's `concurrency`. |
 | `--dry-run` | Prints the planned trials without running Copilot. The installer selection check still runs. |
+| `--resume` | Continues the run named by `--run-id` (harness engine only). A trial with `trial.json` and `collected.json` that was not stopped by the credit ceiling is reused as recorded, and its charge counts toward this run's budget. Any other existing trial directory was interrupted: it moves to `<run>/interrupted/<timestamp>/` and the trial reruns. Scoring, the panel and the report then cover every trial. Pass the original `--candidate-ref` (and `--previous-ref`) so the rerun trials install the same agents. To pause a run, stop its process tree; the trials in flight become interrupted trials. |
 
 Exit codes: `0` when the run finishes and is usable, `1` on an error, `2` when the run stopped at a credit ceiling, was rejected by the suite or has nothing comparable.
 

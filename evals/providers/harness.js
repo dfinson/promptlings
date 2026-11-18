@@ -39,6 +39,7 @@ export async function runHarness({
   scoreRun,
   scoreRunOptions = {},
   context = {},
+  resume = false,
 }) {
   if (!runDir) throw new Error('runHarness needs runDir');
   const root = path.resolve(runDir);
@@ -56,7 +57,7 @@ export async function runHarness({
 
   const config = buildPromptfooConfig({
     suiteName: name, suite, prompt, arms, tasks: taskList, scorers, assertions, grader, runDir: root,
-    artifactRoot, adapterModule, runnerModule, limits, repeats, concurrency, env,
+    artifactRoot, adapterModule, runnerModule, limits, repeats, concurrency, env, resume,
   });
   fs.writeFileSync(path.join(root, 'promptfooconfig.json'), JSON.stringify(config, null, 2));
   const summary = await runPromptfooEvaluation(config, { runDir: root });
