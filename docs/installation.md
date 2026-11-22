@@ -142,6 +142,7 @@ pinned package dependencies.
 | `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, motion-art-direction, animation-principles, the Remotion runtime and Headless Shell, LibreOffice, Poppler, and diff2html |
 | `--no-skills` | Skip external published skills, not bundled Promptlings skills |
 | `--no-readside` | Skip the global memory read-side rule |
+| `--no-dashboard` | Skip Foreman's dashboard, its bridge extension, and its settings file |
 | `--list` | List agent names and exit |
 | `--dry-run` | Print the plan without downloading or writing |
 | `--yes`, `-y` | Approve the printed installation plan without a prompt |
@@ -228,6 +229,31 @@ and OpenCode, MiMo Code and Kilo publish it as a primary agent. Firebender,
 Vibe and xum publish it as a non-delegable agent. Other hosts have no such
 switch, so Foreman's instructions tell it to refuse when another agent invokes
 it.
+
+When Foreman is selected, `install` and `publish` also install its dashboard
+unless `--no-dashboard` is given. The dashboard is a localhost page that shows,
+for every repository Foreman briefs, its lanes, pull requests, checks, work
+items, services, and worktrees, from a status file Foreman keeps current. The
+installer copies:
+
+- The page and its server to `~/.promptlings/foreman-dashboard/`, with the
+  installed version in `version.json`. The page uses [Tabler](https://tabler.io)
+  1.7.5 (MIT), shipped prebuilt with its licence, so it needs no package
+  installation or network connection. The server needs only Node.js.
+- The Foreman bridge, a Copilot extension that carries the page's requests to
+  the Foreman session, to `~/.copilot/extensions/foreman-bridge/` (or under
+  `COPILOT_HOME` when set). The Copilot app loads it automatically. Copilot CLI
+  loads it only when started with `--experimental`; without it the page is
+  read-only.
+- `~/.promptlings/foreman/settings.json` with `{"pollMinutes": 5}`, only when
+  that file does not exist. `pollMinutes` (1 to 120) sets how often Foreman
+  refreshes the status file while lanes are active.
+
+Foreman starts the server at the end of its briefing when nothing answers at
+its recorded address (`http://127.0.0.1:4747` by default) and reports the
+page's address. `--no-dashboard` leaves
+existing copies in place; delete `~/.promptlings/foreman-dashboard/` and the
+bridge folder to remove them.
 
 Opt-outs skip installation. They do not uninstall tools, stop existing services,
 or remove earlier registrations. Failed commands stop installation, and earlier

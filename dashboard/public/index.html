@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Foreman</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/vendor/tabler/tabler.min.css">
+<link rel="stylesheet" href="/app.css">
+<script src="/vendor/tabler/tabler.min.js" defer></script>
+<script src="/app.js" defer></script>
+</head>
+<body>
+<script src="/vendor/tabler/tabler-theme.min.js"></script>
+<div class="page">
+  <header id="top" class="navbar navbar-expand">
+    <div class="container-xl flex-wrap gap-2">
+      <a href="#" id="home" class="navbar-brand me-3">Foreman</a>
+      <div id="tabs" class="nav nav-pills flex-wrap gap-1 me-auto" role="tablist" aria-label="Repositories"></div>
+      <div id="freshness" class="small text-secondary ms-auto text-end"></div>
+    </div>
+  </header>
+  <div class="page-wrapper">
+    <div class="page-body">
+      <div class="container-xl">
+        <div id="talkbar" class="d-flex flex-wrap align-items-start gap-2 mb-3 d-print-none" hidden>
+          <form id="ask" class="flex-fill">
+            <label class="visually-hidden" for="ask-text">Ask Foreman</label>
+            <div class="input-group">
+              <textarea id="ask-text" class="form-control" maxlength="1000" rows="1" placeholder="Ask Foreman about this repository"></textarea>
+              <button type="submit" class="btn btn-primary" id="ask-send" data-key="req:ask">Send</button>
+            </div>
+            <div id="ask-status" class="small" role="status"></div>
+          </form>
+          <button type="button" class="btn" id="refresh-all" data-key="req:refresh">Refresh all</button>
+          <span id="refresh-status" class="small" role="status"></span>
+        </div>
+        <p id="talknote" class="small text-secondary mb-3 d-print-none" hidden></p>
+        <div id="banners"></div>
+        <main id="main" class="row row-cards" role="tabpanel" aria-labelledby="tabs"></main>
+        <p id="legend" class="small text-secondary d-flex flex-wrap gap-3 mt-4 mb-0"></p>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="live" class="visually-hidden" aria-live="polite"></div>
+<div id="detail" class="offcanvas offcanvas-end d-print-none" tabindex="-1" aria-labelledby="dtitle">
+  <div class="offcanvas-header align-items-start">
+    <div class="me-3">
+      <div id="detail-kind" class="small text-secondary text-uppercase"></div>
+      <h2 id="dtitle" class="offcanvas-title h3" tabindex="-1"></h2>
+      <div id="detail-state" class="mt-1"></div>
+    </div>
+    <button type="button" class="btn-close" id="detail-close" data-key="detail:close" aria-label="Close"></button>
+  </div>
+  <div id="detail-body" class="offcanvas-body"></div>
+</div>
+</body>
+</html>

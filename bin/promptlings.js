@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 import { discoverAgents, packageRoot } from "../lib/content.js";
-import { includesMemorySkill, includesReadSide, publish } from "../lib/publish.js";
+import { includesDashboard, includesMemorySkill, includesReadSide, publish } from "../lib/publish.js";
 import { parseArgs, phases, usage } from "../lib/options.js";
 import { InstallError, runPackage } from "../lib/run.js";
 
@@ -23,6 +23,7 @@ function printPlan(options) {
     console.log(`Agents: ${options.agents.join(", ")}`);
     console.log(`Skills: all bundled skills${includesMemorySkill(options) ? "" : " except promptlings-memory-capture"}.`);
     console.log(`Memory read-side rule: ${on(includesReadSide(options))}.`);
+    console.log(`Foreman dashboard: ${on(includesDashboard(options))}.`);
   }
   if (steps.memory) {
     console.log(`Basic Memory: login startup=${on(options.startup)}, loopback port=${options.memoryPort}, skills=${on(options.skills)}.`);
