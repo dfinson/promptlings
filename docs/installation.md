@@ -214,6 +214,11 @@ Selective agent installs still publish bundled skills, so a caller using
 `ab-testing` must check that Experiment Director is actually available before
 delegating.
 
+Foreman dispatches to Spec Master and Sparring Partner and saves through Memory
+Manager, so install those agents with memory enabled alongside it. With
+`--agents foreman` alone, Foreman returns kickoff prompts for lanes whose
+agents are missing and reports that nothing was saved.
+
 Opt-outs skip installation. They do not uninstall tools, stop existing services,
 or remove earlier registrations. Failed commands stop installation, and earlier
 successful package installations remain available for retry.
