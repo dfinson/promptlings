@@ -248,9 +248,10 @@ Poll while any lane is `running`, `waiting` or `blocked`, using the host's sessi
 After writing the status file at the end of the briefing, probe the URL in `~/.promptlings/foreman/dashboard.json`, or `http://127.0.0.1:4747` when that file is missing, at `/health`.
 
 - Nothing answers: start `node ~/.promptlings/foreman-dashboard/server.mjs` as a detached background process that outlives this session, with its output appended to `~/.promptlings/foreman/dashboard.log`, then wait up to 10 seconds for `/health`.
-- `/health` names `promptlings-foreman-dashboard` with the installed version (from `~/.promptlings/foreman-dashboard/version.json`): report the `page` address from `dashboard.json`. It carries the page key that lets only this user read the page, so never report the bare URL instead.
-- It names a different version: report the `page` address and the mismatch, and suggest restarting the dashboard after closing other Foreman sessions.
-- Another service holds the port, or the server fails to start: report a blocker and start nothing.
+- The server is yours only when `/health` names `promptlings-foreman-dashboard` and its `instance` equals the `instance` in `dashboard.json`. Anything else that answers, including a matching service name with no `dashboard.json`, no `page` or a different `instance`, is another service holding the port.
+- Yours, with the installed version (from `~/.promptlings/foreman-dashboard/version.json`): report the `page` address from `dashboard.json`. It carries the page key that lets only this user read the page, so never report the bare URL instead.
+- Yours, with a different version: report the `page` address and the mismatch, and suggest restarting the dashboard after closing other Foreman sessions.
+- Another service holds the port, or the server fails to start: report a blocker, start nothing, and never report the `page` address.
 
 Never stop or replace a running dashboard; other Foreman sessions may rely on it.
 

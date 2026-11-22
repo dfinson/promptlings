@@ -6,7 +6,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { connect } from "node:net";
-import { readFileSync, mkdirSync, readdirSync, statSync, writeFileSync, renameSync, unlinkSync, appendFileSync } from "node:fs";
+import { readFileSync, mkdirSync, chmodSync, readdirSync, statSync, writeFileSync, renameSync, unlinkSync, appendFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,7 +23,6 @@ const base = join(homedir(), ".promptlings", "foreman");
 const statusDir = join(base, "status");
 const talkDir = join(base, "talk");
 const infoFile = join(base, "dashboard.json");
-const keyFile = join(base, "dashboard-key");
 const logFile = join(base, "dashboard.log");
 
 function readVersion() {
@@ -53,21 +52,18 @@ const startedAt = new Date().toISOString();
 const url = `http://127.0.0.1:${port}`;
 const allowedHosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
 
+// Status, talk files and dashboard.json stay readable only by this OS user where the platform supports modes.
+mkdirSync(base, { recursive: true, mode: 0o700 });
+try { chmodSync(base, 0o700); } catch {}
 mkdirSync(statusDir, { recursive: true });
 mkdirSync(talkDir, { recursive: true });
 
-// The page key keeps the API, and with it the bridge token, readable only by this OS user.
-// It lives in a file only this user can read and is kept across restarts so saved links keep working.
-function loadKey() {
-  const valid = (value) => /^[0-9a-f]{64}$/.test(value);
-  try { const value = readFileSync(keyFile, "utf8").trim(); if (valid(value)) return value; } catch {}
-  const value = randomBytes(32).toString("hex");
-  const temporary = `${keyFile}.${process.pid}.tmp`;
-  writeFileSync(temporary, `${value}\n`, { mode: 0o600 });
-  renameSync(temporary, keyFile);
-  return value;
-}
-const pageKey = Buffer.from(loadKey());
+// The page key keeps the API, and with it the bridge token, readable only by this OS user. It is new on
+// every start and written only to dashboard.json, so a key read by a page that squatted the port while the
+// dashboard was down is useless once this server listens. `instance` lets Foreman tell this server from
+// any other listener on the port.
+const pageKey = Buffer.from(randomBytes(32).toString("hex"));
+const instance = randomBytes(16).toString("hex");
 const page = `${url}/#key=${pageKey}`;
 
 function authorized(request, target) {
@@ -301,7 +297,7 @@ const server = createServer((request, response) => {
     return;
   }
   if (path === "/health") {
-    send(response, 200, { service: SERVICE, version, schema: SCHEMA });
+    send(response, 200, { service: SERVICE, version, schema: SCHEMA, instance });
     return;
   }
   if ((path.startsWith("/api/") || path === "/events") && !authorized(request, target)) {
@@ -337,7 +333,7 @@ const server = createServer((request, response) => {
 
 function writeInfo() {
   const temporary = `${infoFile}.${process.pid}.tmp`;
-  writeFileSync(temporary, `${JSON.stringify({ url, page, pid: process.pid, version, startedAt }, null, 2)}\n`, { mode: 0o600 });
+  writeFileSync(temporary, `${JSON.stringify({ url, page, instance, pid: process.pid, version, startedAt }, null, 2)}\n`, { mode: 0o600 });
   renameSync(temporary, infoFile);
 }
 

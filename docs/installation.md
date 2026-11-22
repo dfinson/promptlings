@@ -251,10 +251,12 @@ installer copies:
 
 Foreman starts the server at the end of its briefing when nothing answers at
 its recorded address (`http://127.0.0.1:4747` by default) and reports the
-page's address. That address carries a key kept in
-`~/.promptlings/foreman/dashboard-key`, readable only by you, so other users
-on the machine cannot read the page or send requests through it. Open it once
-and the browser remembers the key. `--no-dashboard` leaves
+page's address. That address carries a key the server creates each time it
+starts and records only in `~/.promptlings/foreman/dashboard.json`. The server
+keeps `~/.promptlings/foreman/` readable only by you, so other users on the
+machine cannot read the page or send requests through it. Open the address
+once and the browser remembers the key until the server restarts; after a
+restart, open the address from Foreman's next briefing. `--no-dashboard` leaves
 existing copies in place; delete `~/.promptlings/foreman-dashboard/` and the
 bridge folder to remove them.
 

@@ -7,7 +7,7 @@ import { createServer } from "node:http";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 
 const base = join(homedir(), ".promptlings", "foreman");
 const talkDir = join(base, "talk");
@@ -79,6 +79,8 @@ function alive(pid) {
 }
 
 function writeTalk() {
+  mkdirSync(base, { recursive: true, mode: 0o700 });
+  try { chmodSync(base, 0o700); } catch {}
   mkdirSync(talkDir, { recursive: true });
   const temporary = `${talkFile}.${process.pid}.tmp`;
   const body = { sessionId: session.sessionId, pid: process.pid, port, token, cwd: resolve(cwd), startedAt };

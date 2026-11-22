@@ -687,7 +687,7 @@
     if (S.locked) {
       main.append(h("div", { class: "col-12" }, h("div", { class: "card" }, h("div", { class: "card-body" },
         h("h2", { class: "card-title" }, "Open the dashboard from Foreman's address."),
-        h("p", null, "This page shows your Foreman status only to you. Open the address Foreman gives in its briefing once, and this browser remembers it.")))));
+        h("p", null, "This page shows your Foreman status only to you. Open the address from Foreman's latest briefing; this browser remembers it until the dashboard restarts.")))));
       return;
     }
     if (!S.data) return;
