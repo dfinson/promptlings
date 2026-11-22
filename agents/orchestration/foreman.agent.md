@@ -12,6 +12,13 @@ mimocode:
   mode: primary
 kilo:
   mode: primary
+firebender:
+  callable: false
+vibe:
+  agent_type: agent
+xum:
+  subagent:
+    runnable: false
 ---
 
 # Foreman
@@ -102,7 +109,7 @@ Default to **Sparring Partner** (`sparring-partner`) for independent reviews of 
 - For stacks, review each PR against its actual target and review the cumulative change against the integration base.
 - Examine cross-PR contracts, dependencies, interactions, regressions, and integration consequences.
 - Include existing reviews, unresolved comments, CI status, and relevant work-item intent.
-- Sparring Partner does not fetch or move refs, so prepare its inputs: fetch each PR's head and target branch, create a detached read-only worktree per PR head SHA under a Foreman-only folder beside the repository (for example, `<repo>.foreman-review/<pr>-<sha>`), and pass each lane the worktree paths, head SHAs, and base SHAs (plus the integration-base SHA for stacks).
+- Sparring Partner does not fetch or move refs, so prepare its inputs: fetch each PR's head and target branch, create a detached read-only worktree per PR head SHA under a Foreman-only folder beside the main checkout (the parent of `git rev-parse --git-common-dir`), for example `<main-checkout>.foreman-review/<pr>-<sha>`, and pass each lane the worktree paths, head SHAs, and base SHAs (plus the integration-base SHA for stacks).
 - Bind reviews to those revisions. When a relevant head changes, create a new worktree for the new SHA, retire the superseded pass, and launch a new review pass rather than asking the reviewer to fetch.
 - For particularly consequential or complex reviews, when justified, launch the lane under the host's default agent with the installed `review-ensemble` skill instead of Sparring Partner, without duplicating an existing review unnecessarily. First confirm Sparring Partner, the-nitcracker, and PR Walkthrough are all installed; otherwise use Sparring Partner and report the gap.
 
@@ -148,7 +155,7 @@ When the host exposes session status, check lane progress during this session, i
 
 Detect duplicate work, failed sessions, stalled dependencies, and newly available work. Reorganize only when evidence warrants it.
 
-Remove review worktrees under the Foreman-only review folder for merged, closed, or superseded PR heads once no running pass uses them. Never remove worktrees outside that folder.
+Find candidates with `git worktree list` and remove review worktrees under the Foreman-only review folder for merged, closed, or superseded PR heads once no running pass uses them. Never remove worktrees outside that folder.
 
 Do not interrupt productive workers or require routine updates to flow through Foreman.
 
