@@ -4,7 +4,7 @@
 
 Run `npx promptlings` as shown in the [README](../README.md#install). Node.js
 22.20 or later is the only prerequisite. The default installation includes all
-nine agents, bundled Promptlings skills, and the supporting toolchain.
+ten agents, bundled Promptlings skills, and the supporting toolchain.
 
 | Command | Effect |
 | --- | --- |
@@ -130,7 +130,7 @@ pinned package dependencies.
 
 | Option | Effect |
 | --- | --- |
-| `--all` | Select all nine agents, the default |
+| `--all` | Select all ten agents, the default |
 | `--review` | Select the three ensemble agents: the-nitcracker, PR Walkthrough, and Sparring Partner |
 | `--agents a,b` | Select agents by name |
 | `--no-system-packages` | Use existing Python, Git, gh, FFmpeg, and uv, but still install selected applications and skills |
@@ -142,6 +142,7 @@ pinned package dependencies.
 | `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, motion-art-direction, animation-principles, the Remotion runtime and Headless Shell, LibreOffice, Poppler, and diff2html |
 | `--no-skills` | Skip external published skills, not bundled Promptlings skills |
 | `--no-readside` | Skip the global memory read-side rule |
+| `--no-dashboard` | Skip Foreman's dashboard, its bridge extension, and its settings file |
 | `--list` | List agent names and exit |
 | `--dry-run` | Print the plan without downloading or writing |
 | `--yes`, `-y` | Approve the printed installation plan without a prompt |
@@ -213,6 +214,51 @@ explanations by the director and caller.
 Selective agent installs still publish bundled skills, so a caller using
 `ab-testing` must check that Experiment Director is actually available before
 delegating.
+
+Foreman dispatches to Spec Master and Sparring Partner and saves through Memory
+Manager, so install those agents with memory enabled alongside it. With
+`--agents foreman` alone, Foreman returns kickoff prompts for lanes whose
+agents are missing and reports that nothing was saved. Its ensemble review lanes
+also need the-nitcracker and PR Walkthrough; without them, Foreman uses
+Sparring Partner.
+
+Start Foreman by selecting it as the session's agent, for example
+`copilot --agent foreman`. It is not meant to run as a subagent or child
+agent. Copilot hosts block subagent use through `disable-model-invocation`,
+and OpenCode, MiMo Code and Kilo publish it as a primary agent. Firebender,
+Vibe and xum publish it as a non-delegable agent. Other hosts have no such
+switch, so Foreman's instructions tell it to refuse when another agent invokes
+it.
+
+When Foreman is selected, `install` and `publish` also install its dashboard
+unless `--no-dashboard` is given. The dashboard is a localhost page that shows,
+for every repository Foreman briefs, its lanes, pull requests, checks, work
+items, services, and worktrees, from a status file Foreman keeps current. The
+installer copies:
+
+- The page and its server to `~/.promptlings/foreman-dashboard/`, with the
+  installed version in `version.json`. The page uses [Tabler](https://tabler.io)
+  1.7.5 (MIT), shipped prebuilt with its licence, so it needs no package
+  installation or network connection. The server needs only Node.js.
+- The Foreman bridge, a Copilot extension that carries the page's requests to
+  the Foreman session, to `~/.copilot/extensions/foreman-bridge/` (or under
+  `COPILOT_HOME` when set). The Copilot app loads it automatically. Copilot CLI
+  loads it only when started with `--experimental`; without it the page is
+  read-only.
+- `~/.promptlings/foreman/settings.json` with `{"pollMinutes": 5}`, only when
+  that file does not exist. `pollMinutes` (1 to 120) sets how often Foreman
+  refreshes the status file while lanes are active.
+
+Foreman starts the server at the end of its briefing when nothing answers at
+its recorded address (`http://127.0.0.1:4747` by default) and reports the
+page's address. That address carries a key the server creates each time it
+starts and records only in `~/.promptlings/foreman/dashboard.json`. The server
+keeps `~/.promptlings/foreman/` readable only by you, so other users on the
+machine cannot read the page or send requests through it. Open the address
+once and the browser remembers the key until the server restarts; after a
+restart, open the address from Foreman's next briefing. `--no-dashboard` leaves
+existing copies in place; delete `~/.promptlings/foreman-dashboard/` and the
+bridge folder to remove them.
 
 Opt-outs skip installation. They do not uninstall tools, stop existing services,
 or remove earlier registrations. Failed commands stop installation, and earlier

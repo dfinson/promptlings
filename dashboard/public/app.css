@@ -1,0 +1,25 @@
+/* Overrides on top of vendored Tabler. Layout and components come from Tabler. */
+[hidden] { display: none !important; }
+#detail { --tblr-offcanvas-width: min(680px, 100vw); }
+#ask { min-width: min(100%, 20rem); }
+#ask-text { resize: vertical; min-height: 2.25rem; }
+.linkish {
+  background: none; border: 0; padding: 0; font: inherit; text-align: start;
+  color: var(--tblr-link-color); cursor: pointer;
+}
+.linkish:hover { text-decoration: underline; }
+.mk { cursor: help; font-weight: var(--tblr-font-weight-normal); }
+.lane-row { cursor: pointer; }
+.nav-link.old { opacity: .6; }
+tr.old td { opacity: .55; }
+body.offline #main, body.offline #detail-body { opacity: .55; }
+.text-break-all { word-break: break-all; }
+
+@media print {
+  .card, .list-group-item { break-inside: avoid; }
+  .btn, .linkish[aria-expanded], .card-footer { display: none !important; }
+  li.done-lane[hidden] { display: block !important; }
+  #top.navbar { display: flex !important; }
+  #tabs .nav-link:not(.active) { display: none !important; }
+  #tabs .badge { display: none; }
+}
