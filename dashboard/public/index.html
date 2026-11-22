@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -13,30 +13,54 @@
 <body>
 <script src="/vendor/tabler/tabler-theme.min.js"></script>
 <div class="page">
-  <header id="top" class="navbar navbar-expand">
-    <div class="container-xl flex-wrap gap-2">
-      <a href="#" id="home" class="navbar-brand me-3">Foreman</a>
-      <div id="tabs" class="nav nav-pills flex-wrap gap-1 me-auto" role="tablist" aria-label="Repositories"></div>
-      <div id="freshness" class="small text-secondary ms-auto text-end"></div>
+  <aside id="side" class="navbar navbar-vertical navbar-expand-lg d-print-none">
+    <div class="container-fluid">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#side-menu" aria-controls="side-menu" aria-expanded="false" aria-label="Show repositories">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <a href="#" id="home" class="navbar-brand">
+        <img src="/favicon.svg" alt="" width="22" height="22"><span>Foreman</span>
+      </a>
+      <div id="conn-mobile" class="d-lg-none small"></div>
+      <div class="collapse navbar-collapse" id="side-menu">
+        <div class="side-label">Repositories</div>
+        <div id="tabs" class="navbar-nav" role="tablist" aria-orientation="vertical" aria-label="Repositories"></div>
+        <div id="conn" class="side-foot small d-none d-lg-block"></div>
+      </div>
     </div>
-  </header>
+  </aside>
   <div class="page-wrapper">
+    <div class="page-header">
+      <div class="container-xl">
+        <div class="row g-3 align-items-end">
+          <div class="col">
+            <div id="pretitle" class="page-pretitle"></div>
+            <h1 id="headline" class="page-title">Foreman</h1>
+          </div>
+          <div class="col-12 col-md-auto ms-md-auto d-flex flex-wrap align-items-center gap-3">
+            <div id="freshness" class="small text-secondary text-md-end"></div>
+            <button type="button" class="btn d-print-none" id="refresh-all" data-key="req:refresh" hidden>Refresh all</button>
+          </div>
+        </div>
+        <div id="refresh-status" class="small text-danger text-md-end mt-1" role="status"></div>
+      </div>
+    </div>
     <div class="page-body">
       <div class="container-xl">
-        <div id="talkbar" class="d-flex flex-wrap align-items-start gap-2 mb-3 d-print-none" hidden>
-          <form id="ask" class="flex-fill">
-            <label class="visually-hidden" for="ask-text">Ask Foreman</label>
-            <div class="input-group">
-              <textarea id="ask-text" class="form-control" maxlength="1000" rows="1" placeholder="Ask Foreman about this repository"></textarea>
-              <button type="submit" class="btn btn-primary" id="ask-send" data-key="req:ask">Send</button>
-            </div>
-            <div id="ask-status" class="small" role="status"></div>
-          </form>
-          <button type="button" class="btn" id="refresh-all" data-key="req:refresh">Refresh all</button>
-          <span id="refresh-status" class="small" role="status"></span>
-        </div>
-        <p id="talknote" class="small text-secondary mb-3 d-print-none" hidden></p>
         <div id="banners"></div>
+        <div id="kpis" class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-2 mb-3" role="group" aria-label="Summary"></div>
+        <div id="askcard" class="card mb-3 d-print-none" hidden>
+          <div class="card-body py-3">
+            <form id="ask">
+              <label class="form-label mb-1" for="ask-text">Ask Foreman about this repository</label>
+              <div class="input-group">
+                <textarea id="ask-text" class="form-control" maxlength="1000" rows="1" placeholder="For example: what is blocking the dashboard lane?"></textarea>
+                <button type="submit" class="btn btn-primary" id="ask-send" data-key="req:ask">Send</button>
+              </div>
+              <div id="ask-status" class="small mt-1" role="status"></div>
+            </form>
+          </div>
+        </div>
         <main id="main" class="row row-cards" role="tabpanel" aria-labelledby="tabs"></main>
         <p id="legend" class="small text-secondary d-flex flex-wrap gap-3 mt-4 mb-0"></p>
       </div>
@@ -47,13 +71,23 @@
 <div id="detail" class="offcanvas offcanvas-end d-print-none" tabindex="-1" aria-labelledby="dtitle">
   <div class="offcanvas-header align-items-start">
     <div class="me-3">
-      <div id="detail-kind" class="small text-secondary text-uppercase"></div>
-      <h2 id="dtitle" class="offcanvas-title h3" tabindex="-1"></h2>
+      <div id="detail-kind" class="page-pretitle"></div>
+      <h2 id="dtitle" class="offcanvas-title h2" tabindex="-1"></h2>
       <div id="detail-state" class="mt-1"></div>
     </div>
     <button type="button" class="btn-close" id="detail-close" data-key="detail:close" aria-label="Close"></button>
   </div>
   <div id="detail-body" class="offcanvas-body"></div>
+  <div id="lane-askbox" class="border-top p-3" hidden>
+    <form id="lane-ask">
+      <label class="form-label mb-1" for="lane-ask-text">Ask Foreman about this lane</label>
+      <div class="input-group">
+        <textarea id="lane-ask-text" class="form-control" maxlength="1000" rows="1"></textarea>
+        <button type="submit" class="btn btn-primary" id="lane-ask-send" data-key="req:lane-ask">Send</button>
+      </div>
+      <div id="lane-ask-status" class="small mt-1" role="status"></div>
+    </form>
+  </div>
 </div>
 </body>
 </html>

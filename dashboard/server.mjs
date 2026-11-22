@@ -370,3 +370,11 @@ for (const signal of ["SIGINT", "SIGTERM", "SIGBREAK", "SIGHUP"]) {
   try { process.on(signal, () => stop(signal)); } catch {}
 }
 process.on("exit", removeInfo);
+// Record why the server died, so a stopped dashboard leaves a reason in its log.
+for (const event of ["uncaughtException", "unhandledRejection"]) {
+  process.on(event, (error) => {
+    log(`The dashboard server stopped after an unexpected error: ${error && error.stack ? error.stack : String(error)}`);
+    removeInfo();
+    process.exit(1);
+  });
+}
