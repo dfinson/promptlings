@@ -60,8 +60,8 @@ mkdirSync(talkDir, { recursive: true });
 
 // The page key keeps the API, and with it the bridge token, readable only by this OS user. It is new on
 // every start and written only to dashboard.json, so a key read by a page that squatted the port while the
-// dashboard was down is useless once this server listens. `instance` lets Foreman tell this server from
-// any other listener on the port.
+// dashboard was down is useless once this server listens. `/health` returns `instance` only to a request
+// carrying the current key, so a listener that copied it earlier cannot pass Foreman's ownership check.
 const pageKey = Buffer.from(randomBytes(32).toString("hex"));
 const instance = randomBytes(16).toString("hex");
 const page = `${url}/#key=${pageKey}`;
@@ -297,7 +297,7 @@ const server = createServer((request, response) => {
     return;
   }
   if (path === "/health") {
-    send(response, 200, { service: SERVICE, version, schema: SCHEMA, instance });
+    send(response, 200, { service: SERVICE, version, schema: SCHEMA, ...(authorized(request, target) ? { instance } : {}) });
     return;
   }
   if ((path.startsWith("/api/") || path === "/events") && !authorized(request, target)) {
