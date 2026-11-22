@@ -528,14 +528,14 @@
   function headMoved(lane, pr) {
     return /review/.test(str(lane.kind)) && !!pr.reviewedHead && !!pr.head && !shaEq(pr.head, pr.reviewedHead);
   }
-  function prLine(lane, pr) {
+  function prLine(pr) {
     const c = obj(pr.checks);
     const t = obj(pr.threads);
     const bits = [pr.draft ? "draft" : human(pr.state) || "state unknown"];
     if (c) bits.push(`checks ${num(c.passed) ?? 0} passed, ${num(c.failed) ?? 0} failed, ${num(c.pending) ?? 0} pending`);
     if (pr.reviewDecision) bits.push(human(pr.reviewDecision));
     if (t && num(t.unresolved) !== null) bits.push(plural(t.unresolved, "unresolved thread"));
-    return [link(pr.url, `#${str(pr.number) || "?"}`), ` ${bits.join(", ")}`, headMoved(lane, pr) ? note("head moved", "bg-yellow-lt") : null];
+    return [link(pr.url, `#${str(pr.number) || "?"}`), ` ${bits.join(", ")}`];
   }
   const kvRows = (pairs) => h("dl", { class: "row mb-0" }, pairs.map(([k, v]) => [
     h("dt", { class: "col-sm-3 text-secondary fw-normal" }, k), h("dd", { class: "col-sm-9 mb-1" }, v)]));
@@ -548,9 +548,10 @@
       wi ? (wiItem && wiItem.url ? link(wiItem.url, str(wi.id)) : str(wi.id)) : null,
       lane.launchedAt ? `launched ${when(lane.launchedAt)}` : null].filter(Boolean);
     const facts = [];
-    const fact = (label, value, mk, title) => {
+    const fact = (label, value, mk) => {
       const v = h("span", { class: "v" }, value);
-      facts.push(h("span", { class: "fact", title: title || v.textContent || null }, h("span", null, label), v, mk));
+      if (v.textContent) v.title = v.textContent;
+      facts.push(h("span", { class: "fact" }, h("span", null, label), v, mk));
     };
     if (obj(session.activity)) fact("Session", activityText(session.activity), marker(file, "sessions", session.activity.at));
     const cp = obj(lane.checkpoint);
@@ -571,7 +572,8 @@
       }
       fact("Branch", [mono(str(lane.branch)), bits.length ? ` ${bits.join(", ")}` : ""], marker(file, "git", git && git.read));
     }
-    for (const pr of arr(lane.prs)) fact("PR", prLine(lane, pr), marker(file, prSource(pr), pr.read));
+    for (const pr of arr(lane.prs)) fact("PR", prLine(pr),
+      [headMoved(lane, pr) ? h("span", { class: "badge bg-yellow-lt flex-none" }, "head moved") : null, marker(file, prSource(pr), pr.read)]);
     const id = lane.id;
     const signal = laneSignal(lane);
     return h("li", {
