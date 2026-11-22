@@ -319,10 +319,18 @@
           type: "button", role: "tab", id: `tab-${t.key}`, "aria-selected": selected ? "true" : "false", "aria-controls": "main",
           tabindex: selected ? "0" : "-1", "data-key": `tab:${t.key}`,
           class: `nav-link${selected ? " active" : ""}${t.e && isOld(t.e) ? " old" : ""}`,
+          title: t.e && isOld(t.e) ? "No briefing in the last 7 days" : null,
           onclick: () => selectView(t.key),
         }, h("span", { class: "tab-name" }, t.label), extra));
       }
+      $("main").setAttribute("role", "tabpanel");
+      $("main").removeAttribute("aria-label");
       if (S.view) $("main").setAttribute("aria-labelledby", `tab-${S.view}`);
+    } else {
+      // With no tabs on the page, a tab panel would name a tab that does not exist.
+      $("main").removeAttribute("role");
+      $("main").removeAttribute("aria-labelledby");
+      $("main").setAttribute("aria-label", "Foreman");
     }
     $("conn").replaceChildren(...connLines());
     $("conn-mobile").replaceChildren(...connLines().slice(0, 1));
@@ -369,7 +377,7 @@
     const rs = file ? reqState(refresh) : null;
     rb.disabled = !on || !!(rs && rs.until);
     rb.textContent = rs && rs.until ? rs.text : "Refresh all";
-    $("refresh-status").textContent = rs && rs.kind === "error" ? rs.text : "";
+    setStatus($("refresh-status"), "small text-danger text-md-end mt-1", rs && rs.kind === "error" ? [rs.text] : []);
 
     $("askcard").hidden = !file;
     if (file) {
@@ -379,7 +387,7 @@
       sb.textContent = as && as.until ? as.text : "Send";
       const status = $("ask-status");
       if (!on) setStatus(status, "small mt-1 text-secondary", talkReason(S.view));
-      else if (as && as.kind === "error") setStatus(status, "small mt-1 text-danger", [as.text, ". Your text is kept, so you can send it again."]);
+      else if (as && as.kind === "error") setStatus(status, "small mt-1 text-danger", [str(as.text).replace(/\.?$/, "."), " Your text is kept, so you can send it again."]);
       else setStatus(status, "small mt-1", []);
     }
   }
@@ -549,8 +557,9 @@
     if (cp && !unavailable(file, "memory")) {
       const newer = parse(cp.at) !== null && parse(lane.at) !== null && parse(cp.at) > parse(lane.at);
       const text = str(cp.next) || str(cp.title);
-      fact("Checkpoint", [text, newer ? " (newer than note)" : ""],
-        marker(file, "memory", cp.read, `Basic Memory checkpoint saved ${when(cp.at)}, read by Foreman at ${whenExact(cp.read)}`), text);
+      fact("Checkpoint", text,
+        [newer ? h("span", { class: "badge bg-blue-lt flex-none" }, "newer than note") : null,
+          marker(file, "memory", cp.read, `Basic Memory checkpoint saved ${when(cp.at)}, read by Foreman at ${whenExact(cp.read)}`)]);
     }
     const git = obj(lane.git);
     if (lane.branch) {
@@ -560,7 +569,7 @@
         if (num(git.behind) !== null) bits.push(`${git.behind} behind`);
         if (num(git.uncommitted) !== null && git.uncommitted) bits.push(`${git.uncommitted} uncommitted`);
       }
-      fact("Branch", [mono(str(lane.branch)), bits.length ? ` ${bits.join(", ")}` : ""], marker(file, "git", git && git.read), str(lane.branch));
+      fact("Branch", [mono(str(lane.branch)), bits.length ? ` ${bits.join(", ")}` : ""], marker(file, "git", git && git.read));
     }
     for (const pr of arr(lane.prs)) fact("PR", prLine(lane, pr), marker(file, prSource(pr), pr.read));
     const id = lane.id;
@@ -952,7 +961,7 @@
     sb.textContent = st && st.until ? st.text : "Send";
     const status = $("lane-ask-status");
     if (!on) setStatus(status, "small mt-1 text-secondary", talkReason(S.view));
-    else if (st && st.kind === "error") setStatus(status, "small mt-1 text-danger", [st.text, ". Your text is kept, so you can send it again."]);
+    else if (st && st.kind === "error") setStatus(status, "small mt-1 text-danger", [str(st.text).replace(/\.?$/, "."), " Your text is kept, so you can send it again."]);
     else setStatus(status, "small mt-1", []);
   }
 

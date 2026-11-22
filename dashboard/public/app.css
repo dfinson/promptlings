@@ -48,7 +48,7 @@
   padding: .45rem .75rem; border-radius: 6px; color: var(--tblr-secondary); font-size: .875rem; }
 #tabs .nav-link:hover { background: var(--tblr-hover-bg); color: var(--tblr-body-color); }
 #tabs .nav-link.active { background: var(--tblr-active-bg); color: var(--tblr-body-color); font-weight: 600; box-shadow: inset 2px 0 0 var(--fm-blue, var(--tblr-primary)); }
-#tabs .nav-link.old { opacity: .55; }
+#tabs .nav-link.old .tab-name { font-style: italic; }
 #tabs .tab-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #tabs .badge { margin-left: auto; }
 .side-foot { margin-top: auto; padding: 1rem .75rem; color: var(--tblr-secondary); display: flex; flex-direction: column; gap: .35rem; }
