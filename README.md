@@ -31,6 +31,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
 | [Spec Master](agents/orchestration/spec-master.agent.md) | Aligns intent through specifications humans can understand and judge, preserving precise behavior and consequential design. Coordinates separately approved delivery through concurrent lanes and scoped PRs. |
 | [Experiment Director](agents/orchestration/experiment-director.agent.md) | Designs and conducts controlled comparisons of prompts, skills, agents and workflows, separating measured outcomes from preferences, cost and uncertainty. |
+| [Foreman](agents/orchestration/foreman.agent.md) | Starts your day: recovers project context and earlier sessions, prepares local dependencies, and launches independent Spec Master and Sparring Partner sessions for implementation and review. Selected explicitly, never invoked automatically. |
 
 [Artifact Inspector](agents/maintenance/artifact-inspector.agent.md) is a
 maintainer and CI helper for inspecting agent and skill definitions.

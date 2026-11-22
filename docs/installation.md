@@ -4,7 +4,7 @@
 
 Run `npx promptlings` as shown in the [README](../README.md#install). Node.js
 22.20 or later is the only prerequisite. The default installation includes all
-nine agents, bundled Promptlings skills, and the supporting toolchain.
+ten agents, bundled Promptlings skills, and the supporting toolchain.
 
 | Command | Effect |
 | --- | --- |
@@ -130,7 +130,7 @@ pinned package dependencies.
 
 | Option | Effect |
 | --- | --- |
-| `--all` | Select all nine agents, the default |
+| `--all` | Select all ten agents, the default |
 | `--review` | Select the three ensemble agents: the-nitcracker, PR Walkthrough, and Sparring Partner |
 | `--agents a,b` | Select agents by name |
 | `--no-system-packages` | Use existing Python, Git, gh, FFmpeg, and uv, but still install selected applications and skills |
