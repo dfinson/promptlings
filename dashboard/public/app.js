@@ -378,10 +378,17 @@
       sb.disabled = !on || !!(as && as.until);
       sb.textContent = as && as.until ? as.text : "Send";
       const status = $("ask-status");
-      if (!on) { status.className = "small mt-1 text-secondary"; status.replaceChildren(...talkReason(S.view)); }
-      else if (as && as.kind === "error") { status.className = "small mt-1 text-danger"; status.replaceChildren(as.text, ". Your text is kept, so you can send it again."); }
-      else { status.className = "small mt-1"; status.replaceChildren(); }
+      if (!on) setStatus(status, "small mt-1 text-secondary", talkReason(S.view));
+      else if (as && as.kind === "error") setStatus(status, "small mt-1 text-danger", [as.text, ". Your text is kept, so you can send it again."]);
+      else setStatus(status, "small mt-1", []);
     }
+  }
+  // Status lines are live regions, so they change only when their text does; replacing identical text can be read out again.
+  function setStatus(el, cls, parts) {
+    const next = h("span", null, parts);
+    if (el.className === cls && el.textContent === next.textContent) return;
+    el.className = cls;
+    el.replaceChildren(...next.childNodes);
   }
   const askBody = (text) => ({ request: "ask", repo: S.view, text });
   const laneAskBody = (text) => ({ request: "ask", repo: S.view, lane: S.lane, text });
@@ -486,7 +493,7 @@
           h("div", { class: "d-flex align-items-baseline gap-2" },
             h("span", { class: "row-title flex-fill min-w-0" }, all ? h("span", { class: "text-secondary fw-normal" }, `${nameOf(entry(repo))}: `) : null, str(item.title)),
             marker(file, item.source, item.since || item.at)),
-          item.detail ? h("div", { class: "row-meta trunc", title: str(item.detail) }, linkify(item.detail)) : null,
+          item.detail ? h("div", { class: "row-meta" }, linkify(item.detail)) : null,
           item.lane || action ? h("div", { class: "d-flex flex-wrap align-items-center gap-2 mt-1 small" },
             item.lane ? [h("span", { class: "text-secondary" }, "Lane"), lane ? laneButton(repo, lane.id, str(lane.title) || lane.id, `need:${key}`) : str(item.lane)] : null,
             action ? h("span", { class: "ms-auto" }, action) : null) : null)));
@@ -533,8 +540,10 @@
       wi ? (wiItem && wiItem.url ? link(wiItem.url, str(wi.id)) : str(wi.id)) : null,
       lane.launchedAt ? `launched ${when(lane.launchedAt)}` : null].filter(Boolean);
     const facts = [];
-    const fact = (label, value, mk, title) => facts.push(h("span", { class: "fact", title: title || null },
-      h("span", null, label), h("span", { class: "v" }, value), mk));
+    const fact = (label, value, mk, title) => {
+      const v = h("span", { class: "v" }, value);
+      facts.push(h("span", { class: "fact", title: title || v.textContent || null }, h("span", null, label), v, mk));
+    };
     if (obj(session.activity)) fact("Session", activityText(session.activity), marker(file, "sessions", session.activity.at));
     const cp = obj(lane.checkpoint);
     if (cp && !unavailable(file, "memory")) {
@@ -562,7 +571,7 @@
     },
       h("div", { class: "d-flex align-items-center gap-2" },
         h("span", { class: "flex-none" }, stateBadge(lane.state)),
-        h("button", { type: "button", class: "linkish plain row-title trunc", "data-key": `lane:${repo}|${id}`, "aria-haspopup": "dialog", onclick: (e) => { e.stopPropagation(); openLane(repo, id, `lane:${repo}|${id}`); } }, str(lane.title) || id),
+        h("button", { type: "button", class: "linkish plain row-title trunc", title: str(lane.title) || id, "data-key": `lane:${repo}|${id}`, "aria-haspopup": "dialog", onclick: (e) => { e.stopPropagation(); openLane(repo, id, `lane:${repo}|${id}`); } }, str(lane.title) || id),
         h("span", { class: "ms-auto d-flex align-items-center gap-2 small flex-none" }, signal || null, marker(file, "recorded", lane.at))),
       lane.note ? h("div", { class: "row-meta trunc mt-1", title: str(lane.note) }, str(lane.note)) : null,
       h("div", { class: "row-meta dotted mt-1" }, meta.map((m) => h("span", null, m))),
@@ -942,9 +951,9 @@
     sb.disabled = !on || !!(st && st.until);
     sb.textContent = st && st.until ? st.text : "Send";
     const status = $("lane-ask-status");
-    if (!on) { status.className = "small mt-1 text-secondary"; status.replaceChildren(...talkReason(S.view)); }
-    else if (st && st.kind === "error") { status.className = "small mt-1 text-danger"; status.replaceChildren(st.text, ". Your text is kept, so you can send it again."); }
-    else { status.className = "small mt-1"; status.replaceChildren(); }
+    if (!on) setStatus(status, "small mt-1 text-secondary", talkReason(S.view));
+    else if (st && st.kind === "error") setStatus(status, "small mt-1 text-danger", [st.text, ". Your text is kept, so you can send it again."]);
+    else setStatus(status, "small mt-1", []);
   }
 
   // Navigation.
@@ -1050,6 +1059,7 @@
     S.data = null;
     S.detail = null;
     S.lane = null;
+    S.lastNeeds = null;
     if (events) { events.close(); events = null; }
     render();
   }

@@ -254,7 +254,6 @@ const assets = {
   "/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/app.css": "app.css", "/favicon.svg": "favicon.svg",
   "/vendor/tabler/tabler.min.css": "vendor/tabler/tabler.min.css",
   "/vendor/tabler/tabler.min.js": "vendor/tabler/tabler.min.js",
-  "/vendor/tabler/tabler-theme.min.js": "vendor/tabler/tabler-theme.min.js",
   "/vendor/tabler/LICENSE": "vendor/tabler/LICENSE",
 };
 

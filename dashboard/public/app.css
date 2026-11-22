@@ -114,4 +114,5 @@ body.offline #main, body.offline #detail-body, body.offline #kpis { opacity: .55
   .card, .list-group-item { break-inside: avoid; }
   .btn, .linkish[aria-expanded], .card-footer { display: none !important; }
   li.done-lane[hidden] { display: block !important; }
+  .trunc, .fact > .v { white-space: normal; overflow: visible; }
 }

@@ -1,6 +1,6 @@
 Third-party notices for the files in this directory.
 
-tabler.min.css, tabler.min.js and tabler-theme.min.js are unmodified copies of
+tabler.min.css and tabler.min.js are unmodified copies of
 the dist files published in @tabler/core 1.7.5 on npm.
 
 ========================================================================
