@@ -221,6 +221,13 @@ agents are missing and reports that nothing was saved. Its ensemble review lanes
 also need the-nitcracker and PR Walkthrough; without them, Foreman uses
 Sparring Partner.
 
+Start Foreman by selecting it as the session's agent, for example
+`copilot --agent foreman`. It is not meant to run as a subagent or child
+agent. Copilot hosts block subagent use through `disable-model-invocation`,
+and OpenCode, MiMo Code and Kilo publish it as a primary agent. Other hosts
+have no such switch, so Foreman's instructions tell it to refuse when another
+agent invokes it.
+
 Opt-outs skip installation. They do not uninstall tools, stop existing services,
 or remove earlier registrations. Failed commands stop installation, and earlier
 successful package installations remain available for retry.
