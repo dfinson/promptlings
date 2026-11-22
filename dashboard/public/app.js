@@ -4,8 +4,21 @@
   const S = {
     data: null, view: null, lane: null, detail: null, talk: {}, offline: false,
     doneOpen: {}, earlier: {}, req: {}, lastNeeds: null, lastNeedsView: null,
-    hover: null, order: {}, deferred: false, opener: null, hash: null,
+    hover: null, order: {}, deferred: false, opener: null, hash: null, locked: false,
   };
+  // The page key arrives once in the address Foreman reports; this origin's storage keeps it.
+  const pageKey = (() => {
+    const p = new URLSearchParams(location.hash.slice(1));
+    const given = p.get("key");
+    if (given) {
+      try { localStorage.setItem("foreman-page-key", given); } catch {}
+      p.delete("key");
+      history.replaceState(null, "", p.toString() ? `#${p}` : location.pathname);
+      return given;
+    }
+    try { return localStorage.getItem("foreman-page-key") || ""; } catch { return ""; }
+  })();
+  const api = (path) => fetch(path, { cache: "no-store", headers: { "x-foreman-key": pageKey } });
   const DAY = 86400000;
   const KINDS = {
     "blocked": ["Blocked", 0], "lane-failed": ["Lane failed", 0], "ci-failing": ["CI failing", 1],
@@ -350,7 +363,7 @@
   function renderBanners() {
     const out = [];
     const banner = (danger, ...text) => h("div", { class: `alert ${danger ? "alert-danger" : "alert-warning"} mb-3`, role: "status" }, ...text);
-    if (S.offline) out.push(banner(true, "Lost connection to the dashboard server. Retrying every 5 seconds."));
+    if (S.offline && !S.locked) out.push(banner(true, "Lost connection to the dashboard server. Retrying every 5 seconds."));
     const e = S.view && S.view !== "all" ? entry(S.view) : null;
     if (e && e.status === "error") {
       const msg = str(e.error).replace(/\.?$/, ".");
@@ -671,9 +684,15 @@
   function renderMain() {
     const main = $("main");
     main.replaceChildren();
+    if (S.locked) {
+      main.append(h("div", { class: "col-12" }, h("div", { class: "card" }, h("div", { class: "card-body" },
+        h("h2", { class: "card-title" }, "Open the dashboard from Foreman's address."),
+        h("p", null, "This page shows your Foreman status only to you. Open the address Foreman gives in its briefing once, and this browser remembers it.")))));
+      return;
+    }
     if (!S.data) return;
     if (!entries().length) {
-      const s = S.data;
+      const s = obj(S.data.server) || {};
       main.append(h("div", { class: "col-12" }, h("div", { class: "card" }, h("div", { class: "card-body" },
         h("h2", { class: "card-title" }, "No Foreman briefings yet."),
         h("p", null, "Select Foreman in your agent host, for example ", h("code", null, "copilot --agent foreman"), ". This page updates on its own when the first briefing is written."),
@@ -922,7 +941,8 @@
   // Data.
   async function loadState() {
     try {
-      const response = await fetch("/api/state", { cache: "no-store" });
+      const response = await api("/api/state");
+      if (response.status === 401) { lock(); return; }
       if (!response.ok) return;
       S.data = await response.json();
     } catch { return; }
@@ -940,7 +960,7 @@
   async function loadDetail() {
     if (!S.lane || !S.view) return;
     try {
-      const response = await fetch(`/api/lane?repo=${encodeURIComponent(S.view)}&lane=${encodeURIComponent(S.lane)}`, { cache: "no-store" });
+      const response = await api(`/api/lane?repo=${encodeURIComponent(S.view)}&lane=${encodeURIComponent(S.lane)}`);
       if (response.status === 404) { S.lane = null; S.detail = null; writeHash(); return; }
       if (response.ok) S.detail = await response.json();
     } catch {}
@@ -949,21 +969,30 @@
     if (!repo || repo === "all") return;
     let talk = { connected: false };
     try {
-      const response = await fetch(`/api/talk?repo=${encodeURIComponent(repo)}`, { cache: "no-store" });
+      const response = await api(`/api/talk?repo=${encodeURIComponent(repo)}`);
       if (response.ok) { const json = await response.json(); if (json && json.connected) talk = json; }
     } catch { return; }
     const before = JSON.stringify(S.talk[repo] || null);
     S.talk[repo] = talk;
     if (JSON.stringify(talk) !== before) render();
   }
+  let events = null;
+  function lock() {
+    S.locked = true;
+    if (events) { events.close(); events = null; }
+    render();
+  }
   function connect() {
-    const events = new EventSource("/events");
+    if (S.locked) return;
+    events = new EventSource(`/events?key=${encodeURIComponent(pageKey)}`);
     events.addEventListener("hello", () => { setOffline(false); loadState(); loadTalk(S.view); });
     events.addEventListener("state", () => loadState());
     events.addEventListener("talk", () => loadTalk(S.view));
     events.onerror = () => {
+      if (!events) return;
       setOffline(true);
-      if (events.readyState === EventSource.CLOSED) { events.close(); setTimeout(connect, 5000); }
+      // A refused key also closes the stream; asking for the state tells the two apart.
+      if (events.readyState === EventSource.CLOSED) { events.close(); events = null; loadState(); setTimeout(connect, 5000); }
     };
   }
   function setOffline(value) {
@@ -1058,14 +1087,15 @@
   $("detail").addEventListener("shown.bs.offcanvas", () => $("dtitle").focus());
   window.addEventListener("hashchange", () => {
     if (location.hash === S.hash) return;
+    if (new URLSearchParams(location.hash.slice(1)).has("key")) { location.reload(); return; }
     const hash = readHash();
     const view = hash.view === "all" || (hash.view && entry(hash.view)) ? hash.view : defaultView();
     if (view !== S.view) selectView(view);
     if (hash.lane && view !== "all" && laneById(fileOf(view), hash.lane)) openLane(view, hash.lane, null);
     else if (S.lane) closeLane();
   });
-  setInterval(() => { loadTalk(S.view); render(); }, 30000);
+  setInterval(() => { if (!S.locked) { loadTalk(S.view); render(); } }, 30000);
 
-  loadState();
-  connect();
+  if (!pageKey) lock();
+  else { loadState(); connect(); }
 })();

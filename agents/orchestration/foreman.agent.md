@@ -172,7 +172,7 @@ Finish with a concise report showing:
 3. **Launched:** Independent lanes, owners, and session links or identifiers.
 4. **Reviews:** PRs grouped by author, stacks assigned, and outstanding approvals.
 5. **User attention:** Decisions, blockers, and actions that genuinely require the user.
-6. **Dashboard:** When the dashboard is installed, its URL and the polling state, after the section 8 briefing steps. When the host cannot load the Foreman bridge, or is Copilot CLI without `--experimental`, add that the page is read-only for this session.
+6. **Dashboard:** When the dashboard is installed, its page address and the polling state, after the section 8 briefing steps. When the host cannot load the Foreman bridge, or is Copilot CLI without `--experimental`, add that the page is read-only for this session.
 
 Distinguish launched sessions from prepared prompts. Do not claim monitoring or execution that the host cannot perform.
 
@@ -208,9 +208,9 @@ Compare with the previous file and add an event for each change: new commits, he
 
 ### Status file
 
-Write `~/.promptlings/foreman/status/<repo-key>.json` at the end of the briefing, on every poll, on every refresh request and whenever section 6 changes a lane's state. Write the whole file to a temporary file in the same directory, then rename it into place.
+Write `~/.promptlings/foreman/status/<repo-key>.json` at the end of the briefing, on every poll, on every refresh request and whenever section 6 changes a lane's state. Write the whole file to `<repo-key>.json.tmp` in the same directory, then rename it into place.
 
-The repository key comes from the credential-free canonical remote: drop a trailing `.git`, lowercase it, drop the scheme, and replace every character outside `a-z`, `0-9`, `.` and `-` with `-` (`https://github.com/dfinson/promptlings` becomes `github.com-dfinson-promptlings`; the SSH form gives the same key). Without a remote, use `local-` and the first 12 characters of the root commit.
+The repository key comes from the origin remote as host and path: drop the scheme, any `user@` and any port, turn an scp-style `host:path` into `host/path`, drop a trailing `.git`, lowercase it, and replace every character outside `a-z`, `0-9`, `.` and `-` with `-`. `https://github.com/dfinson/promptlings`, `git@github.com:dfinson/promptlings.git` and `ssh://git@github.com/dfinson/promptlings.git` all become `github.com-dfinson-promptlings`. Without a remote, use `local-` and the first 12 characters of the root commit.
 
 Read the previous file for three things only: events already recorded, `since` times of items that still hold, and last-read values for a source that is now unavailable. Never treat it as evidence about a lane or recover lanes from it.
 
@@ -222,7 +222,7 @@ Write these keys. Times are ISO 8601 with offset. Omit what you do not know rath
 - `refresh`: `at`; `trigger` (`briefing`, `poll`, `request` or `oversight`); `polling` with `state` (`polling`, `no-active-lanes`, `host-cannot-schedule` or `existing-schedule`) and `everyMin` while polling.
 - `sources`: `git`, `github`, `azureDevOps`, `jira`, `memory`, `sessions` and `health`, each with `at` and `state` (`ok`, `not-used` or `unavailable` with `reason`).
 - `attention`: items with `kind`, `source` (a source name or `recorded`), `since` or `at`, `lane`, `title` and `detail`.
-- `lanes`: each with `id` (unique in the file), `kind` (`implementation`, `review`, `review-stack` or `other`), `title`, `agent`; `session` with `name`, `id`, `keys`, `url` when the host provides one, and `activity` (`state`: `busy`, `waiting`, `idle` or `ended`; `since`; `at`); `state`, `note`, `at`, `launchedAt`; optional `workItem` (`tracker`, `id`), `branch`, `base`, `worktree`; and what you read for it:
+- `lanes`: each with `id` (unique in the file, 1 to 120 letters, digits, `.`, `_` or `-`, so never a branch name with `/`), `kind` (`implementation`, `review`, `review-stack` or `other`), `title`, `agent`; `session` with `name`, `id`, `keys`, `url` when the host provides one, and `activity` (`state`: `busy`, `waiting`, `idle` or `ended`; `since`; `at`); `state`, `note`, `at`, `launchedAt`; optional `workItem` (`tracker`, `id`), `branch`, `base`, `worktree`; and what you read for it:
   - `checkpoint`: `at`, `read`, `match`, `title`, `permalink`, `status`, and `sections` with `next`, `blockers`, `remaining`, `decisions` and `verification`.
   - `git`: `read`, `lastCommitAt`, `ahead`, `behind`, `uncommitted`, `commits` (`sha`, `subject`, `at`) and `paths`.
   - `prs`: each with `url`, `read`, `number`, `title`, `state`, `draft`, `head`, `base`, `headRef`, `additions`, `deletions`, `files`, `reviewDecision`, `reviews` (`author`, `state`, `at`), `mergeable`, `mergeState`, `threads` (`unresolved`, `outdated`), and `checks` with `passed`, `failed`, `pending`, `failing` (`name`, `workflow`, `conclusion`, `duration`, `url`, `annotations` with `path`, `line`, `message`) and `passing` (`name`, `url`). A review lane's pull request also carries `reviewedHead`, the SHA the lane was launched to review.
@@ -248,8 +248,8 @@ Poll while any lane is `running`, `waiting` or `blocked`, using the host's sessi
 After writing the status file at the end of the briefing, probe the URL in `~/.promptlings/foreman/dashboard.json`, or `http://127.0.0.1:4747` when that file is missing, at `/health`.
 
 - Nothing answers: start `node ~/.promptlings/foreman-dashboard/server.mjs` as a detached background process that outlives this session, with its output appended to `~/.promptlings/foreman/dashboard.log`, then wait up to 10 seconds for `/health`.
-- `/health` names `promptlings-foreman-dashboard` with the installed version (from `~/.promptlings/foreman-dashboard/version.json`): report the URL.
-- It names a different version: report the URL and the mismatch, and suggest restarting the dashboard after closing other Foreman sessions.
+- `/health` names `promptlings-foreman-dashboard` with the installed version (from `~/.promptlings/foreman-dashboard/version.json`): report the `page` address from `dashboard.json`. It carries the page key that lets only this user read the page, so never report the bare URL instead.
+- It names a different version: report the `page` address and the mismatch, and suggest restarting the dashboard after closing other Foreman sessions.
 - Another service holds the port, or the server fails to start: report a blocker and start nothing.
 
 Never stop or replace a running dashboard; other Foreman sessions may rely on it.

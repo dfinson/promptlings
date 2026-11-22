@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // Foreman dashboard server: shows ~/.promptlings/foreman/status/*.json on one local page.
-// Node built-ins only. Listens on 127.0.0.1, answers GET only, makes no outbound
-// connections and starts no child processes.
+// Node built-ins only. Listens on 127.0.0.1, answers GET only, starts no child processes,
+// and connects out only to probe Foreman bridge ports on 127.0.0.1.
 
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
+import { connect } from "node:net";
 import { readFileSync, mkdirSync, readdirSync, statSync, writeFileSync, renameSync, unlinkSync, appendFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -21,6 +23,7 @@ const base = join(homedir(), ".promptlings", "foreman");
 const statusDir = join(base, "status");
 const talkDir = join(base, "talk");
 const infoFile = join(base, "dashboard.json");
+const keyFile = join(base, "dashboard-key");
 const logFile = join(base, "dashboard.log");
 
 function readVersion() {
@@ -52,6 +55,25 @@ const allowedHosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
 
 mkdirSync(statusDir, { recursive: true });
 mkdirSync(talkDir, { recursive: true });
+
+// The page key keeps the API, and with it the bridge token, readable only by this OS user.
+// It lives in a file only this user can read and is kept across restarts so saved links keep working.
+function loadKey() {
+  const valid = (value) => /^[0-9a-f]{64}$/.test(value);
+  try { const value = readFileSync(keyFile, "utf8").trim(); if (valid(value)) return value; } catch {}
+  const value = randomBytes(32).toString("hex");
+  const temporary = `${keyFile}.${process.pid}.tmp`;
+  writeFileSync(temporary, `${value}\n`, { mode: 0o600 });
+  renameSync(temporary, keyFile);
+  return value;
+}
+const pageKey = Buffer.from(loadKey());
+const page = `${url}/#key=${pageKey}`;
+
+function authorized(request, target) {
+  const given = Buffer.from(String(request.headers["x-foreman-key"] || target.searchParams.get("key") || ""));
+  return given.length === pageKey.length && timingSafeEqual(given, pageKey);
+}
 
 function log(message) {
   const line = `${new Date().toISOString()} ${message}\n`;
@@ -198,21 +220,37 @@ function alive(pid) {
   try { process.kill(pid, 0); return true; } catch (error) { return error.code === "EPERM"; }
 }
 
-function talkFor(key) {
+// A talk file left by a killed session can name a process id the system has since reused,
+// so a candidate counts only when its bridge port also accepts a connection.
+function listening(port) {
+  return new Promise((done) => {
+    const socket = connect({ host: "127.0.0.1", port });
+    const finish = (value) => { socket.destroy(); done(value); };
+    socket.setTimeout(500, () => finish(false));
+    socket.once("connect", () => finish(true));
+    socket.once("error", () => finish(false));
+  });
+}
+
+async function talkFor(key) {
   const entry = repos.get(key);
   const cwd = entry && entry.status === "ok" && entry.file.briefing ? normalizePath(entry.file.briefing.cwd) : "";
   if (!cwd) return { connected: false };
-  let best = null;
+  const candidates = [];
   let names = [];
   try { names = readdirSync(talkDir).filter((name) => name.endsWith(".json")); } catch {}
   for (const name of names) {
     let talk;
     try { talk = JSON.parse(readFileSync(join(talkDir, name), "utf8")); } catch { continue; }
-    if (!talk || !Number.isInteger(talk.port) || typeof talk.token !== "string" || !alive(talk.pid)) continue;
+    if (!talk || !Number.isInteger(talk.port) || talk.port < 1 || talk.port > 65535 || typeof talk.token !== "string" || !alive(talk.pid)) continue;
     if (normalizePath(talk.cwd) !== cwd) continue;
-    if (!best || String(talk.startedAt) > String(best.startedAt)) best = talk;
+    candidates.push(talk);
   }
-  return best ? { connected: true, port: best.port, token: best.token } : { connected: false };
+  candidates.sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
+  for (const talk of candidates) {
+    if (await listening(talk.port)) return { connected: true, port: talk.port, token: talk.token };
+  }
+  return { connected: false };
 }
 
 const types = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".svg": "image/svg+xml" };
@@ -266,6 +304,10 @@ const server = createServer((request, response) => {
     send(response, 200, { service: SERVICE, version, schema: SCHEMA });
     return;
   }
+  if ((path.startsWith("/api/") || path === "/events") && !authorized(request, target)) {
+    send(response, 401, { error: "Open the dashboard from the address Foreman reports in its briefing." });
+    return;
+  }
   if (path === "/api/state") {
     send(response, 200, summary());
     return;
@@ -279,7 +321,8 @@ const server = createServer((request, response) => {
   }
   if (path === "/api/talk") {
     const key = target.searchParams.get("repo") || "";
-    send(response, 200, KEY.test(key) ? talkFor(key) : { connected: false });
+    if (!KEY.test(key)) { send(response, 200, { connected: false }); return; }
+    talkFor(key).then((talk) => send(response, 200, talk), () => send(response, 200, { connected: false }));
     return;
   }
   if (path === "/events") {
@@ -294,7 +337,7 @@ const server = createServer((request, response) => {
 
 function writeInfo() {
   const temporary = `${infoFile}.${process.pid}.tmp`;
-  writeFileSync(temporary, `${JSON.stringify({ url, pid: process.pid, version, startedAt }, null, 2)}\n`);
+  writeFileSync(temporary, `${JSON.stringify({ url, page, pid: process.pid, version, startedAt }, null, 2)}\n`, { mode: 0o600 });
   renameSync(temporary, infoFile);
 }
 
