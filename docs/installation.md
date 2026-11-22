@@ -217,7 +217,9 @@ delegating.
 Foreman dispatches to Spec Master and Sparring Partner and saves through Memory
 Manager, so install those agents with memory enabled alongside it. With
 `--agents foreman` alone, Foreman returns kickoff prompts for lanes whose
-agents are missing and reports that nothing was saved.
+agents are missing and reports that nothing was saved. Its ensemble review lanes
+also need the-nitcracker and PR Walkthrough; without them, Foreman uses
+Sparring Partner.
 
 Opt-outs skip installation. They do not uninstall tools, stop existing services,
 or remove earlier registrations. Failed commands stop installation, and earlier
