@@ -8,7 +8,10 @@ description: Coordinate approved spec-backed delivery while preserving intent. F
 ## Contract and authority
 
 For specification-only requests, use design-writing and
-`references/spec-template.md`, then stop at a human-reviewable specification.
+`references/spec-template.md`, then stop at a human-reviewable specification
+and any requested review cycle. Load `references/collaborative-review.md` when
+sharing, comments or contextual feedback incorporation are requested.
+Collaboration is specification work, not product implementation authority.
 This applies even when this delivery skill was loaded by a caller. Do not turn
 "before implementation" or "implementation-ready" into a request for an execution
 manifest. Delegate the user's actual scope, not extra commands, write sets or

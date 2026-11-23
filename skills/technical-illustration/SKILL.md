@@ -29,6 +29,12 @@ easier. Do not require prose to fail first or an implementation to cross a
 complexity threshold. A trivial change may need only a few sentences.
 Remove figures that merely decorate or repeat prose.
 
+For specification sites, follow the caller's library-only presentation contract.
+Keep one screen and its explanation together, with consequential questions
+beside it. Use a supported player or disclosure, not custom presentation CSS
+or JavaScript. Static figures remain this skill's output, not permission to
+build a separate interactive application.
+
 ## Compose the useful view
 
 When available, load `frontend-design` for a consequential visual direction.
@@ -76,6 +82,11 @@ source and the design/source revision information needed to reproduce it.
 Place the visual beside the passage or decision it explains. Keep the claim,
 important qualifications and requested action in readable text too. Complex
 figures need an accessible account of the relationships or values they convey.
+
+Authored markers explain a visual; they are not reviewer-created feedback.
+When collaboration is requested, give each screen a stable identity and a
+commentable caption or supported screen discussion. Preserve the caller's
+reviewed-version mapping. Do not claim text annotations support image regions.
 
 Retain provenance in the caller's record. Use specific captions such as
 "Proposed queue view" when that distinction changes what the reader can infer.
