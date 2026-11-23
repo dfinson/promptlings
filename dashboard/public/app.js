@@ -148,18 +148,18 @@
     const k = srcKey(source);
     let kind, text, label;
     if (!k || k === "recorded") {
-      kind = "m-rec"; text = "recorded"; label = "Recorded";
+      kind = "mk-rec"; text = "recorded"; label = "Recorded";
       tip = tip || `Recorded by Foreman at ${when(at) || "an unknown time"}${hostPhrase(file && obj(file.briefing) && file.briefing.host)}`;
     } else if (unavailable(file, source)) {
       const s = sourceState(file, source);
-      kind = "m-un"; text = "unavailable"; label = "Unavailable";
+      kind = "mk-un"; text = "unavailable"; label = "Unavailable";
       tip = `${SOURCES[k] || source} was unavailable at Foreman's last refresh: ${str(s.reason) || "no reason given"}.${at ? ` Last read at ${when(at)}.` : ""}`;
     } else {
-      kind = "m-chk"; text = "checked"; label = "Checked";
+      kind = "mk-chk"; text = "checked"; label = "Checked";
       tip = tip || `${SOURCES[k] || source}, read by Foreman at ${whenExact(at)}`;
     }
-    const color = { "m-rec": "text-secondary", "m-chk": "text-blue", "m-un": "text-orange" }[kind];
-    return h("span", { class: `badge badge-outline ${color} mk ms-1`, tabindex: "0", "data-bs-toggle": "tooltip", "data-bs-title": tip, "aria-label": `${label}. ${tip}` }, text);
+    // The marker's shape carries the provenance and its text the time; the tooltip and label carry both in words.
+    return h("span", { class: `mk ${kind} ms-1`, tabindex: "0", "data-bs-toggle": "tooltip", "data-bs-title": tip, "aria-label": `${label}. ${tip}` }, when(at) || text);
   }
   const trackerSource = (t) => ({ github: "github", "azure-devops": "azureDevOps", azuredevops: "azureDevOps", jira: "jira" }[str(t).toLowerCase()] || str(t));
   const trackerName = (t) => ({ github: "GitHub", "azure-devops": "Azure DevOps", azuredevops: "Azure DevOps", jira: "Jira" }[str(t).toLowerCase()] || str(t));
@@ -286,84 +286,150 @@
   const note = (text, cls) => h("span", { class: `badge ${cls || "bg-secondary-lt"} ms-1` }, text);
   const flushKid = (k) => k instanceof Element && /\b(list-group|table-responsive|card-footer)\b/.test(k.className);
 
-  // Header.
+  // Header, sidebar and summary.
+  const greeting = () => { const hr = new Date().getHours(); return hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening"; };
+  const repoView = () => !S.locked && !!S.view && S.view !== "all" && !!fileOf(S.view);
+  function talkReason(repo) {
+    return [`Requests need Foreman running for ${nameOf(entry(repo))} in the Copilot app, or in Copilot CLI with `, h("code", null, "--experimental"), "."];
+  }
+  function connLines() {
+    if (S.locked || !S.data) return [];
+    const out = [h("div", null, h("span", { class: `dot ${S.offline ? "off" : "on"}`, "aria-hidden": "true" }), S.offline ? "Dashboard server offline" : "Live")];
+    if (repoView()) {
+      const on = talkOn(S.view);
+      out.push(h("div", null, h("span", { class: `dot${on ? " on" : ""}`, "aria-hidden": "true" }), on ? "Foreman session connected" : "No Foreman session found"));
+    }
+    return out;
+  }
   function renderHeader() {
     const tabs = $("tabs");
     const entriesList = sortedEntries();
     tabs.replaceChildren();
-    if (entriesList.length) {
-      const all = [{ key: "all", label: "All" }, ...entriesList.map((e) => ({ key: e.key, label: nameOf(e), e }))];
+    if (entriesList.length && !S.locked) {
+      const all = [{ key: "all", label: "All repositories" }, ...entriesList.map((e) => ({ key: e.key, label: nameOf(e), e }))];
       for (const t of all) {
         const selected = S.view === t.key;
         let extra = null;
-        if (t.e && t.e.status !== "ok") extra = h("span", { class: "badge bg-orange text-orange-fg ms-2", title: t.e.status === "newer" ? "Needs a newer dashboard" : "Could not be read" }, "!");
-        else if (t.e) {
-          const items = needs(t.e.file);
-          if (items.length) extra = h("span", { class: `badge ms-2 ${items.some((i) => RED.has(i.kind)) ? "bg-red text-red-fg" : "bg-blue text-blue-fg"}`, "aria-label": `${items.length} need you` }, String(items.length));
+        if (t.e && t.e.status !== "ok") extra = h("span", { class: "badge bg-orange text-orange-fg", title: t.e.status === "newer" ? "Needs a newer dashboard" : "Could not be read" }, "!");
+        else {
+          const items = t.e ? needs(t.e.file) : entries().flatMap((e) => (e.status === "ok" ? needs(e.file) : []));
+          if (items.length) extra = h("span", { class: `badge ${items.some((i) => RED.has(i.kind)) ? "bg-red text-red-fg" : "bg-blue text-blue-fg"}`, "aria-label": `${items.length} need you` }, String(items.length));
         }
         tabs.append(h("button", {
           type: "button", role: "tab", id: `tab-${t.key}`, "aria-selected": selected ? "true" : "false", "aria-controls": "main",
           tabindex: selected ? "0" : "-1", "data-key": `tab:${t.key}`,
           class: `nav-link${selected ? " active" : ""}${t.e && isOld(t.e) ? " old" : ""}`,
+          title: t.e && isOld(t.e) ? "No briefing in the last 7 days" : null,
           onclick: () => selectView(t.key),
-        }, t.label, extra));
+        }, h("span", { class: "tab-name" }, t.label), extra));
       }
-      $("main").setAttribute("aria-labelledby", `tab-${S.view}`);
+      $("main").setAttribute("role", "tabpanel");
+      $("main").removeAttribute("aria-label");
+      if (S.view) $("main").setAttribute("aria-labelledby", `tab-${S.view}`);
+    } else {
+      // With no tabs on the page, a tab panel would name a tab that does not exist.
+      $("main").removeAttribute("role");
+      $("main").removeAttribute("aria-labelledby");
+      $("main").setAttribute("aria-label", "Foreman");
     }
+    $("conn").replaceChildren(...connLines());
+    $("conn-mobile").replaceChildren(...connLines().slice(0, 1));
+    document.querySelector(".side-label").hidden = !tabs.children.length;
+
+    const pre = $("pretitle"), head = $("headline");
+    const e = S.view && S.view !== "all" ? entry(S.view) : null;
+    if (S.locked || !S.data) { pre.textContent = ""; head.textContent = "Foreman"; }
+    else if (!entries().length) { pre.textContent = greeting(); head.textContent = "No Foreman briefings yet"; }
+    else if (e && e.status !== "ok") { pre.textContent = `${greeting()} \u00b7 ${nameOf(e)}`; head.textContent = e.status === "newer" ? "Needs a newer dashboard" : "Status file could not be read"; }
+    else {
+      const count = needsCount(S.view);
+      pre.textContent = `${greeting()} \u00b7 ${S.view === "all" ? "All repositories" : nameOf(e)}`;
+      head.textContent = count ? `${plural(count, "thing needs", "things need")} you` : "Nothing needs you";
+    }
+    document.title = S.data && !S.locked && S.view && needsCount(S.view) ? `(${needsCount(S.view)}) Foreman` : "Foreman";
 
     const fresh = $("freshness");
     fresh.replaceChildren();
-    const file = S.view && S.view !== "all" ? fileOf(S.view) : null;
+    const file = repoView() ? fileOf(S.view) : null;
     if (file) {
       const b = obj(file.briefing) || {};
       const r = obj(file.refresh) || {};
-      fresh.append(h("div", null, "Foreman briefing ", h("b", null, when(b.at) || "unknown"), hostPhrase(b.host)));
+      fresh.append(h("div", null, "Briefing ", h("b", null, when(b.at) || "unknown"), hostPhrase(b.host)));
       const stale = staleness(file);
-      fresh.append(h("div", { class: stale ? "text-warning" : null },
+      fresh.append(h("div", { class: stale ? "c-yellow" : null },
         "Last refresh ", h("b", null, when(r.at) || "unknown"), r.trigger ? ` (${TRIGGERS[r.trigger] || human(r.trigger)})` : "",
-        `, ${pollingText(r.polling)}`));
-    } else if (S.view === "all") {
+        `, ${pollingText(r.polling, true)}`));
+    } else if (S.view === "all" && !S.locked) {
       const weekAgo = Date.now() - 7 * DAY;
-      const recent = entries().filter((e) => e.status === "ok" && (briefAt(e) ?? 0) >= weekAgo);
+      const recent = entries().filter((x) => x.status === "ok" && (briefAt(x) ?? 0) >= weekAgo);
       const oldest = recent.sort((a, b) => briefAt(a) - briefAt(b))[0];
       if (oldest) {
-        fresh.append(h("div", null, "Oldest Foreman briefing this week: ", h("b", null, when(oldest.file.briefing.at)),
+        fresh.append(h("div", null, "Oldest briefing this week: ", h("b", null, when(oldest.file.briefing.at)),
           hostPhrase(oldest.file.briefing.host), ` (${nameOf(oldest)})`));
       }
     }
 
-    const talkbar = $("talkbar"), talknote = $("talknote");
-    const repoView = file && S.view !== "all";
-    talkbar.hidden = !(repoView && talkOn(S.view));
-    talknote.hidden = !(repoView && !talkOn(S.view));
-    if (repoView && !talkOn(S.view)) {
-      talknote.replaceChildren(`Requests need Foreman running for ${nameOf(entry(S.view))} in the Copilot app, or in Copilot CLI with `, h("code", null, "--experimental"), ".");
-    }
-    if (repoView && talkOn(S.view)) {
-      const refresh = { request: "refresh", repo: S.view };
-      const rs = reqState(refresh);
-      const rb = $("refresh-all");
-      rb.disabled = !!(rs && rs.until);
-      rb.textContent = rs && rs.until ? rs.text : "Refresh all";
-      $("refresh-status").textContent = rs && rs.kind === "error" ? rs.text : "";
-      $("refresh-status").className = rs && rs.kind === "error" ? "small text-danger" : "small";
-      const ask = askBody("");
-      const as = reqState(ask);
+    // The ask box and Refresh all stay in place in every repository view; without a Foreman session they are disabled and say why.
+    const on = file ? talkOn(S.view) : false;
+    const rb = $("refresh-all");
+    rb.hidden = !file;
+    const refresh = { request: "refresh", repo: S.view };
+    const rs = file ? reqState(refresh) : null;
+    rb.disabled = !on || !!(rs && rs.until);
+    rb.textContent = rs && rs.until ? rs.text : "Refresh all";
+    setStatus($("refresh-status"), "small text-danger text-md-end mt-1", rs && rs.kind === "error" ? [rs.text] : []);
+
+    $("askcard").hidden = !file;
+    if (file) {
+      const as = reqState(askBody(""));
       const sb = $("ask-send");
-      sb.disabled = !!(as && as.until);
+      sb.disabled = !on || !!(as && as.until);
       sb.textContent = as && as.until ? as.text : "Send";
-      $("ask-status").textContent = as && as.kind === "error" ? as.text : "";
-      $("ask-status").className = as && as.kind === "error" ? "small text-danger" : "small";
-      $("ask-text").placeholder = S.lane ? "Ask Foreman about this lane" : "Ask Foreman about this repository";
+      const status = $("ask-status");
+      if (!on) setStatus(status, "small mt-1 text-secondary", talkReason(S.view));
+      else if (as && as.kind === "error") setStatus(status, "small mt-1 text-danger", [str(as.text).replace(/\.?$/, "."), " Your text is kept, so you can send it again."]);
+      else setStatus(status, "small mt-1", []);
     }
   }
-  const askBody = (text) => ({ request: "ask", repo: S.view, lane: S.lane || undefined, text });
+  // Status lines are live regions, so they change only when their text does; replacing identical text can be read out again.
+  function setStatus(el, cls, parts) {
+    const next = h("span", null, parts);
+    if (el.className === cls && el.textContent === next.textContent) return;
+    el.className = cls;
+    el.replaceChildren(...next.childNodes);
+  }
+  const askBody = (text) => ({ request: "ask", repo: S.view, text });
+  const laneAskBody = (text) => ({ request: "ask", repo: S.view, lane: S.lane, text });
 
+  function renderKpis() {
+    const box = $("kpis");
+    const files = S.locked || !S.data ? []
+      : S.view === "all" ? entries().filter((e) => e.status === "ok").map((e) => e.file)
+      : fileOf(S.view) ? [fileOf(S.view)] : [];
+    box.hidden = !files.length;
+    if (!files.length) { box.replaceChildren(); return; }
+    let need = 0, red = false, waiting = 0, blocked = 0, running = 0, failing = 0, down = 0;
+    for (const f of files) {
+      for (const i of needs(f)) { need++; if (RED.has(i.kind)) red = true; }
+      for (const l of arr(f.lanes)) {
+        if (l.state === "waiting") waiting++;
+        else if (l.state === "blocked" || l.state === "failed") blocked++;
+        else if (l.state === "running") running++;
+        failing += arr(l.prs).filter((p) => num(obj(p.checks)?.failed)).length;
+      }
+      down += arr(f.environment).filter((x) => x.state === "down").length;
+    }
+    const tile = (label, n, color) => h("div", { class: "col" }, h("div", { class: "card kpi h-100" }, h("div", { class: "card-body" },
+      h("div", { class: "kpi-label" }, label), h("div", { class: `kpi-value ${n ? `c-${color}` : "zero"}` }, String(n)))));
+    box.replaceChildren(
+      tile("Needs you", need, red ? "red" : "blue"), tile("Waiting on you", waiting, "yellow"), tile("Blocked or failed", blocked, "red"),
+      tile("Running", running, "green"), tile("Failing PRs", failing, "red"), tile("Services down", down, "red"));
+  }
   // Banners.
   function renderBanners() {
     const out = [];
     const banner = (danger, ...text) => h("div", { class: `alert ${danger ? "alert-danger" : "alert-warning"} mb-3`, role: "status" }, ...text);
-    if (S.offline && !S.locked) out.push(banner(true, "Lost connection to the dashboard server. Retrying every 5 seconds."));
+    if (S.offline && !S.locked) out.push(banner(true, "The dashboard server stopped responding. This page reconnects on its own, and Foreman starts the server again at its next briefing."));
     const e = S.view && S.view !== "all" ? entry(S.view) : null;
     if (e && e.status === "error") {
       const msg = str(e.error).replace(/\.?$/, ".");
@@ -428,17 +494,17 @@
       else if (item.kind === "re-review") action = reqButton("Review the new head", { request: "review-new-head", repo, lane: lane.id });
       else if (item.kind === "lane-failed") action = reqButton("Recover this lane", { request: "recover-lane", repo, lane: lane.id });
     }
-    const time = item.since || item.at;
     return h("li", { class: "list-group-item" },
-      h("div", { class: "row g-2 align-items-start" },
-        h("div", { class: "col-auto" }, h("span", { class: `badge bg-${TAG_COLORS[item.kind] || "secondary"}-lt` }, label)),
-        h("div", { class: "col" },
-          all ? h("div", { class: "small text-secondary" }, nameOf(entry(repo))) : null,
-          h("div", { class: "fw-medium" }, str(item.title)),
-          item.detail ? h("div", { class: "small text-secondary" }, linkify(item.detail)) : null,
-          item.lane ? h("div", { class: "small" }, "Lane: ", lane ? laneButton(repo, lane.id, str(lane.title) || lane.id, `need:${key}`) : str(item.lane)) : null,
-          action ? h("div", { class: "mt-2" }, action) : null),
-        h("div", { class: "col-auto text-end" }, marker(file, item.source, item.since || item.at), h("div", { class: "small text-secondary" }, when(time)))));
+      h("div", { class: "d-flex align-items-start gap-3" },
+        h("span", { class: `badge bg-${TAG_COLORS[item.kind] || "secondary"}-lt flex-none mt-1` }, label),
+        h("div", { class: "flex-fill min-w-0" },
+          h("div", { class: "d-flex align-items-baseline gap-2" },
+            h("span", { class: "row-title flex-fill min-w-0" }, all ? h("span", { class: "text-secondary fw-normal" }, `${nameOf(entry(repo))}: `) : null, str(item.title)),
+            marker(file, item.source, item.since || item.at)),
+          item.detail ? h("div", { class: "row-meta" }, linkify(item.detail)) : null,
+          item.lane || action ? h("div", { class: "d-flex flex-wrap align-items-center gap-2 mt-1 small" },
+            item.lane ? [h("span", { class: "text-secondary" }, "Lane"), lane ? laneButton(repo, lane.id, str(lane.title) || lane.id, `need:${key}`) : str(item.lane)] : null,
+            action ? h("span", { class: "ms-auto" }, action) : null) : null)));
   }
   function needsSection(repo, file) {
     const items = ordered(`needs:${repo}`, sortNeeds(needs(file).map((item) => ({ repo, item }))), (x) => needKey(x.repo, x.item));
@@ -462,14 +528,14 @@
   function headMoved(lane, pr) {
     return /review/.test(str(lane.kind)) && !!pr.reviewedHead && !!pr.head && !shaEq(pr.head, pr.reviewedHead);
   }
-  function prLine(lane, pr) {
+  function prLine(pr) {
     const c = obj(pr.checks);
     const t = obj(pr.threads);
     const bits = [pr.draft ? "draft" : human(pr.state) || "state unknown"];
     if (c) bits.push(`checks ${num(c.passed) ?? 0} passed, ${num(c.failed) ?? 0} failed, ${num(c.pending) ?? 0} pending`);
     if (pr.reviewDecision) bits.push(human(pr.reviewDecision));
     if (t && num(t.unresolved) !== null) bits.push(plural(t.unresolved, "unresolved thread"));
-    return [link(pr.url, `#${str(pr.number) || "?"}`), ` ${bits.join(", ")}`, headMoved(lane, pr) ? note("head moved", "bg-yellow-lt") : null];
+    return [link(pr.url, `#${str(pr.number) || "?"}`), ` ${bits.join(", ")}`];
   }
   const kvRows = (pairs) => h("dl", { class: "row mb-0" }, pairs.map(([k, v]) => [
     h("dt", { class: "col-sm-3 text-secondary fw-normal" }, k), h("dd", { class: "col-sm-9 mb-1" }, v)]));
@@ -477,43 +543,50 @@
     const session = obj(lane.session) || {};
     const wi = obj(lane.workItem);
     const wiItem = wi ? arr(file.workItems).find((w) => str(w.id) === str(wi.id)) : null;
-    const meta = [str(lane.agent),
+    const meta = [LANE_KINDS[lane.kind] || human(lane.kind) || "Lane", str(lane.agent),
       session.name || session.url ? link(session.url, str(session.name) || "session") : null,
       wi ? (wiItem && wiItem.url ? link(wiItem.url, str(wi.id)) : str(wi.id)) : null,
       lane.launchedAt ? `launched ${when(lane.launchedAt)}` : null].filter(Boolean);
-    const rows = [];
-    const add = (label, value, mk) => rows.push([label, [value, " ", mk]]);
-    if (lane.note || lane.at) add("Recorded", [str(lane.note), lane.at ? h("span", { class: "text-secondary" }, ` ${when(lane.at)}`) : null], marker(file, "recorded", lane.at));
-    if (obj(session.activity)) add("Session", activityText(session.activity), marker(file, "sessions", session.activity.at));
+    const facts = [];
+    const fact = (label, value, mk) => {
+      const v = h("span", { class: "v" }, value);
+      if (v.textContent) v.title = v.textContent;
+      facts.push(h("span", { class: "fact" }, h("span", null, label), v, mk));
+    };
+    if (obj(session.activity)) fact("Session", activityText(session.activity), marker(file, "sessions", session.activity.at));
     const cp = obj(lane.checkpoint);
     if (cp && !unavailable(file, "memory")) {
       const newer = parse(cp.at) !== null && parse(lane.at) !== null && parse(cp.at) > parse(lane.at);
-      add("Checkpoint", [`Saved ${when(cp.at)}: ${str(cp.next) || str(cp.title)}`, newer ? note("newer than note") : null],
-        marker(file, "memory", cp.read, `Basic Memory checkpoint saved ${when(cp.at)}, read by Foreman at ${whenExact(cp.read)}`));
+      const text = str(cp.next) || str(cp.title);
+      fact("Checkpoint", text,
+        [newer ? h("span", { class: "badge bg-blue-lt flex-none" }, "newer than note") : null,
+          marker(file, "memory", cp.read, `Basic Memory checkpoint saved ${when(cp.at)}, read by Foreman at ${whenExact(cp.read)}`)]);
     }
     const git = obj(lane.git);
     if (lane.branch) {
       const bits = [];
       if (git) {
         if (num(git.ahead) !== null) bits.push(`${git.ahead} ahead`);
-        if (num(git.behind) !== null) bits.push(`${git.behind} behind${lane.base ? ` ${str(lane.base)}` : ""}`);
-        if (num(git.uncommitted) !== null) bits.push(`${git.uncommitted} uncommitted`);
-        if (git.lastCommitAt) bits.push(`last commit ${when(git.lastCommitAt)}`);
+        if (num(git.behind) !== null) bits.push(`${git.behind} behind`);
+        if (num(git.uncommitted) !== null && git.uncommitted) bits.push(`${git.uncommitted} uncommitted`);
       }
-      add("Branch", [mono(str(lane.branch)), bits.length ? `, ${bits.join(", ")}` : ""], marker(file, "git", git && git.read));
+      fact("Branch", [mono(str(lane.branch)), bits.length ? ` ${bits.join(", ")}` : ""], marker(file, "git", git && git.read));
     }
-    for (const pr of arr(lane.prs)) add("PR", prLine(lane, pr), marker(file, prSource(pr), pr.read));
+    for (const pr of arr(lane.prs)) fact("PR", prLine(pr),
+      [headMoved(lane, pr) ? h("span", { class: "badge bg-yellow-lt flex-none" }, "head moved") : null, marker(file, prSource(pr), pr.read)]);
     const id = lane.id;
+    const signal = laneSignal(lane);
     return h("li", {
       class: `list-group-item list-group-item-action lane-row${extraClass ? ` ${extraClass}` : ""}`,
       onclick: (e) => { if (!e.target.closest("a,button,.mk")) openLane(repo, id, `lane:${repo}|${id}`); },
     },
-      h("div", { class: "d-flex flex-wrap align-items-center gap-2" },
-        h("span", { class: "small text-secondary text-uppercase" }, LANE_KINDS[lane.kind] || human(lane.kind) || "Lane"),
-        h("button", { type: "button", class: "linkish fw-medium", "data-key": `lane:${repo}|${id}`, "aria-haspopup": "dialog", onclick: (e) => { e.stopPropagation(); openLane(repo, id, `lane:${repo}|${id}`); } }, str(lane.title) || id),
-        h("span", { class: "ms-auto" }, stateBadge(lane.state))),
-      meta.length ? h("div", { class: "small text-secondary mt-1" }, meta.map((m, i) => [i ? "  \u00b7  " : "", m])) : null,
-      rows.length ? h("div", { class: "small mt-2" }, kvRows(rows)) : null);
+      h("div", { class: "d-flex align-items-center gap-2" },
+        h("span", { class: "flex-none" }, stateBadge(lane.state)),
+        h("button", { type: "button", class: "linkish plain row-title trunc", title: str(lane.title) || id, "data-key": `lane:${repo}|${id}`, "aria-haspopup": "dialog", onclick: (e) => { e.stopPropagation(); openLane(repo, id, `lane:${repo}|${id}`); } }, str(lane.title) || id),
+        h("span", { class: "ms-auto d-flex align-items-center gap-2 small flex-none" }, signal || null, marker(file, "recorded", lane.at))),
+      lane.note ? h("div", { class: "row-meta trunc mt-1", title: str(lane.note) }, str(lane.note)) : null,
+      h("div", { class: "row-meta dotted mt-1" }, meta.map((m) => h("span", null, m))),
+      facts.length ? h("div", { class: "facts" }, facts) : null);
   }
   const laneSort = (a, b) => (STATES[a.state] || ["", 3.5])[1] - (STATES[b.state] || ["", 3.5])[1] || (parse(a.launchedAt) ?? 0) - (parse(b.launchedAt) ?? 0);
   function lanesSection(repo, file) {
@@ -694,7 +767,7 @@
     if (!entries().length) {
       const s = obj(S.data.server) || {};
       main.append(h("div", { class: "col-12" }, h("div", { class: "card" }, h("div", { class: "card-body" },
-        h("h2", { class: "card-title" }, "No Foreman briefings yet."),
+        h("h2", { class: "card-title" }, "Start your first briefing"),
         h("p", null, "Select Foreman in your agent host, for example ", h("code", null, "copilot --agent foreman"), ". This page updates on its own when the first briefing is written."),
         kvRows([["Address", mono(str(s.url))], ["Version", str(s.version)], ["Status directory", mono(str(s.statusDir))]])))));
       return;
@@ -711,11 +784,12 @@
     const legend = $("legend");
     legend.hidden = !entries().length;
     const file = S.view && S.view !== "all" ? fileOf(S.view) : null;
-    const key = (cls, word, text) => h("span", null, h("span", { class: `badge badge-outline ${cls} me-1` }, word), text);
+    const key = (cls, word, text) => h("span", null, h("span", { class: `mk legend ${cls} me-1` }, word), text);
     legend.replaceChildren(
-      key("text-secondary", "recorded", "Foreman's own record"),
-      key("text-blue", "checked", "read from its source at Foreman's last refresh"),
-      key("text-orange", "unavailable", "Foreman could not read the source, so the last value read is shown"),
+      key("mk-rec", "recorded", "Foreman's own record"),
+      key("mk-chk", "checked", "read from its source at Foreman's last refresh"),
+      key("mk-un", "unavailable", "Foreman could not read the source, so the last value read is shown"),
+      h("span", null, "Each marker shows its time; hover or focus it for the source."),
       ...(file ? [h("span", null, `Polling: ${pollingText(obj(file.refresh)?.polling)}`)] : []));
   }
 
@@ -853,7 +927,7 @@
     const box = $("detail");
     if (!S.lane || !S.view || S.view === "all") {
       if (S.detailShown) { S.detailShown = false; offcanvas().hide(); }
-      restoreAsk();
+      $("lane-askbox").hidden = true;
       return;
     }
     const file = fileOf(S.view);
@@ -869,17 +943,28 @@
       $("detail-kind").textContent = LANE_KINDS[lane.kind] || human(lane.kind) || "Lane";
       $("dtitle").textContent = str(lane.title) || lane.id;
       $("detail-state").replaceChildren(stateBadge(lane.state));
-      body.replaceChildren(...parts, ...(talkOn(S.view) ? [h("section", { id: "ask-slot" }, h("h3", null, "Ask Foreman about this lane"))] : []));
+      body.replaceChildren(...parts);
     }
-    const slot = $("ask-slot");
-    if (slot) slot.append($("ask")); else restoreAsk();
     body.scrollTop = scroll;
+    renderLaneAsk();
     if (!S.detailShown) { S.detailShown = true; offcanvas().show(); }
     box.setAttribute("aria-busy", S.detail ? "false" : "true");
   }
-  function restoreAsk() {
-    const form = $("ask");
-    if (form.parentElement !== $("talkbar")) $("talkbar").prepend(form);
+  // The lane ask form is static markup outside the re-rendered detail body, so a render never detaches it.
+  function renderLaneAsk() {
+    const on = talkOn(S.view);
+    $("lane-askbox").hidden = false;
+    const forLane = `${S.view}|${S.lane}`;
+    if (S.laneAskFor !== forLane) { S.laneAskFor = forLane; $("lane-ask-text").value = ""; }
+    $("lane-ask-text").placeholder = `Ask Foreman about ${S.detail?.lane?.title ? str(S.detail.lane.title) : "this lane"}`;
+    const st = reqState(laneAskBody(""));
+    const sb = $("lane-ask-send");
+    sb.disabled = !on || !!(st && st.until);
+    sb.textContent = st && st.until ? st.text : "Send";
+    const status = $("lane-ask-status");
+    if (!on) setStatus(status, "small mt-1 text-secondary", talkReason(S.view));
+    else if (st && st.kind === "error") setStatus(status, "small mt-1 text-danger", [str(st.text).replace(/\.?$/, "."), " Your text is kept, so you can send it again."]);
+    else setStatus(status, "small mt-1", []);
   }
 
   // Navigation.
@@ -916,6 +1001,8 @@
     writeHash();
     render();
     loadTalk(key);
+    const menu = $("side-menu");
+    if (menu.classList.contains("show")) window.tabler.Collapse?.getInstance?.(menu)?.hide();
   }
   async function openLane(repo, id, opener) {
     if (S.view !== repo) { S.view = repo; S.lastNeeds = null; S.order = {}; loadTalk(repo); }
@@ -979,6 +1066,11 @@
   let events = null;
   function lock() {
     S.locked = true;
+    // Data from the previous server instance can no longer be verified, so the locked page shows none of it.
+    S.data = null;
+    S.detail = null;
+    S.lane = null;
+    S.lastNeeds = null;
     if (events) { events.close(); events = null; }
     render();
   }
@@ -1026,6 +1118,7 @@
     disposeTips();
     renderHeader();
     renderBanners();
+    renderKpis();
     renderMain();
     renderLegend();
     renderDetail();
@@ -1060,8 +1153,8 @@
     const i = tabs.indexOf(document.activeElement);
     if (i < 0) return;
     let j = null;
-    if (e.key === "ArrowRight") j = (i + 1) % tabs.length;
-    else if (e.key === "ArrowLeft") j = (i - 1 + tabs.length) % tabs.length;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") j = (i + 1) % tabs.length;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") j = (i - 1 + tabs.length) % tabs.length;
     else if (e.key === "Home") j = 0;
     else if (e.key === "End") j = tabs.length - 1;
     if (j !== null) { e.preventDefault(); tabs[j].focus(); }
@@ -1081,6 +1174,16 @@
   $("ask-text").addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("ask").requestSubmit(); }
   });
+  $("lane-ask").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const box = $("lane-ask-text");
+    const text = box.value.trim();
+    if (!text || !S.lane || !S.view || S.view === "all") return;
+    if (await send(laneAskBody(text))) box.value = "";
+  });
+  $("lane-ask-text").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("lane-ask").requestSubmit(); }
+  });
   $("detail-close").addEventListener("click", () => closeLane());
   // Escape, the backdrop and the close button all end here; the offcanvas owns the focus trap.
   $("detail").addEventListener("hidden.bs.offcanvas", () => { S.detailShown = false; if (S.lane) closeLane(); });
@@ -1094,6 +1197,9 @@
     if (hash.lane && view !== "all" && laneById(fileOf(view), hash.lane)) openLane(view, hash.lane, null);
     else if (S.lane) closeLane();
   });
+  // Print on paper in Tabler's stock light theme; the dark overrides are scoped to data-bs-theme=dark.
+  window.addEventListener("beforeprint", () => document.documentElement.setAttribute("data-bs-theme", "light"));
+  window.addEventListener("afterprint", () => document.documentElement.setAttribute("data-bs-theme", "dark"));
   setInterval(() => { if (!S.locked) { loadTalk(S.view); render(); } }, 30000);
 
   if (!pageKey) lock();
