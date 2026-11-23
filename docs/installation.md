@@ -338,6 +338,10 @@ Copilot/Claude copies. CLI-only doctor, literary-analysis and OKF recipes become
 MCP workflows with explicit unsupported-maintenance boundaries. Import, orphan
 and cloud-login CLI fallbacks are removed. Changed local skill copies stop
 installation for reconciliation rather than being silently overwritten.
+Full-body replacements require the exact pinned-source or recognized-adaptation
+hash, including when all installed copies share the same customization.
+Ownership metadata uses the publisher's `XDG_STATE_HOME` location when set,
+including outside the home directory. Modified skill files remain home-scoped.
 
 The proxy derives its classification from 0.24.1's MCP tool definitions.
 `write_note`, `edit_note`, `move_note`, `delete_note`,
@@ -359,6 +363,8 @@ requests. Timeout or queue-full errors state that the request was not dispatched
 A dispatched write has a ten-minute response limit. Transport failure or a
 server-side HTTP failure can leave its commit outcome unknown. That blocks
 further writes until the managed server restarts, while reads remain available.
+The same protection applies to HTTP 200 MCP errors reporting
+`EDIT_OUTCOME_UNKNOWN` or the default `Edit Outcome Unknown` message.
 Read the exact target first and reconcile any accepted change before retrying.
 The proxy never automatically retries a dispatched request, including an
 `edit_note` failure after an accepted note commit. Client disconnection does not
@@ -368,6 +374,11 @@ The installer disables Basic Memory's automatic updates to preserve its pin.
 It preserves project configuration and routing while setting the measured
 materialization worker count. Worker measurements and live acceptance are
 described below.
+Configuration resolution follows Basic Memory 0.24.1: `BASIC_MEMORY_CONFIG_DIR`,
+then `XDG_CONFIG_HOME/basic-memory`, then `~/.basic-memory`. Relative environment
+paths resolve against the installer's working directory, with no tilde or
+embedded-variable expansion. Managed startup records the absolute selected
+directory so login or restart cannot select a different configuration.
 
 ### SQLite concurrency measurements
 

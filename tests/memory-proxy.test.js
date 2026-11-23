@@ -100,6 +100,39 @@ test("accepted commit error is returned once without replay", async (t) => {
   assert.equal(commits, 1);
 });
 
+test("uncertain MCP edit results block writes for JSON and fragmented SSE without buffering forwarding", async (t) => {
+  for (const streaming of [false, true]) {
+    for (const messageText of [
+      JSON.stringify({ error: "EDIT_OUTCOME_UNKNOWN", detail: "No confirmation came back." }),
+      "# Edit Outcome Unknown\n\nThe edit may have been applied. Read the note before retrying.",
+    ]) {
+      let writes = 0;
+      const f = await fixture(t, async (request, response, message) => {
+        if (message.params.name === "read_note") { reply(response, message); return; }
+        writes++;
+        const body = JSON.stringify({ jsonrpc: "2.0", id: message.id, result: {
+          content: [{ type: "text", text: messageText }], isError: true,
+        } });
+        if (!streaming) { response.writeHead(200, { "Content-Type": "application/json" }); response.end(body); return; }
+        response.writeHead(200, { "Content-Type": "text/event-stream" });
+        for (const piece of (`event: message\ndata: ${body}\n\n`).match(/.{1,7}|[\r\n]/g)) {
+          response.write(piece);
+          await pause(1);
+        }
+        response.end();
+      });
+      const result = await f.post(tool(1, "edit_note"));
+      assert.equal(result.status, 200);
+      assert.ok((await result.text()).includes("isError"));
+      const blocked = await f.post(tool(2, "write_note"));
+      assert.equal(blocked.status, 503);
+      assert.equal((await blocked.json()).error.data.dispatched, false);
+      assert.equal((await f.post(tool(3, "read_note"))).status, 200);
+      assert.equal(writes, 1);
+    }
+  }
+});
+
 test("unknown write outcome blocks subsequent writes but leaves reads available", async (t) => {
   let writes = 0;
   const f = await fixture(t, async (request, response, message) => {
