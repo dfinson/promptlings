@@ -21,14 +21,15 @@ export async function memoryClient(port) {
     });
     if (response.headers.has("mcp-session-id")) headers["mcp-session-id"] = response.headers.get("mcp-session-id");
     const text = await response.text();
-    const messages = text.startsWith("event:") || text.startsWith(":") ?
+    const messages = response.headers.get("content-type")?.includes("text/event-stream") ?
       text.split(/\r?\n/).filter((line) => line.startsWith("data:")).map((line) => JSON.parse(line.slice(5))) :
       (text ? [JSON.parse(text)] : []);
     const result = messages.find((message) => "result" in message || "error" in message);
     if (!response.ok || result?.error) throw new Error(`MCP ${response.status}: ${JSON.stringify(result || text)}`);
     return result?.result;
   }
-  await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "promptlings-concurrency", version: "1" } });
+  const initialized = await rpc("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "promptlings-concurrency", version: "1" } });
+  headers["MCP-Protocol-Version"] = initialized.protocolVersion;
   await rpc("notifications/initialized", {}, true);
   return {
     rpc,
@@ -79,7 +80,10 @@ test("real installed SQLite concurrency and materialization worker measurements"
   const configPath = join(homedir(), ".basic-memory", "config.json");
   const original = JSON.parse(readFileSync(configPath, "utf8"));
   assert.equal(original.database_backend, "sqlite");
-  const report = { date: new Date().toISOString(), version: pins.memory, runs: [] };
+  const workers = process.env.PROMPTLINGS_MEMORY_ACCEPTANCE_WORKERS ?
+    process.env.PROMPTLINGS_MEMORY_ACCEPTANCE_WORKERS.split(",").map(Number) : [1, 2, 4];
+  assert.ok(workers.length && workers.every((count) => [1, 2, 4].includes(count)), "Worker selector must contain 1, 2 or 4.");
+  const report = { date: new Date().toISOString(), version: pins.memory, proxyVersion: pins.memoryProxy, runs: [] };
   const projectName = `promptlings-concurrency-${randomUUID()}`;
   report.projectName = projectName;
   let projectId;
@@ -87,6 +91,7 @@ test("real installed SQLite concurrency and materialization worker measurements"
   async function restart(workers) {
     if (client) { await client.close(); client = null; }
     deps.stopPreviousServer();
+    await deps.waitUntilStopped([8000, 8001]);
     const current = JSON.parse(readFileSync(configPath, "utf8"));
     writeFileSync(configPath, JSON.stringify({ ...current, materialization_workers: workers, auto_update: false }, null, 2) + "\n");
     deps.startService(memoryCommand, 8000, 8001, runtime);
@@ -186,9 +191,9 @@ test("real installed SQLite concurrency and materialization worker measurements"
     assert.ok(projectId, `Cannot resolve throwaway project ID: ${content(projects)}`);
     report.projectId = projectId;
     await runRound(4, 8000);
-    for (const workers of [1, 2, 4]) {
-      await restart(workers);
-      await runRound(workers, 8001);
+    for (const count of workers) {
+      await restart(count);
+      await runRound(count, 8001);
     }
   } finally {
     if (projectId && client) {

@@ -1,220 +1,548 @@
 import assert from "node:assert/strict";
-import { once } from "node:events";
-import { createServer } from "node:http";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
-import { createMemoryProxy } from "../lib/memory-proxy.mjs";
 
-const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-async function fixture(t, handler, options = {}) {
-  const backend = createServer(async (request, response) => {
-    const chunks = [];
-    for await (const chunk of request) chunks.push(chunk);
-    const text = Buffer.concat(chunks).toString("utf8");
-    await handler(request, response, text ? JSON.parse(text) : null);
+const python = process.env.PROMPTLINGS_MEMORY_PYTHON || "python";
+const proxyPath = fileURLToPath(new URL("../lib/memory-proxy.py", import.meta.url));
+const fixture = String.raw`
+import asyncio
+import importlib.util
+import json
+import socket
+import sys
+from contextlib import asynccontextmanager
+
+try:
+    import httpx
+    import uvicorn
+    from fastmcp import Client, Context, FastMCP
+    from fastmcp.exceptions import ToolError
+    from fastmcp.server.event_store import EventStore
+    from fastmcp.tools.base import ToolResult
+except ImportError as exc:
+    raise SystemExit(
+        "Proxy validation requires the pinned FastMCP dependency. Install pins.memoryProxy "
+        "with this Python interpreter, or set PROMPTLINGS_MEMORY_PYTHON to that interpreter. "
+        f"Missing dependency: {exc}"
+    ) from exc
+
+spec = importlib.util.spec_from_file_location("memory_proxy", sys.argv[1])
+memory_proxy = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = memory_proxy
+spec.loader.exec_module(memory_proxy)
+
+async def eventually(predicate):
+    async with asyncio.timeout(5):
+        while not predicate():
+            await asyncio.sleep(0.005)
+
+@asynccontextmanager
+async def serve(app):
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    sock.listen()
+    port = sock.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(
+        app, host="127.0.0.1", port=port, lifespan="on", log_level="warning",
+        timeout_graceful_shutdown=1,
+    ))
+    running = asyncio.create_task(server.serve(sockets=[sock]))
+    try:
+        await eventually(lambda: server.started or running.done())
+        if running.done():
+            await running
+            raise AssertionError("Fixture server exited before becoming ready")
+        yield f"http://127.0.0.1:{port}/mcp"
+    finally:
+        server.should_exit = True
+        try:
+            await asyncio.wait_for(asyncio.shield(running), 5)
+        except TimeoutError:
+            running.cancel()
+            await asyncio.gather(running, return_exceptions=True)
+        finally:
+            sock.close()
+
+@asynccontextmanager
+async def fixture(handler, *, streaming=True, queue_timeout=120, max_body_bytes=64 * 1024 * 1024,
+                  transport_failure=False, fragment_size=7):
+    backend = FastMCP("isolated-memory-fixture", tasks=False)
+    sessions = []
+
+    async def invoke(name, label, ctx):
+        sessions.append(ctx.session_id)
+        return await handler(name, label, ctx)
+
+    @backend.tool
+    async def write_note(label: str, ctx: Context) -> ToolResult:
+        return await invoke("write_note", label, ctx)
+
+    @backend.tool
+    async def edit_note(label: str, ctx: Context) -> ToolResult:
+        return await invoke("edit_note", label, ctx)
+
+    @backend.tool
+    async def future_mutation(label: str, ctx: Context) -> ToolResult:
+        return await invoke("future_mutation", label, ctx)
+
+    @backend.tool
+    async def read_note(label: str, ctx: Context) -> ToolResult:
+        return await invoke("read_note", label, ctx)
+
+    backend_app = backend.http_app(
+        path="/mcp", json_response=not streaming, stateless_http=False,
+        event_store=EventStore(),
+    )
+    if streaming:
+        unfragmented = backend_app
+        async def backend_app(scope, receive, send):
+            async def fragmented_send(message):
+                body = message.get("body", b"")
+                if message["type"] == "http.response.body" and body:
+                    for offset in range(0, len(body), fragment_size):
+                        await send({
+                            **message, "body": body[offset:offset + fragment_size],
+                            "more_body": offset + fragment_size < len(body) or message.get("more_body", False),
+                        })
+                        await asyncio.sleep(0.001)
+                else:
+                    await send(message)
+            await unfragmented(scope, receive, fragmented_send)
+    if transport_failure:
+        original = backend_app
+        async def backend_app(scope, receive, send):
+            if scope["type"] != "http" or scope["method"] != "POST":
+                return await original(scope, receive, send)
+            messages = []
+            body = b""
+            while True:
+                message = await receive()
+                messages.append(message)
+                body += message.get("body", b"")
+                if not message.get("more_body"):
+                    break
+            call = json.loads(body)
+            if call.get("method") == "tools/call" and call["params"]["name"] == "edit_note":
+                await handler("edit_note", call["params"]["arguments"]["label"], None)
+                await send({"type": "http.response.start", "status": 503, "headers": []})
+                await send({"type": "http.response.body", "body": b"lost accepted write response"})
+                return
+            async def replay():
+                if messages:
+                    return messages.pop(0)
+                return await receive()
+            await original(scope, replay, send)
+
+    policy = memory_proxy.WritePolicy(queue_timeout=queue_timeout)
+    async with serve(backend_app) as upstream:
+        app = memory_proxy.create_app(upstream, policy=policy, max_body_bytes=max_body_bytes)
+        async with serve(app) as url:
+            yield url, policy, sessions
+
+def ok(label):
+    return ToolResult(content=label)
+
+def text(result):
+    return "\n".join(block.text for block in result.content if block.type == "text")
+
+async def call(client, name, label):
+    return await client.call_tool(name, {"label": label}, raise_on_error=False)
+
+def message(request_id, name, label):
+    return {"jsonrpc": "2.0", "id": request_id, "method": "tools/call",
+            "params": {"name": name, "arguments": {"label": label}}}
+
+def sse_messages(body):
+    return [json.loads(line[6:]) for line in body.splitlines() if line.startswith("data: ")]
+
+async def initialize(http, url):
+    response = await http.post(url, headers={
+        "content-type": "application/json", "accept": "application/json, text/event-stream",
+    }, json={"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {
+        "protocolVersion": "2025-03-26", "capabilities": {},
+        "clientInfo": {"name": "proxy-protocol-fixture", "version": "1"},
+    }})
+    assert response.status_code == 200, response.text
+    session = response.headers["mcp-session-id"]
+    headers = {"content-type": "application/json", "accept": "application/json, text/event-stream",
+               "mcp-session-id": session, "mcp-protocol-version": "2025-03-26"}
+    response = await http.post(url, headers=headers, json={
+        "jsonrpc": "2.0", "method": "notifications/initialized",
+    })
+    assert response.status_code == 202, response.text
+    return headers
+`;
+
+async function runCase(source) {
+  const child = spawn(python, ["-B", "-", proxyPath], {
+    stdio: ["pipe", "inherit", "inherit"],
+    env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" },
   });
-  backend.listen(0, "127.0.0.1");
-  await once(backend, "listening");
-  const proxy = createMemoryProxy({ backendPort: backend.address().port, ...options });
-  proxy.listen(0, "127.0.0.1");
-  await once(proxy, "listening");
-  t.after(async () => {
-    proxy.closeAllConnections();
-    backend.closeAllConnections();
-    await Promise.all([new Promise((resolve) => proxy.close(resolve)), new Promise((resolve) => backend.close(resolve))]);
-  });
-  const url = `http://127.0.0.1:${proxy.address().port}/mcp`;
-  const headers = { "Content-Type": "application/json", Accept: "application/json, text/event-stream", "mcp-session-id": "session-1" };
-  return {
-    url, headers,
-    post: (message, extra = {}) => fetch(url, { method: "POST", headers, body: JSON.stringify(message), ...extra }),
-  };
-}
-const tool = (id, name) => ({ jsonrpc: "2.0", id, method: "tools/call", params: { name, arguments: {} } });
-function reply(response, message, result = {}) {
-  response.writeHead(200, { "Content-Type": "application/json", "mcp-session-id": "session-1" });
-  response.end(JSON.stringify({ jsonrpc: "2.0", id: message.id, result }));
-}
-
-test("FIFO spans sessions and unknown mutations while reads bypass the write queue", async (t) => {
-  const order = [];
-  let active = 0;
-  let maximum = 0;
-  let unblock;
-  const first = new Promise((resolve) => { unblock = resolve; });
-  let seen;
-  const started = new Promise((resolve) => { seen = resolve; });
-  const f = await fixture(t, async (request, response, message) => {
-    if (message.params.name === "read_note") { reply(response, message); return; }
-    active++;
-    maximum = Math.max(maximum, active);
-    order.push(message.id);
-    if (message.id === 1) { seen(); await first; }
-    active--;
-    reply(response, message);
-  });
-  const a = f.post(tool(1, "write_note"));
-  await started;
-  const b = f.post(tool(2, "edit_note"));
-  await pause(10);
-  const c = f.post(tool(3, "future_mutation"), { headers: { ...f.headers, "mcp-session-id": "session-2" } });
-  const read = await f.post(tool(4, "read_note"));
-  assert.equal(read.status, 200);
-  assert.deepEqual(order, [1]);
-  unblock();
-  await Promise.all([a, b, c].map(async (promise) => (await promise).text()));
-  assert.deepEqual(order, [1, 2, 3]);
-  assert.equal(maximum, 1);
-});
-
-test("SSE, initialization/session headers, GET resumption and DELETE pass through", async (t) => {
-  const seen = [];
-  const f = await fixture(t, async (request, response, message) => {
-    seen.push({ method: request.method, session: request.headers["mcp-session-id"],
-      last: request.headers["last-event-id"], protocol: request.headers["mcp-protocol-version"] });
-    response.writeHead(200, { "Content-Type": "text/event-stream", "mcp-session-id": "session-1" });
-    response.write("id: resumed-event\nevent: message\ndata: ");
-    await pause(10);
-    response.end(JSON.stringify({ jsonrpc: "2.0", id: message?.id, result: { ok: true } }) + "\n\n");
-  });
-  const response = await f.post({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
-  assert.equal(response.headers.get("mcp-session-id"), "session-1");
-  assert.equal(response.headers.get("content-type"), "text/event-stream");
-  assert.match(await response.text(), /id: resumed-event\nevent: message\ndata:/);
-  const resumed = await fetch(f.url, { headers: { ...f.headers, "last-event-id": "resumed-event", "mcp-protocol-version": "2025-03-26" } });
-  await resumed.text();
-  await (await fetch(f.url, { method: "DELETE", headers: f.headers })).text();
-  assert.deepEqual(seen.map((item) => item.method), ["POST", "GET", "DELETE"]);
-  assert.equal(seen[1].last, "resumed-event");
-  assert.equal(seen[1].protocol, "2025-03-26");
-  assert.ok(seen.every((item) => item.session === "session-1"));
-});
-
-test("accepted commit error is returned once without replay", async (t) => {
-  let commits = 0;
-  const f = await fixture(t, async (request, response, message) => {
-    commits++;
-    reply(response, message, { isError: true, content: [{ type: "text", text: "failed after accepted note commit" }] });
-  });
-  const result = await (await f.post(tool(1, "edit_note"))).json();
-  assert.equal(result.result.isError, true);
-  assert.equal(commits, 1);
-});
-
-test("uncertain MCP edit results block writes for JSON and fragmented SSE without buffering forwarding", async (t) => {
-  for (const streaming of [false, true]) {
-    for (const messageText of [
-      JSON.stringify({ error: "EDIT_OUTCOME_UNKNOWN", detail: "No confirmation came back." }),
-      "# Edit Outcome Unknown\n\nThe edit may have been applied. Read the note before retrying.",
-    ]) {
-      let writes = 0;
-      const f = await fixture(t, async (request, response, message) => {
-        if (message.params.name === "read_note") { reply(response, message); return; }
-        writes++;
-        const body = JSON.stringify({ jsonrpc: "2.0", id: message.id, result: {
-          content: [{ type: "text", text: messageText }], isError: true,
-        } });
-        if (!streaming) { response.writeHead(200, { "Content-Type": "application/json" }); response.end(body); return; }
-        response.writeHead(200, { "Content-Type": "text/event-stream" });
-        for (const piece of (`event: message\ndata: ${body}\n\n`).match(/.{1,7}|[\r\n]/g)) {
-          response.write(piece);
-          await pause(1);
-        }
-        response.end();
-      });
-      const result = await f.post(tool(1, "edit_note"));
-      assert.equal(result.status, 200);
-      assert.ok((await result.text()).includes("isError"));
-      const blocked = await f.post(tool(2, "write_note"));
-      assert.equal(blocked.status, 503);
-      assert.equal((await blocked.json()).error.data.dispatched, false);
-      assert.equal((await f.post(tool(3, "read_note"))).status, 200);
-      assert.equal(writes, 1);
-    }
-  }
-});
-
-test("confirmed refusals mentioning outcome markers do not block later writes", async (t) => {
-  for (const text of [
-    JSON.stringify({ title: "EDIT_OUTCOME_UNKNOWN", error: "NOTE_REVISION_CONFLICT" }),
-    JSON.stringify({ title: "# Edit Outcome Unknown", error: "NOTE_REVISION_CONFLICT",
-      detail: "The prior result included EDIT_OUTCOME_UNKNOWN." }),
-    '# Note Revision Conflict\n\nNote "# Edit Outcome Unknown" with identifier EDIT_OUTCOME_UNKNOWN changed.',
-  ]) {
-    const f = await fixture(t, async (request, response, message) => {
-      reply(response, message, message.id === 1 ? { isError: true, content: [{ type: "text", text }] } : {});
+  const timer = setTimeout(() => child.kill(), 60_000);
+  try {
+    const finished = new Promise((resolve, reject) => {
+      child.once("error", reject);
+      child.once("exit", (code, signal) => resolve({ code, signal }));
     });
-    await (await f.post(tool(1, "edit_note"))).text();
-    assert.equal((await f.post(tool(2, "write_note"))).status, 200);
+    child.stdin.on("error", () => {});
+    child.stdin.end(`${fixture}\n${source}\nasyncio.run(asyncio.wait_for(main(), 40))\n`);
+    const { code, signal } = await finished;
+    assert.equal(code, 0, `Python proxy behavior failed (signal: ${signal ?? "none"}). See fixture output above.`);
+  } finally {
+    clearTimeout(timer);
+    if (child.exitCode === null && child.signalCode === null) child.kill();
   }
+}
+
+test("FIFO spans sessions and unknown mutations while reads bypass the write queue", async () => {
+  await runCase(String.raw`
+async def main():
+    order = []
+    active = 0
+    maximum = 0
+    started = asyncio.Event()
+    release = asyncio.Event()
+    async def handler(name, label, ctx):
+        nonlocal active, maximum
+        if name == "read_note":
+            return ok(label)
+        active += 1
+        maximum = max(maximum, active)
+        order.append(label)
+        if label == "first":
+            started.set()
+            await release.wait()
+        active -= 1
+        return ok(label)
+    async with fixture(handler) as (url, policy, sessions):
+        async with Client(url, mode="legacy") as one, Client(url, mode="legacy") as two:
+            first = asyncio.create_task(call(one, "write_note", "first"))
+            try:
+                await started.wait()
+                second = asyncio.create_task(call(one, "edit_note", "second"))
+                await eventually(lambda: policy.waiting == 1)
+                third = asyncio.create_task(call(two, "future_mutation", "third"))
+                await eventually(lambda: policy.waiting == 2)
+                read = await call(two, "read_note", "read")
+                assert not read.is_error and text(read) == "read"
+                assert order == ["first"], order
+            finally:
+                release.set()
+            results = await asyncio.gather(first, second, third)
+            assert all(not result.is_error for result in results), results
+            assert [text(result) for result in results] == ["first", "second", "third"]
+            assert order == ["first", "second", "third"], order
+            assert maximum == 1, maximum
+`);
 });
 
-test("unknown write outcome blocks subsequent writes but leaves reads available", async (t) => {
-  let writes = 0;
-  const f = await fixture(t, async (request, response, message) => {
-    if (message.params.name === "read_note") { reply(response, message); return; }
-    writes++;
-    response.destroy();
-  });
-  assert.equal((await f.post(tool(1, "edit_note"))).status, 502);
-  const waiting = await f.post(tool(2, "write_note"));
-  assert.equal(waiting.status, 503);
-  assert.equal((await waiting.json()).error.data.dispatched, false);
-  assert.equal((await f.post(tool(3, "read_note"))).status, 200);
-  assert.equal(writes, 1);
+test("SSE, initialization/session headers, GET resumption and DELETE use framework sessions", async () => {
+  await runCase(String.raw`
+async def main():
+    progress_arrived = asyncio.Event()
+    release = asyncio.Event()
+    large_note = "0123456789abcdef" * (1100 * 1024 // 16)
+    async def handler(name, label, ctx):
+        if name == "read_note" and label == "large-note":
+            return ok(large_note)
+        if label == "stream":
+            await ctx.report_progress(1, 2, "accepted")
+            await release.wait()
+        return ok(label)
+    async with fixture(handler, fragment_size=16 * 1024) as (url, policy, upstream_sessions):
+        async with Client(memory_proxy.MemoryHTTPTransport(url), mode="legacy") as one, \
+                   Client(memory_proxy.MemoryHTTPTransport(url), mode="legacy") as two:
+            one_id = one.transport.get_session_id()
+            two_id = two.transport.get_session_id()
+            assert one_id and two_id and one_id != two_id
+            async def progress(value, total, note):
+                assert (value, total, note) == (1, 2, "accepted")
+                progress_arrived.set()
+            pending = asyncio.create_task(one.call_tool(
+                "edit_note", {"label": "stream"}, progress_handler=progress,
+            ))
+            try:
+                await asyncio.wait_for(progress_arrived.wait(), 5)
+                assert not pending.done(), "SSE progress was buffered until completion"
+                read = await call(two, "read_note", "independent")
+                assert text(read) == "independent"
+                assert one.transport.get_session_id() == one_id
+                assert two.transport.get_session_id() == two_id
+            finally:
+                release.set()
+            assert text(await pending) == "stream"
+            large_result = await call(one, "read_note", "large-note")
+            assert not large_result.is_error, "Gateway rejected the 1,100KiB note response"
+            assert text(large_result) == large_note, "Gateway did not preserve the full 1,100KiB note content"
+            assert not policy.blocked, "Large read response quarantined the mutation lane"
+            write = await call(one, "edit_note", "after-large-read")
+            assert not write.is_error and text(write) == "after-large-read", write
+            assert not policy.blocked
+            assert one.transport.get_session_id() == one_id
+            assert all(upstream_sessions)
+            assert one_id not in upstream_sessions and two_id not in upstream_sessions
+
+        async with httpx.AsyncClient(timeout=5) as http:
+            headers = await initialize(http, url)
+            delete_headers = await initialize(http, url)
+            release.clear()
+            payload = message(10, "edit_note", "stream")
+            payload["params"]["_meta"] = {"progressToken": "resume-progress"}
+            deletion = None
+            try:
+                async with http.stream("POST", url, headers=headers, json=payload) as response:
+                    assert response.status_code == 200
+                    assert response.headers["content-type"].startswith("text/event-stream")
+                    lines = []
+                    async for line in response.aiter_lines():
+                        lines.append(line)
+                        if line.startswith("data: "):
+                            event = json.loads(line[6:])
+                            if event.get("method") == "notifications/progress":
+                                deletion = asyncio.create_task(http.delete(url, headers=delete_headers))
+                                await eventually(lambda: policy.waiting == 1)
+                                assert not deletion.done(), "Session DELETE bypassed the active write"
+                                release.set()
+                    body = "\n".join(lines)
+            finally:
+                release.set()
+                if deletion is not None:
+                    deleted_other = await deletion
+            assert deletion is not None, "SSE progress did not arrive"
+            assert deleted_other.status_code == 200, deleted_other.text
+            events = [line[4:] for line in body.splitlines() if line.startswith("id: ")]
+            assert len(events) >= 2, body
+            results = sse_messages(body)
+            assert results[-1]["id"] == 10 and results[-1]["result"]["isError"] is False
+            assert results[0]["method"] == "notifications/progress", results
+            assert results[-1]["result"]["content"][0]["text"] == "stream"
+            async with http.stream("GET", url, headers={**headers, "last-event-id": events[0]}) as resumed:
+                assert resumed.status_code == 200
+                async for line in resumed.aiter_lines():
+                    if line.startswith("data: "):
+                        replay = json.loads(line[6:])
+                        if replay.get("id") == 10:
+                            assert replay == results[-1]
+                            break
+                else:
+                    raise AssertionError("EventStore did not replay the completed result")
+            deleted = await http.delete(url, headers=headers)
+            assert deleted.status_code == 200, deleted.text
+            after_delete = await http.post(url, headers=headers, json=message(11, "read_note", "expired"))
+            assert after_delete.status_code == 404, after_delete.text
+`);
 });
 
-test("queue expiration is explicit and never dispatches the expired write", async (t) => {
-  const received = [];
-  let seen;
-  const started = new Promise((resolve) => { seen = resolve; });
-  const f = await fixture(t, async (request, response, message) => {
-    received.push(message.id);
-    seen();
-    await pause(80);
-    reply(response, message);
-  }, { queueTimeoutMs: 20 });
-  const first = f.post(tool(1, "write_note"));
-  await started;
-  const timedOut = await f.post(tool(2, "edit_note"));
-  assert.equal(timedOut.status, 504);
-  assert.equal((await timedOut.json()).error.data.dispatched, false);
-  await (await first).text();
-  assert.deepEqual(received, [1]);
+test("accepted commit error is returned once without replay", async () => {
+  await runCase(String.raw`
+async def main():
+    commits = []
+    async def handler(name, label, ctx):
+        commits.append(label)
+        raise ToolError("failed after accepted note commit")
+    async with fixture(handler) as (url, policy, sessions):
+        async with Client(url, mode="legacy") as client:
+            result = await call(client, "edit_note", "committed")
+            assert result.is_error
+            assert "failed after accepted note commit" in text(result), result
+            assert commits == ["committed"], commits
+`);
 });
 
-test("disconnect and advisory cancellation cannot release an in-flight write early", async (t) => {
-  let seen;
-  let finish;
-  const started = new Promise((resolve) => { seen = resolve; });
-  const completed = new Promise((resolve) => { finish = resolve; });
-  const received = [];
-  const f = await fixture(t, async (request, response, message) => {
-    received.push(message.id);
-    if (message.id === 1) { seen(); await completed; }
-    reply(response, message);
-  });
-  const controller = new AbortController();
-  const first = f.post(tool(1, "edit_note"), { signal: controller.signal }).catch((cause) => cause);
-  await started;
-  controller.abort();
-  const cancelled = await f.post({ jsonrpc: "2.0", method: "notifications/cancelled", params: { requestId: 1 } });
-  assert.equal(cancelled.status, 202);
-  const next = f.post(tool(2, "write_note"));
-  await pause(15);
-  assert.deepEqual(received, [1]);
-  finish();
-  await first;
-  await (await next).text();
-  assert.deepEqual(received, [1, 2]);
+test("uncertain MCP edit results block writes for JSON and fragmented SSE without buffering progress", async () => {
+  await runCase(String.raw`
+async def main():
+    for streaming in (False, True):
+        for marker in (
+            json.dumps({"error": "EDIT_OUTCOME_UNKNOWN", "detail": "No confirmation came back."}),
+            "# Edit Outcome Unknown\n\nThe edit may have been applied. Read the note before retrying.",
+        ):
+            writes = []
+            progress_arrived = asyncio.Event()
+            release = asyncio.Event()
+            async def handler(name, label, ctx):
+                if name == "read_note":
+                    return ok(label)
+                writes.append(label)
+                if streaming:
+                    await ctx.report_progress(1, 2, "accepted")
+                    await release.wait()
+                return ToolResult(content=marker, is_error=True)
+            async with fixture(handler, streaming=streaming) as (url, policy, sessions):
+                async with Client(url, mode="legacy") as client:
+                    async def progress(value, total, note):
+                        progress_arrived.set()
+                    pending = asyncio.create_task(client.call_tool(
+                        "edit_note", {"label": "uncertain"}, raise_on_error=False,
+                        progress_handler=progress,
+                    ))
+                    try:
+                        if streaming:
+                            await asyncio.wait_for(progress_arrived.wait(), 5)
+                            assert not pending.done(), "Progress was buffered until the uncertain result"
+                    finally:
+                        release.set()
+                    result = await pending
+                    assert result.is_error and text(result) == marker, result
+                    assert policy.blocked, "Exact uncertain result did not quarantine the write lane"
+                    blocked = await call(client, "write_note", "blocked")
+                    assert blocked.is_error and text(blocked).startswith("QUEUE_BLOCKED:"), blocked
+                    assert "Request was not dispatched." in text(blocked), blocked
+                    read = await call(client, "read_note", "read")
+                    assert not read.is_error and text(read) == "read"
+                    assert writes == ["uncertain"], writes
+`);
 });
 
-test("malformed, batched, oversized and non-loopback requests fail before dispatch", async (t) => {
-  let calls = 0;
-  const f = await fixture(t, async (request, response, message) => { calls++; reply(response, message); }, { maxBodyBytes: 200 });
-  for (const body of ["null", "{}", "[]", JSON.stringify([tool(1, "write_note")]), "{"]) {
-    assert.equal((await fetch(f.url, { method: "POST", headers: f.headers, body })).status, 400);
-  }
-  assert.equal((await fetch(f.url, { method: "POST", headers: f.headers, body: " ".repeat(201) })).status, 413);
-  assert.equal((await f.post(tool(1, "write_note"), { headers: { ...f.headers, Origin: "https://example.com" } })).status, 403);
-  assert.equal(calls, 0);
+test("confirmed refusals mentioning outcome markers do not block later writes", async () => {
+  await runCase(String.raw`
+async def main():
+    for refusal in (
+        json.dumps({"title": "EDIT_OUTCOME_UNKNOWN", "error": "NOTE_REVISION_CONFLICT"}),
+        json.dumps({"title": "# Edit Outcome Unknown", "error": "NOTE_REVISION_CONFLICT",
+                    "detail": "The prior result included EDIT_OUTCOME_UNKNOWN."}),
+        '# Note Revision Conflict\n\nNote "# Edit Outcome Unknown" with identifier EDIT_OUTCOME_UNKNOWN changed.',
+    ):
+        writes = []
+        async def handler(name, label, ctx):
+            writes.append(label)
+            if label == "refused":
+                return ToolResult(content=refusal, is_error=True)
+            return ok(label)
+        assert not memory_proxy.outcome_unknown(ToolResult(content=refusal, is_error=True))
+        async with fixture(handler) as (url, policy, sessions):
+            async with Client(url, mode="legacy") as client:
+                result = await call(client, "edit_note", "refused")
+                assert result.is_error and text(result) == refusal, result
+                assert not policy.blocked
+                next_result = await call(client, "write_note", "next")
+                assert not next_result.is_error and text(next_result) == "next", next_result
+                assert writes == ["refused", "next"], writes
+`);
+});
+
+test("unknown write outcome blocks subsequent writes but leaves reads available", async () => {
+  await runCase(String.raw`
+async def main():
+    writes = []
+    async def handler(name, label, ctx):
+        if name != "read_note":
+            writes.append(label)
+        return ok(label)
+    async with fixture(handler, transport_failure=True) as (url, policy, sessions):
+        async with Client(url, mode="legacy") as client:
+            failed = await call(client, "edit_note", "lost-response")
+            assert failed.is_error, failed
+            assert policy.blocked
+            blocked = await call(client, "write_note", "blocked")
+            assert blocked.is_error and text(blocked).startswith("QUEUE_BLOCKED:"), blocked
+            assert "Request was not dispatched." in text(blocked), blocked
+            read = await call(client, "read_note", "still-readable")
+            assert not read.is_error and text(read) == "still-readable", read
+            assert writes == ["lost-response"], writes
+            async with httpx.AsyncClient(timeout=5) as http:
+                headers = await initialize(http, url)
+                deleted = await http.delete(url, headers=headers)
+                assert deleted.status_code == 200, "Blocked writes prevented frontend session cleanup"
+`);
+});
+
+test("queue expiration is explicit and never dispatches the expired write", async () => {
+  await runCase(String.raw`
+async def main():
+    received = []
+    started = asyncio.Event()
+    release = asyncio.Event()
+    async def handler(name, label, ctx):
+        received.append(label)
+        started.set()
+        await release.wait()
+        return ok(label)
+    async with fixture(handler, queue_timeout=0.05) as (url, policy, sessions):
+        async with Client(url, mode="legacy") as client:
+            first = asyncio.create_task(call(client, "write_note", "first"))
+            try:
+                await started.wait()
+                expired = await call(client, "edit_note", "expired")
+                assert expired.is_error and text(expired).startswith("QUEUE_TIMEOUT:"), expired
+                assert "Request was not dispatched." in text(expired), expired
+                assert received == ["first"], received
+                assert not policy.blocked
+            finally:
+                release.set()
+                first_result = await first
+            assert not first_result.is_error and text(first_result) == "first"
+            assert received == ["first"], received
+`);
+});
+
+test("disconnect and advisory cancellation cannot release an in-flight write early", async () => {
+  await runCase(String.raw`
+async def main():
+    started = asyncio.Event()
+    release = asyncio.Event()
+    received = []
+    commits = []
+    async def handler(name, label, ctx):
+        received.append(label)
+        if label == "first":
+            started.set()
+            await release.wait()
+        commits.append(label)
+        return ok(label)
+    async with fixture(handler) as (url, policy, sessions):
+        async with httpx.AsyncClient(timeout=5) as http, Client(url, mode="legacy") as next_client:
+            headers = await initialize(http, url)
+            async def abandoned():
+                async with http.stream("POST", url, headers=headers, json=message(1, "edit_note", "first")) as response:
+                    assert response.status_code == 200
+                    await response.aread()
+            first = asyncio.create_task(abandoned())
+            try:
+                await started.wait()
+                first.cancel()
+                await asyncio.gather(first, return_exceptions=True)
+                cancellation = await http.post(url, headers=headers, json={
+                    "jsonrpc": "2.0", "method": "notifications/cancelled",
+                    "params": {"requestId": 1, "reason": "client disconnected"},
+                })
+                assert cancellation.status_code == 202, cancellation.text
+                next_write = asyncio.create_task(call(next_client, "write_note", "second"))
+                await eventually(lambda: policy.waiting == 1)
+                assert received == ["first"] and commits == [], (received, commits)
+            finally:
+                release.set()
+            next_result = await next_write
+            assert not next_result.is_error and text(next_result) == "second", next_result
+            assert received == ["first", "second"], received
+            assert commits == ["first", "second"], commits
+`);
+});
+
+test("malformed, batched, oversized and non-loopback requests fail before dispatch", async () => {
+  await runCase(String.raw`
+async def main():
+    calls = []
+    async def handler(name, label, ctx):
+        calls.append(label)
+        return ok(label)
+    async with fixture(handler, max_body_bytes=1024) as (url, policy, sessions):
+        async with httpx.AsyncClient(timeout=5) as http:
+            headers = await initialize(http, url)
+            for body in ("null", "{}", "[]", json.dumps([message(1, "write_note", "batch")]), "{"):
+                response = await http.post(url, headers=headers, content=body)
+                assert response.status_code == 400, (body, response.status_code, response.text)
+            oversized = await http.post(url, headers=headers, content=" " * 1025)
+            assert oversized.status_code == 413, oversized.text
+            for extra, expected in (({"origin": "https://example.com"}, 403),
+                                    ({"host": "example.com"}, 421)):
+                response = await http.post(url, headers={**headers, **extra},
+                                           json=message(2, "write_note", "untrusted"))
+                assert response.status_code == expected, (extra, response.status_code, response.text)
+            outside = await http.post(url.replace("/mcp", "/outside"), headers=headers,
+                                      json=message(3, "write_note", "outside"))
+            assert outside.status_code == 404, outside.text
+            assert calls == [], calls
+`);
 });

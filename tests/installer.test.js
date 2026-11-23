@@ -76,7 +76,8 @@ test("Windows service resolves pythonw from the installed uv environment", { ski
   deps.startService("C:\\Tools\\basic-memory.exe", 8123, 8124, runtime);
   assert.equal(script, windowsTaskScript("C:\\Tools\\uv\\basic-memory\\Scripts\\pythonw.exe", 8123,
     [process.execPath, runtime, "--memory-command", "C:\\Tools\\basic-memory.exe", "--port", "8123", "--proxy-port", "8124",
-      "--config-dir", memoryConfigDirectory()]));
+      "--config-dir", memoryConfigDirectory(), "--proxy-python", "C:\\Tools\\uv\\basic-memory\\Scripts\\python.exe",
+      "--fastmcp-version", pins.memoryProxy.split("==")[1]]));
 });
 
 const pythonw = process.env.PROMPTLINGS_TEST_PYTHONW || which("pythonw");
@@ -433,7 +434,11 @@ test("memory installs, starts, waits, then registers clients", async (t) => {
     which: (name) => (name === "basic-memory" ? "/bin/basic-memory" : `/bin/${name}`),
     run: (command) => log.push(`run ${command}`),
     stopPreviousServer: () => log.push("stop"),
-    uvToolInstall: () => log.push("install"),
+    uvToolInstall: (spec, extra) => {
+      assert.equal(spec, pins.memory);
+      assert.deepEqual(extra, [pins.memoryProxy]);
+      log.push("install");
+    },
     uvToolPath: () => {},
     skillsAdd: () => log.push("skills"),
     configureMemory: () => log.push("configure"),

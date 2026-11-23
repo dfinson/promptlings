@@ -62,7 +62,9 @@ installation, and the Claude Code plugin.
 Memory Manager can help set up Basic Memory project routing. Agents access
 Basic Memory only through MCP, never its CLI, database or note files. The
 installer runs one pinned SQLite server behind a shared FIFO write proxy.
-Reads remain concurrent. See [Basic Memory setup](docs/installation.md#basic-memory-setup)
+FastMCP owns MCP transport and session handling, with a small custom write-safety
+policy. Reads remain concurrent. The queue is process-local, not crash-durable.
+See [Basic Memory setup](docs/installation.md#basic-memory-setup)
 for ports, failure handling and concurrency measurements.
 
 ## Try it

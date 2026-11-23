@@ -311,15 +311,24 @@ Stdio-only clients such as Claude Desktop connect through
 
 Basic Memory 0.24.1 uses its unchanged SQLite backend on `127.0.0.1:8000`.
 All MCP clients register `http://127.0.0.1:8001/mcp`, the shared write proxy,
-rather than the backend port. The installer copies the Node proxy and service
-entry point to `~/.promptlings/memory/`, outside disposable npm download paths.
-The existing service starts that entry point, which owns the proxy and one
-Basic Memory child. No additional package or database backend is installed.
+rather than the backend port. FastMCP 4.1.3 owns protocol forwarding, tool
+discovery, typed results, sessions and HTTP/SSE transport. It is explicitly
+pinned in Basic Memory's existing uv environment, without patching Basic Memory.
+The installer copies `memory-proxy.py` and the Node service supervisor to
+`~/.promptlings/memory/`, outside disposable npm download paths. The existing
+service starts the supervisor, which owns one FastMCP gateway child and one
+Basic Memory child. The gateway binds before the backend starts. Readiness
+requires discovering the backend's tools through the gateway, not merely
+receiving the gateway's initialization response. Maintenance waits for both
+listeners to stop before replacing the environment or changing worker settings.
+No second database backend
+or additional OS service is installed.
 
 Windows uses a limited, current-user Scheduled Task, macOS a LaunchAgent, and
 Linux a systemd user service. Windows retains its `pythonw.exe` task wrapper,
-which starts Node without a console. Node starts the installed Basic Memory
-command with windowless child creation. The other platforms start Node directly.
+which starts Node without a console. Node starts the gateway using the installed
+uv environment's Python and starts Basic Memory with windowless child creation.
+The other platforms start Node directly.
 Linux startup
 requires an active systemd user session. The installer checks the MCP
 initialization response before reporting success.
@@ -347,28 +356,48 @@ The proxy derives its classification from 0.24.1's MCP tool definitions.
 `write_note`, `edit_note`, `move_note`, `delete_note`,
 `create_memory_project` and `delete_project` share one FIFO queue across all
 sessions and projects. Unknown tools also serialize. Declared read-only tools
-pass through concurrently. Session deletion waits for writes, and advisory
-write cancellation never releases an in-flight operation early.
+pass through concurrently. This policy is custom middleware, not built-in
+FastMCP serialization. Session deletion waits for writes. Queued cancellation
+can remove an operation before dispatch. Cancellation of an active operation
+never releases its lane early.
 
-Streamable HTTP initialization, MCP session IDs, protocol headers, GET event
-streams, resumption headers and streaming POST responses pass through. The
-proxy forwards streams without buffering complete responses or rewriting SSE
-events. It accepts one JSON-RPC message per POST, not batches, and limits request
-bodies to 64 MiB. Both endpoints bind only to IPv4 loopback. Do not register
+FastMCP terminates frontend Streamable HTTP sessions and creates a fresh
+legacy-protocol upstream session per request. Frontend session IDs remain stable
+for each connected client, but are not the backend's session IDs. Progress
+notifications and typed tool results are forwarded semantically, not as
+byte-identical HTTP/SSE messages. The framework's in-memory event store owns
+frontend event IDs and resumption. Tool results are decoded in full; progress
+and events remain streamed. A narrow upstream transport adapter disables the
+SDK's default 1 MiB SSE-event cap so valid large notes are not rejected inside
+the gateway. SSE parsing remains SDK-owned; downstream clients retain their
+own response limits. Request bodies are limited to 64 MiB before
+dispatch. Host and Origin checks are framework-owned. Both endpoints bind only
+to IPv4 loopback. Do not register
 the backend or launch another server when connecting additional clients.
 Stdio-only clients use the pinned `mcp-remote` bridge to the same proxy.
 
-Queued writes wait at most 120 seconds and the queue holds at most 1,000 waiting
+Queued writes wait at most 300 seconds and the queue holds at most 1,000 waiting
 requests. Timeout or queue-full errors state that the request was not dispatched.
 A dispatched write has a ten-minute response limit. Transport failure or a
-server-side HTTP failure can leave its commit outcome unknown. That blocks
+server-side HTTP or protocol failure can leave its commit outcome unknown. That blocks
 further writes until the managed server restarts, while reads remain available.
-The same protection applies to HTTP 200 MCP errors reporting
-`EDIT_OUTCOME_UNKNOWN` or the default `Edit Outcome Unknown` message.
+The same protection applies to MCP error results reporting
+`EDIT_OUTCOME_UNKNOWN` or the default `Edit Outcome Unknown` heading. Middleware
+inspects decoded typed results, not a custom streaming JSON parser. Confirmed
+revision conflicts containing those words in a title or detail remain refusals,
+not unknown outcomes.
 Read the exact target first and reconcile any accepted change before retrying.
 The proxy never automatically retries a dispatched request, including an
 `edit_note` failure after an accepted note commit. Client disconnection does not
-cancel an active write: the proxy drains its response before releasing the queue.
+cancel an active write: cancellation shielding retains its lane through the
+backend result. Terminating the frontend session can still lose the response
+after a successful commit, so the caller must reconcile the target.
+
+The queue, event store and unknown-outcome flag are process-local. A gateway
+crash loses waiting requests and the blocked flag. A dispatched request may
+already have committed. Connection failure is not permission to replay it.
+This design provides serialization and no automatic replay, not durable
+delivery or crash-safe exactly-once execution.
 
 The installer disables Basic Memory's automatic updates to preserve its pin.
 It preserves project configuration and routing while setting the measured
@@ -380,10 +409,10 @@ paths resolve against the installer's working directory, with no tilde or
 embedded-variable expansion. Managed startup records the absolute selected
 directory so login or restart cannot select a different configuration.
 
-### SQLite concurrency measurements
+### Initial Node-proxy SQLite concurrency measurements
 
-Real-server acceptance on Windows on 2026-11-23 used Basic Memory 0.24.1
-and the existing SQLite database. Each round opened ten independent MCP
+Initial Node-proxy acceptance on Windows on 2026-11-23 used Basic Memory 0.24.1
+and the existing SQLite database, before the FastMCP replacement. Each round opened ten independent MCP
 sessions, submitted ten `write_note` calls together, then submitted ten
 `edit_note` appends together against one seeded note. No agent CLI processes
 were used. Reads used MCP tools throughout. Two throwaway projects were
@@ -469,8 +498,14 @@ node --test tests\memory-concurrency.test.js
 This opt-in test restarts the shared service, tries workers 1, 2 and 4, removes
 its throwaway project and restores the installer-selected worker count.
 It does not open SQLite or operate on note files directly.
+For a transport-only regression with the existing worker choice, set
+`PROMPTLINGS_MEMORY_ACCEPTANCE_WORKERS=2`. It still compares ten concurrent
+direct writes/edits at four workers against ten gateway writes/edits at two
+workers. Reports include the FastMCP pin so historical Node-proxy measurements
+remain distinguishable.
 
-Post-reinstallation acceptance on this host:
+Initial Node-proxy post-reinstallation acceptance on this host, before the
+FastMCP replacement:
 
 | Item | Status | Evidence |
 | --- | --- | --- |
@@ -479,6 +514,47 @@ Post-reinstallation acceptance on this host:
 | Worker choice | Verified | Workers 1, 2 and 4 measured. Two workers were the lowest consistently lock-free choice across both trials |
 | Reinstalled clients | Verified | Scheduled task Running, one listener per selected port, both Copilot registrations retained at the proxy URL. Fresh SDK clients initialized, discovered 27 tools, performed scoped search/read and closed sessions. Both native App MCP namespaces read successfully after disable/re-enable |
 | Actual Unix service startup | Unverified | Startup definitions are covered by focused checks, but this acceptance host runs Windows |
+
+### FastMCP replacement acceptance
+
+Real installed-server acceptance on this Windows host on 2026-11-23 used
+Basic Memory 0.24.1 and FastMCP 4.1.3. Each route received ten concurrent
+`write_note` calls and ten concurrent appends to one seeded note, followed by
+accepted-revision and materialized-file reads through MCP. Background logs
+were observed for 150 seconds after the edits.
+
+| Route | Workers | Tool lock errors | Tool pool timeouts | SQLite lock exceptions in logs | Pool-timeout log lines | Edits retained exactly once |
+| --- | --- | --- | --- | --- | --- | --- |
+| Direct, port 8000 | 4 | 3 | 6 | 7 | 13 | 1 of 10 |
+| FastMCP gateway, port 8001 | 2 | 0 | 0 | 0 | 0 | 10 of 10 |
+
+Log-line counts can include several reports of one exception. The direct
+route returned nine uncertain edit outcomes. The gateway returned zero tool
+errors, with every marker present exactly once in both readbacks and all ten
+new notes searchable. Its acknowledgment-to-text-search lag averaged 619.6 ms,
+with a 230-1598 ms range. Per-note lags were 368, 294, 491, 411, 1598, 1366,
+589, 426, 423 and 230 ms. Submission-to-write-response times ranged from
+11577 to 121386 ms, including queue waiting.
+
+The first replacement run had zero gateway lock or pool errors, but a
+120-second queue deadline refused one edit before dispatch. Its readbacks
+retained nine markers, with no duplicates. The final 300-second deadline
+passed the repeated workload without refusals. Both throwaway projects were
+removed through MCP, and two workers were restored after each run.
+The worker choice retains the earlier 1/2/4 measurements above. The
+replacement run revalidated two workers, rather than remeasuring all three.
+
+| Acceptance item | Status | Evidence |
+| --- | --- | --- |
+| MCP-only agent access | Verified | Shipped memory contracts retain the CLI/database/note-file ban. Installed Copilot managed instruction block and Claude managed blocks contain it |
+| Shared write gateway | Verified | Real ten-client write/edit round, zero tool or background lock/pool errors, exact accepted and materialized edits, throwaway project removed |
+| Worker choice | Verified | Earlier 1/2/4 measurements selected two workers. Replacement two-worker text-search lag averaged 619.6 ms with zero observed locks |
+| Reinstalled clients | Verified | Scheduled task Running, one loopback listener per port, installed runtime hashes match source, SQLite/worker/pin settings verified. Both Copilot aliases retain port 8001. Fresh SDK discovers 27 tools, searches, reads and closes its session. Both native App MCP namespaces read successfully |
+| Actual Unix service startup | Unverified | Definitions and installer behavior have focused coverage. This real acceptance host runs Windows |
+
+Reports are `fastmcp-acceptance/memory-concurrency.json` (initial deadline)
+and `fastmcp-acceptance-300s/memory-concurrency.json` (final deadline) beneath
+the external artifact directory above, with the same 14-day expiry.
 
 ### Service scheduling
 

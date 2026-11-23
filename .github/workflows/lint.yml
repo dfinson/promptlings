@@ -40,10 +40,11 @@ jobs:
         with:
           node-version: "22.20"
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        if: runner.os == 'Windows'
         with:
           python-version: "3.12"
       - run: npm ci --no-fund --no-audit
+      - name: Install pinned proxy protocol dependency
+        run: node --input-type=module -e "import { pins } from './lib/pins.js'; import { spawnSync } from 'node:child_process'; const result = spawnSync('python', ['-m', 'pip', 'install', pins.memoryProxy], { stdio:'inherit' }); if (result.error) throw result.error; process.exit(result.status ?? 1);"
       - run: npm test
 
   evals-offline:
