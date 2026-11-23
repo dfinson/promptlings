@@ -55,7 +55,8 @@ prerelease: `minor` from `0.1.0-beta.2` produces `0.1.0`.
 Returning to an earlier prerelease channel advances the patch first so version
 precedence always increases. Every release type is published as `latest`.
 
-The workflow tests the stamped package on Windows, macOS and Linux, reserves
+The workflow installs Python 3.12 and the pinned FastMCP test dependency on
+Windows, macOS and Linux before testing the stamped package. It then reserves
 its version tag, and publishes with provenance and `--tag latest` through npm
 trusted publishing. New reservations require the selected SHA to equal the
 current main tip, checked during preparation and again before reserving the tag.
