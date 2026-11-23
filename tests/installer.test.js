@@ -8,7 +8,7 @@ import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, w
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
 import { dpkgInstalled, externalSkillSources, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
-import { deps, installMemory } from "../lib/memory.js";
+import { deps, installMemory, retargetMemoryAliases } from "../lib/memory.js";
 import { capture, packageBin, quoteForCmd, runBuffered, which } from "../lib/run.js";
 import { launchAgentPlist, systemdUnit, windowsServerScript, windowsStopScript, windowsTaskName, windowsTaskScript, windowsTaskSettings } from "../lib/services.js";
 
@@ -61,8 +61,10 @@ test("Windows service resolves pythonw from the installed uv environment", { ski
   });
   let script;
   t.mock.method(deps, "powershell", (value) => { script = value; });
-  deps.startService("C:\\Tools\\basic-memory.exe", 8123);
-  assert.equal(script, windowsTaskScript("C:\\Tools\\uv\\basic-memory\\Scripts\\pythonw.exe", 8123));
+  const runtime = "C:\\User\\memory\\memory-service.mjs";
+  deps.startService("C:\\Tools\\basic-memory.exe", 8123, 8124, runtime);
+  assert.equal(script, windowsTaskScript("C:\\Tools\\uv\\basic-memory\\Scripts\\pythonw.exe", 8123,
+    [process.execPath, runtime, "--memory-command", "C:\\Tools\\basic-memory.exe", "--port", "8123", "--proxy-port", "8124"]));
 });
 
 const pythonw = process.env.PROMPTLINGS_TEST_PYTHONW || which("pythonw");
@@ -369,22 +371,49 @@ test("memory installs, starts, waits, then registers clients", async (t) => {
     uvToolInstall: () => log.push("install"),
     uvToolPath: () => {},
     skillsAdd: () => log.push("skills"),
+    configureMemory: () => log.push("configure"),
+    installMemorySkillContracts: () => log.push("contracts"),
+    refreshMemoryReadSide: () => log.push("readside"),
+    installMemoryRuntime: () => { log.push("runtime"); return "/runtime/memory-service.mjs"; },
     portOpen: async () => false,
     startService: () => log.push("start"),
     waitUntilReady: async () => log.push("ready"),
     register: async () => log.push("register"),
+    retargetMemoryAliases: () => log.push("aliases"),
   });
   await installMemory({ skills: false, startup: true, memoryPort: 8123 }, {});
-  assert.deepEqual(log, ["stop", "install", "run basic-memory", "start", "ready", "register"]);
+  assert.deepEqual(log, ["stop", "configure", "install", "run basic-memory", "contracts", "readside", "runtime", "start", "ready", "register", "aliases"]);
 
   log.length = 0;
   await installMemory({ skills: false, startup: true, memoryPort: 8123 }, {});
-  assert.deepEqual(log, ["stop", "install", "run basic-memory", "start", "ready", "register"]);
+  assert.deepEqual(log, ["stop", "configure", "install", "run basic-memory", "contracts", "readside", "runtime", "start", "ready", "register", "aliases"]);
 
   log.length = 0;
   deps.waitUntilReady = async () => { throw new Error("not ready"); };
   await assert.rejects(installMemory({ skills: false, startup: true, memoryPort: 8123 }, {}), /not ready/);
   assert.ok(!log.includes("register"));
+});
+
+test("memory routing preserves duplicate registrations and unrelated client settings", (t) => {
+  const directory = temporary(t);
+  const config = {
+    mcpServers: {
+      "basic-memory": { type: "http", url: "http://127.0.0.1:8000/mcp" },
+      "Basicmachines Co Basic Memory": { type: "http", url: "http://localhost:8000/mcp/", headers: { "x-test": "preserve" } },
+      unrelated: { type: "http", url: "http://127.0.0.1:8765/mcp" },
+    },
+    otherSetting: true,
+  };
+  const path = join(directory, "mcp-config.json");
+  writeFileSync(path, JSON.stringify(config));
+  retargetMemoryAliases({ memoryPort: 8000, memoryProxyPort: 8001 }, directory);
+  const updated = JSON.parse(readFileSync(path, "utf8"));
+  assert.deepEqual(Object.keys(updated.mcpServers), Object.keys(config.mcpServers));
+  assert.equal(updated.mcpServers["basic-memory"].url, "http://127.0.0.1:8001/mcp");
+  assert.equal(updated.mcpServers["Basicmachines Co Basic Memory"].url, "http://127.0.0.1:8001/mcp");
+  assert.deepEqual(updated.mcpServers["Basicmachines Co Basic Memory"].headers, { "x-test": "preserve" });
+  assert.deepEqual(updated.mcpServers.unrelated, config.mcpServers.unrelated);
+  assert.equal(updated.otherSetting, true);
 });
 
 test("cmd quoting rejects unsafe characters and quotes spaces", () => {

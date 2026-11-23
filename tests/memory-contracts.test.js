@@ -30,7 +30,7 @@ test("capture contract requires retained evidence before derived publication", (
   assert.match(capture, /Each standalone summary or observation must retain[\s\S]*conditions, exceptions, explicit allowances/);
   assert.match(capture, /redaction's source location and reason without repeating its contents/);
   assert.match(capture, /Never reconstruct unavailable wording/);
-  assert.match(capture, /timeout or uncertain acknowledgment[\s\S]*exact target before retrying/);
+  assert.match(capture, /timeout or uncertain acknowledgment[\s\S]*exact target through MCP tools before retrying/);
   assert.match(capture, /Never report a complete capture while source retention or required readback is incomplete/);
   assert.doesNotMatch(capture, /Write the checkpoint first/);
 });

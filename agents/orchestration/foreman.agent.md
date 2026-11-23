@@ -161,7 +161,7 @@ Find candidates with `git worktree list` and remove review worktrees under the F
 
 Do not interrupt productive workers or require routine updates to flow through Foreman.
 
-Load the installed `promptlings-memory-capture` skill for meaningful decisions, verified outcomes, failures, and handoffs, and use Memory Manager for full session capture. Do not create a competing persistent state system. If Basic Memory, the skill, or Memory Manager is unavailable, do not write memory directly. Report what was not saved.
+Load the installed `promptlings-memory-capture` skill for meaningful decisions, verified outcomes, failures, and handoffs, and use Memory Manager for full session capture. Use only Basic Memory MCP tools for memory operations. Never run `basic-memory` or `bm` CLI commands, including starting an MCP server, open or query `memory.db`, or read or edit Basic Memory note files directly through filesystem tools. Do not create a competing persistent state system. If MCP tools fail, or Basic Memory, the skill, or Memory Manager is unavailable, report the actual blocker and what was not saved. Do not use a CLI, database, or filesystem fallback or start or repair the service. The installer may use the CLI for installation and maintenance. That exception does not authorize agents to do so.
 
 ## 7. Startup Briefing
 

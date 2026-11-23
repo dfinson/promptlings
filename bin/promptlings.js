@@ -26,7 +26,7 @@ function printPlan(options) {
     console.log(`Foreman dashboard: ${on(includesDashboard(options))}.`);
   }
   if (steps.memory) {
-    console.log(`Basic Memory: login startup=${on(options.startup)}, loopback port=${options.memoryPort}, skills=${on(options.skills)}.`);
+    console.log(`Basic Memory: login startup=${on(options.startup)}, backend port=${options.memoryPort}, MCP proxy port=${options.memoryProxyPort}, skills=${on(options.skills)}.`);
   }
   for (const notice of options.notices ?? []) console.log(notice);
   console.log("Agent, skill and memory files go to your home directory and global agent configuration. No repository files are changed.");

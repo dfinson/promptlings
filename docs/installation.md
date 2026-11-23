@@ -110,7 +110,7 @@ execution is restricted.
 | Component | What the installer provides |
 | --- | --- |
 | Python, uv, Git, and GitHub CLI | Native packages, requiring Python 3.11+ |
-| Basic Memory | uv tool, published memory skills, MCP registration, and user-login startup |
+| Basic Memory | Pinned SQLite uv tool, MCP-only memory skills, shared write proxy, MCP registration, and user-login startup |
 | Playwright | Global npm application, published skill, and Chrome browser |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
 | Technical Demo | Pinned upstream motion-art-direction and animation-principles skills (HyperFrames skills come from the HyperFrames row) and Markdown production/writing/capture guidance. A reusable user-local runtime for the opt-in Remotion route includes Remotion 4.0.539 (CLI, Player, bundler, renderer and media), React, TypeScript and matching Chrome Headless Shell |
@@ -135,8 +135,9 @@ pinned package dependencies.
 | `--agents a,b` | Select agents by name |
 | `--no-system-packages` | Use existing Python, Git, gh, FFmpeg, and uv, but still install selected applications and skills |
 | `--no-memory` | Skip Basic Memory, its skills, MCP, startup, and read-side instruction |
-| `--no-startup` | Register client-launched stdio MCP instead of login startup |
-| `--memory-port 8123` | Use a different Basic Memory port |
+| `--no-startup` | Rejected when installing memory: client-launched servers bypass the shared queue. Use `--no-memory` to omit the service |
+| `--memory-port 8123` | Use a different Basic Memory backend port |
+| `--memory-proxy-port 8124` | Use a different client-facing proxy port (default: backend port + 1) |
 | `--no-playwright` | Skip Playwright CLI, its browser, and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` | Skip HyperFrames, media binaries, and skills |
 | `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, motion-art-direction, animation-principles, the Remotion runtime and Headless Shell, LibreOffice, Poppler, and diff2html |
@@ -308,15 +309,167 @@ Stdio-only clients such as Claude Desktop connect through
 
 ## Basic Memory setup
 
-Basic Memory binds to `127.0.0.1`, using port 8000 by default. Windows uses a
-limited, current-user Scheduled Task, macOS a LaunchAgent, and Linux a systemd
-user service. Windows uses the installed Basic Memory environment's `pythonw.exe`
-for both the task action and the server, loading the installed `basic-memory`
-console entry point without its console-executable shim. Neither process
-allocates a console. The child also uses `CREATE_NO_WINDOW`. The other platforms
-start the command directly. Linux startup
+Basic Memory 0.24.1 uses its unchanged SQLite backend on `127.0.0.1:8000`.
+All MCP clients register `http://127.0.0.1:8001/mcp`, the shared write proxy,
+rather than the backend port. The installer copies the Node proxy and service
+entry point to `~/.promptlings/memory/`, outside disposable npm download paths.
+The existing service starts that entry point, which owns the proxy and one
+Basic Memory child. No additional package or database backend is installed.
+
+Windows uses a limited, current-user Scheduled Task, macOS a LaunchAgent, and
+Linux a systemd user service. Windows retains its `pythonw.exe` task wrapper,
+which starts Node without a console. Node starts the installed Basic Memory
+command with windowless child creation. The other platforms start Node directly.
+Linux startup
 requires an active systemd user session. The installer checks the MCP
 initialization response before reporting success.
+
+### Agent access and write serialization
+
+Agents must use only Basic Memory MCP tools. Running `basic-memory` or `bm`,
+starting another MCP server, opening `memory.db`, or accessing Basic Memory
+note files directly is prohibited. An MCP failure is a blocker, not permission
+to fall back to the CLI. Installer installation and maintenance commands are
+exempt. The generated read-side rule, Memory Manager and bundled capture skill
+carry this contract.
+
+The installer also adapts the pinned upstream memory skills and their installed
+Copilot/Claude copies. CLI-only doctor, literary-analysis and OKF recipes become
+MCP workflows with explicit unsupported-maintenance boundaries. Import, orphan
+and cloud-login CLI fallbacks are removed. Changed local skill copies stop
+installation for reconciliation rather than being silently overwritten.
+
+The proxy derives its classification from 0.24.1's MCP tool definitions.
+`write_note`, `edit_note`, `move_note`, `delete_note`,
+`create_memory_project` and `delete_project` share one FIFO queue across all
+sessions and projects. Unknown tools also serialize. Declared read-only tools
+pass through concurrently. Session deletion waits for writes, and advisory
+write cancellation never releases an in-flight operation early.
+
+Streamable HTTP initialization, MCP session IDs, protocol headers, GET event
+streams, resumption headers and streaming POST responses pass through. The
+proxy forwards streams without buffering complete responses or rewriting SSE
+events. It accepts one JSON-RPC message per POST, not batches, and limits request
+bodies to 64 MiB. Both endpoints bind only to IPv4 loopback. Do not register
+the backend or launch another server when connecting additional clients.
+Stdio-only clients use the pinned `mcp-remote` bridge to the same proxy.
+
+Queued writes wait at most 120 seconds and the queue holds at most 1,000 waiting
+requests. Timeout or queue-full errors state that the request was not dispatched.
+A dispatched write has a ten-minute response limit. Transport failure or a
+server-side HTTP failure can leave its commit outcome unknown. That blocks
+further writes until the managed server restarts, while reads remain available.
+Read the exact target first and reconcile any accepted change before retrying.
+The proxy never automatically retries a dispatched request, including an
+`edit_note` failure after an accepted note commit. Client disconnection does not
+cancel an active write: the proxy drains its response before releasing the queue.
+
+The installer disables Basic Memory's automatic updates to preserve its pin.
+It preserves project configuration and routing while setting the measured
+materialization worker count. Worker measurements and live acceptance are
+described below.
+
+### SQLite concurrency measurements
+
+Real-server acceptance on Windows on 2026-11-23 used Basic Memory 0.24.1
+and the existing SQLite database. Each round opened ten independent MCP
+sessions, submitted ten `write_note` calls together, then submitted ten
+`edit_note` appends together against one seeded note. No agent CLI processes
+were used. Reads used MCP tools throughout. Two throwaway projects were
+removed through `delete_project`, with registration and directory absence
+verified afterward.
+
+The first trial measured delayed search probes. The repeated trial started
+polling immediately after each write acknowledgment for a unique body-only
+token using `search_notes` with `search_type=text`, checking the exact returned
+title. Search lag includes polling and HTTP latency, not vector-index completion.
+Logs were observed for another 150 seconds after each round's edits.
+
+| Route | Workers | Tool lock errors | Pool timeouts | Background SQLite lock exceptions, first / repeat | Edits retained exactly once, first / repeat |
+| --- | --- | --- | --- | --- | --- |
+| Direct, port 8000 | 4 | 0 / 0 | 0 / 0 | 0 / 0 | 6 / 8 of 10 |
+| Proxy, port 8001 | 1 | 0 / 0 | 0 / 0 | 1 / 0 | 10 / 10 of 10 |
+| Proxy, port 8001 | 2 | 0 / 0 | 0 / 0 | 0 / 0 | 10 / 10 of 10 |
+| Proxy, port 8001 | 4 | 0 / 0 | 0 / 0 | 0 / 0 | 10 / 10 of 10 |
+
+Direct concurrent edits returned four explicit concurrent-modification refusals
+in the first trial and two in the repeat. Proxy rounds returned zero tool errors,
+and all markers appeared exactly once in both `read_note` and the materialized
+file read through `read_content`. The one-worker first-trial failure was one
+SQLAlchemy SQLite lock exception from an internal `search_vector_chunks`
+update, represented by two log lines. The competing lock holder was not
+identified.
+
+**The installer sets `materialization_workers=2`.** This is the lowest tested
+value with zero observed lock errors in both trials. Its repeated-trial
+acknowledgment-to-text-search lag averaged 331.1 ms, with a 294 ms median and
+an 84-949 ms range. Four workers averaged 416.4 ms, with a 290 ms median and
+a 171-1099 ms range. One worker averaged 233.6 ms in the repeat, but its
+earlier lock failure disqualifies it. These sub-second two-worker text-search
+lags are acceptable for the measured workload.
+
+Per-note acknowledgment-to-search lag in the repeated trial, in milliseconds:
+
+| Note index | Direct, 4 workers | Proxy, 1 worker | Proxy, 2 workers | Proxy, 4 workers |
+| --- | --- | --- | --- | --- |
+| 0 | 15052 | 255 | 304 | 201 |
+| 1 | 11844 | 448 | 151 | 318 |
+| 2 | 6426 | 451 | 284 | 171 |
+| 3 | 9317 | 136 | 445 | 1099 |
+| 4 | 5663 | 214 | 278 | 243 |
+| 5 | 3386 | 188 | 949 | 405 |
+| 6 | 5850 | 140 | 306 | 243 |
+| 7 | 3569 | 178 | 195 | 363 |
+| 8 | 4302 | 242 | 315 | 262 |
+| 9 | 8130 | 84 | 84 | 859 |
+
+Submission-to-search time includes queue waiting and the complete tool response,
+not just materialization lag. Per-note totals in milliseconds:
+
+| Note index | Direct, 4 workers | Proxy, 1 worker | Proxy, 2 workers | Proxy, 4 workers |
+| --- | --- | --- | --- | --- |
+| 0 | 28851 | 5601 | 5233 | 5214 |
+| 1 | 36674 | 12804 | 10973 | 11760 |
+| 2 | 36962 | 18871 | 19118 | 19389 |
+| 3 | 26904 | 24735 | 27578 | 30151 |
+| 4 | 37033 | 31051 | 34799 | 40371 |
+| 5 | 37081 | 37374 | 42793 | 53828 |
+| 6 | 36655 | 42975 | 54372 | 63604 |
+| 7 | 32800 | 48061 | 64526 | 71855 |
+| 8 | 36878 | 54888 | 75490 | 81710 |
+| 9 | 32715 | 62322 | 82171 | 89756 |
+
+The first trial's search probes started after the complete write batch.
+Its reported timings are upper bounds and are not used as materialization-lag
+measurements. Raw reports are `memory-concurrency-batch-probes.json` and
+`memory-concurrency.json` in
+`C:\agent-artifacts\61a53cc9-af32-4920-82c5-7444c0bfb615\`.
+That artifact location expires after 14 days. The tables above retain the
+decision evidence in this repository.
+
+To repeat acceptance against the shared installed server, pause other memory
+writers and use an external artifact directory:
+
+```powershell
+$env:PROMPTLINGS_MEMORY_ACCEPTANCE_DIR = 'C:\agent-artifacts\<session-id>'
+node --test tests\memory-concurrency.test.js
+```
+
+This opt-in test restarts the shared service, tries workers 1, 2 and 4, removes
+its throwaway project and restores the installer-selected worker count.
+It does not open SQLite or operate on note files directly.
+
+Post-reinstallation acceptance on this host:
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| MCP-only agent access | Verified | No actionable CLI invocations in shipped or installed memory instructions. The installed managed block, Memory Manager, Foreman and capture skill contain the ban |
+| Shared write proxy | Verified | Ten-session stress rounds, zero proxy tool errors, every edit present exactly once in accepted and materialized content, both throwaway projects removed |
+| Worker choice | Verified | Workers 1, 2 and 4 measured. Two workers were the lowest consistently lock-free choice across both trials |
+| Reinstalled clients | Verified | Scheduled task Running, one listener per selected port, both Copilot registrations retained at the proxy URL. Fresh SDK clients initialized, discovered 27 tools, performed scoped search/read and closed sessions. Both native App MCP namespaces read successfully after disable/re-enable |
+| Actual Unix service startup | Unverified | Startup definitions are covered by focused checks, but this acceptance host runs Windows |
+
+### Service scheduling
 
 The startup definitions use scheduling appropriate for a service answering
 interactive requests:
@@ -340,8 +493,9 @@ See the platform references for [Windows task priority][task-priority],
 
 For an existing installation, rerun the installer with your usual selections to
 regenerate and restart its managed startup service. The new scheduling takes
-effect when the service starts, not when this repository is updated. This does
-not change the client-launched stdio mode selected by `--no-startup`.
+effect when the service starts, not when this repository is updated. This keeps
+clients on the shared proxy. Client-launched Basic Memory stdio mode
+is no longer supported because separate servers bypass its queue.
 
 The Windows task retains `IgnoreNew` instance handling and an unlimited execution
 time. Native task-launch failure retries are configured for three attempts,
@@ -349,7 +503,7 @@ one minute apart. A nonzero process exit does not reliably trigger those retries
 on the tested Windows host, the scheduler recorded the exit code but did not
 restart the action.
 
-The existing windowless action therefore waits for each server exit and retries
+The existing windowless action therefore waits for each managed service exit and retries
 a failed server up to three times, one minute apart. A successful exit stops
 immediately. After four total attempts it logs budget exhaustion and exits with
 the final failure code. This is a finite child-exit loop, not a watchdog or
@@ -368,7 +522,7 @@ Once a release includes this repair, run
 `npx promptlings@latest memory --no-skills --yes` to apply it to an existing
 installation. From a source checkout with dependencies installed, use
 `node .\bin\promptlings.js memory --no-skills --yes` on Windows.
-Include your usual `--memory-port` if different. Both use the same stop, install,
+Include your usual `--memory-port` and `--memory-proxy-port` if different. Both use the same stop, install,
 replace-task, start, and MCP readiness sequence. The stop step captures the
 managed environment's process trees before stopping the task, then terminates
 those captured processes without opening command windows. It replaces the fixed
@@ -416,8 +570,11 @@ installer or upgrades packages.
 [systemd-scheduling]: https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html#Scheduling
 
 `add-mcp` replaces only the `basic-memory` entry in detected harness
-configurations. An unrelated listener on the selected port stops installation.
-Use `--memory-port` to choose another port.
+configurations with the proxy URL. It does not remove other duplicate server
+entries. An unrelated listener on either selected port stops installation.
+Use `--memory-port` and `--memory-proxy-port` to choose distinct ports.
+Existing Copilot registrations targeting the same loopback backend endpoint
+receive the proxy URL without removing or merging duplicate registrations.
 
 With Memory Manager selected and memory enabled, the installer also publishes a
 read-side rule that tells future sessions to retrieve relevant context and save
@@ -426,7 +583,10 @@ Use `--no-readside` to omit it, including with the `publish` command.
 
 The rule lives in a dedicated `promptlings-memory` file per supported harness,
 such as `~/.copilot/instructions/promptlings-memory.instructions.md` or
-`~/.claude/rules/promptlings-memory.md`. Existing instruction files are not edited.
+`~/.claude/rules/promptlings-memory.md`. A memory reinstall refreshes existing
+managed blocks, including legacy blocks in `copilot-instructions.md` and
+`CLAUDE.md`, preserving text outside their markers. Unmanaged instructions
+are not rewritten.
 
 The installer does not create repository/domain projects or routing mappings.
 Ask Memory Manager to set up routing after installation. It matches repositories

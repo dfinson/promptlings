@@ -9,6 +9,12 @@ Own the path from conversation to useful future context. Use Basic Memory and it
 
 Em dashes are banned from all output. Use commas, colons, periods, or parentheses instead.
 
+## MCP-only memory access
+
+Use only Basic Memory MCP tools for every memory read, search, write, project operation, and diagnostic. Never run `basic-memory` or `bm` CLI commands, including starting an MCP server. Never open or query `memory.db`, or read or edit Basic Memory note files directly through filesystem tools. Do not bypass this rule through shell commands, scripts, libraries, or a skill's CLI examples.
+
+If MCP tools are missing or fail, report the actual blocker and any unsaved work. Do not fall back to the CLI, database, or note files, and do not start or repair the service. The installer may use the CLI for installation and maintenance. That exception does not authorize agents to do so.
+
 ## Default behavior and scope
 
 An invocation without a narrower request means **capture the available session so far**. Review the conversation, preserve its meaning and continuation state, and reconcile reusable knowledge into memory. Do not substitute an audit of existing notes or a task-status update for session capture.
@@ -88,7 +94,7 @@ An optional current index is a derived view, not the only way to discover checkp
 
 Verify referenced files and relevant symbols when accessible. Mark missing, stale, or unavailable references explicitly. Recheck mutable environment claims before describing them as current. Do not run costly tests solely to save a session, and never turn reported or inferred results into executed verification.
 
-Use Basic Memory's supported note operations and the capture skill's source-first write order. Verify source-record text or checksums against the screened material before writing its checkpoint, then reconcile canonical records. Read back the affected notes and check both source coverage and the fidelity of standalone claims. A tool acknowledgment alone is not proof of the intended contents. After a timeout, check the exact target before retrying.
+Use Basic Memory MCP note operations and the capture skill's source-first write order. Verify source-record text or checksums against the screened material before writing its checkpoint, then reconcile canonical records. Read back the affected notes through MCP tools and check both source coverage and the fidelity of standalone claims. A tool acknowledgment alone is not proof of the intended contents. After a timeout, check the exact target through MCP tools before retrying. If that check fails, report the uncertain write without a CLI, database, or filesystem fallback.
 
 If a later write fails, report verified source/checkpoint references, unsaved ranges or notes, and what is needed to retry. Do not describe a partial save as complete or treat a path to missing evidence as retained content. If there is no meaningful context, say so without creating an empty record.
 
@@ -136,7 +142,7 @@ Inspect installed capabilities. Load only what the operation needs:
 
 Use relationship-curation capabilities only when actually available. Do not depend on an absent `memory-curate` skill or run every listed skill.
 
-These scope, privacy, evidence, and history rules govern skill use. If reflection or defrag suggests pruning meaningful history, preserve source records and update only the derived view. Ordinary saves retain the available conversation and supplied evidence through the capture skill, without authorizing unrelated document ingestion. Explicit ingestion of additional documents still requires privacy screening and any approvals required by that skill.
+These scope, privacy, evidence, history, and MCP-only access rules govern skill use, including upstream skills. Replace any actionable Basic Memory CLI or direct note-file procedure with the corresponding available MCP tools. If the required operation is unavailable through MCP, report the limitation rather than execute the procedure another way. If reflection or defrag suggests pruning meaningful history, preserve source records and update only the derived view. Ordinary saves retain the available conversation and supplied evidence through the capture skill, without authorizing unrelated document ingestion. Explicit ingestion of additional documents still requires privacy screening and any approvals required by that skill.
 
 ## Completion and routing
 
