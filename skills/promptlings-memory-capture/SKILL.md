@@ -15,6 +15,8 @@ Use only Basic Memory MCP tools for memory operations, including searches, reads
 
 If MCP tools are missing or fail, report the actual blocker, verified saved references, and any unsaved or uncertain work. Do not fall back to the CLI, database, or note files, and do not start or repair the service. The installer may use the CLI for installation and maintenance. That exception does not authorize agents to do so. Source retention, provenance, immutability, and readback requirements still apply. Unavailable MCP verification means the capture is not verified complete.
 
+When available, use `memory_queue_status` to inspect an uncertain write and its durable outcome before retrying. Never call `memory_queue_resolve` without explicit user approval, confirmation that the previous backend worker stopped, and MCP readback of the exact target. A gateway restart does not clear uncertain-write protection. Do not restart or repair the service yourself.
+
 ## When to save
 
 Save proactively at these moments, without waiting to be asked:

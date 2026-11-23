@@ -3,6 +3,8 @@
 
 Agents must use only Basic Memory MCP tools for memory operations. Never run `basic-memory` or `bm` CLI commands, including starting an MCP server, open or query `memory.db`, or read or edit Basic Memory note files directly through filesystem tools. If MCP tools are missing or fail, report the actual blocker and any unsaved work. Do not use a CLI, database, or filesystem fallback or repair the service. The installer may use the CLI for installation and maintenance. That exception does not authorize agents to do so.
 
+When available, use `memory_queue_status` to inspect an uncertain write and its durable outcome before retrying. Never call `memory_queue_resolve` without explicit user approval, confirmation that the previous backend worker stopped, and MCP readback of the exact target. A gateway restart does not clear uncertain-write protection. Do not restart or repair the service yourself.
+
 Use Basic Memory for cross-session context. At session start, resolve the configured shared environment project, host key, and current repository or domain project. Read applicable current environment guidance before environment-dependent actions. Pass explicit project identifiers on memory operations. Never use the shared environment project as a fallback for unrelated project content.
 
 Before substantial investigation or consequential decisions, search relevant project memory for prior decisions, discoveries, and failed approaches. Retrieve selectively, not before every individual search or file read. When continuing earlier work, retrieve the relevant session checkpoint and active or blocked tasks. Match the workstream and repository rather than assuming the newest checkpoint belongs to this task.

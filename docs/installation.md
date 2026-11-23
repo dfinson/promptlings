@@ -380,7 +380,7 @@ Queued writes wait at most 300 seconds and the queue holds at most 1,000 waiting
 requests. Timeout or queue-full errors state that the request was not dispatched.
 A dispatched write has a ten-minute response limit. Transport failure or a
 server-side HTTP or protocol failure can leave its commit outcome unknown. That blocks
-further writes until the managed server restarts, while reads remain available.
+further writes until explicit reconciliation, including after a restart, while reads remain available.
 The same protection applies to MCP error results reporting
 `EDIT_OUTCOME_UNKNOWN` or the default `Edit Outcome Unknown` heading. Middleware
 inspects decoded typed results, not a custom streaming JSON parser. Confirmed
@@ -393,11 +393,50 @@ cancel an active write: cancellation shielding retains its lane through the
 backend result. Terminating the frontend session can still lose the response
 after a successful commit, so the caller must reconcile the target.
 
-The queue, event store and unknown-outcome flag are process-local. A gateway
-crash loses waiting requests and the blocked flag. A dispatched request may
-already have committed. Connection failure is not permission to replay it.
-This design provides serialization and no automatic replay, not durable
-delivery or crash-safe exactly-once execution.
+The gateway uses a separate SQLite write journal at
+`~/.promptlings/memory/write-queue.sqlite3`, not Basic Memory's database.
+SQLite WAL mode and `synchronous=FULL` durably record admission, dispatch and
+the complete decoded result. An OS-held lock prevents two gateway processes
+from owning the same journal. The managed installer preserves this file
+across reinstalls. The gateway's `--journal-path` selects a separate location
+for isolated deployments and crash tests.
+
+On restart, definitely undispatched requests resume in their recorded FIFO
+order within their original 300-second deadline. Expired requests remain
+recorded as explicit non-dispatch outcomes. Any recorded dispatch without a
+completed outcome becomes uncertain and blocks later mutations. It is never
+automatically replayed. Queued cancellation is also recorded before dispatch.
+Completed results persist before returning to the caller, so a response lost
+in a crash can be retrieved without executing the write again.
+
+`memory_queue_status` lists pending writes and the 50 most recent records,
+including completed writes. Use its `next_before_sequence` cursor to page
+older records. Passing an `operation_id` returns the saved request, result
+and reconciliation evidence. List results contain bounded target summaries:
+strings stop at 256 characters, non-scalar targets become placeholders and
+`target._truncated=true` marks either case. Exact arguments remain available
+through operation-ID lookup. Each mutation result carries its ID in MCP
+metadata as `memory_queue_operation_id`. If the response and ID were lost,
+find the exact request through the status history and inspect its stored
+arguments before retrying. Do not assume identical requests came from the
+same caller.
+
+Only with explicit user approval, stop the previous backend worker through
+the managed service and read the exact target through MCP. Then call
+`memory_queue_resolve` with the uncertain operation ID, `outcome=applied` or
+`outcome=not_applied`, the readback evidence and `backend_restarted=true`.
+Resolution records the finding and unblocks later queued writes. It never
+replays the uncertain request. A verified `not_applied` outcome permits a
+separately requested new write, not an automatic retry.
+
+The journal contains full requests and results and is retained without
+automatic pruning. Keep it private with the user's managed runtime.
+Storage failures return an explicit journal error and block new mutations.
+The frontend event store and MCP sessions remain process-local. After a crash,
+clients establish new sessions and retrieve durable outcomes through the
+status tool. Basic Memory and the gateway journal do not share a transaction,
+so durable queueing does not provide automatic crash-safe exactly-once
+execution of uncertain writes.
 
 The installer disables Basic Memory's automatic updates to preserve its pin.
 It preserves project configuration and routing while setting the measured
@@ -555,6 +594,73 @@ replacement run revalidated two workers, rather than remeasuring all three.
 Reports are `fastmcp-acceptance/memory-concurrency.json` (initial deadline)
 and `fastmcp-acceptance-300s/memory-concurrency.json` (final deadline) beneath
 the external artifact directory above, with the same 14-day expiry.
+
+### Durable queue crash acceptance
+
+Real crash/restart acceptance on this Windows host on 2026-11-23 used
+Basic Memory 0.24.1, FastMCP 4.1.3 and two materialization workers.
+It killed the isolated gateway process tree at two confirmed commit boundaries,
+using the real installed backend and a separate durable journal.
+
+| Boundary or behavior | Status | Evidence |
+| --- | --- | --- |
+| Backend committed, gateway had not received the result | Verified | The dispatched append became `unknown` after restart. Three admitted appends remained queued with their original IDs and deadlines |
+| Persistent uncertain-outcome barrier | Verified | Mutations were refused after restart, while MCP reads remained available. The uncertain append appeared exactly once and was never replayed |
+| Definitely undispatched FIFO recovery | Verified | After stopping the previous backend and explicitly reconciling its accepted append, all three queued appends executed in admission order, exactly once |
+| Completed result persisted, caller response withheld | Verified | After another gateway crash, default status history discovered the operation without the caller's lost ID. ID lookup returned identical saved arguments and result without replay |
+| Accepted and materialized content | Verified | All five applied markers appeared exactly once in both MCP readbacks. The refused marker was absent |
+| Temporary resources | Verified | The throwaway project and directory were removed. The unchanged two-worker managed service was restored |
+| Actual Unix process crash/restart | Unverified | This acceptance used Windows. Platform-independent journal and recovery fixtures provide separate coverage |
+
+The tested gateway SHA256 was
+`f0634922e7377aada45fa2ffeec7548307986d9d178b125b243f07e3b34c1a14`.
+The report is
+`durable-crash-acceptance\a79183d1-29d9-43e8-a7f3-bc9c7c93b8b6\memory-crash.json`
+beneath the external artifact directory above, with the same 14-day expiry.
+
+To repeat this Windows acceptance, pause other memory writers and select an
+already installed, isolated Python containing the pinned FastMCP dependency:
+
+```powershell
+$env:PROMPTLINGS_MEMORY_CRASH_DIR = 'C:\agent-artifacts\<session-id>\crash'
+$env:PROMPTLINGS_MEMORY_PYTHON = 'C:\path\to\isolated\Scripts\python.exe'
+node --test tests\memory-crash.test.js
+```
+
+The test stops only captured gateway processes with matching creation times,
+restarts the managed backend for reconciliation, and removes its throwaway
+project through MCP. It never opens Basic Memory's database or note files.
+
+### Installed durable gateway comparison
+
+The same reviewed gateway was reinstalled and tested with ten concurrent
+`write_note` calls followed by ten concurrent appends, with 150 seconds of
+background-log observation after each route.
+
+| Route | Workers | Tool lock errors | Tool pool timeouts | Other tool refusals | SQLite lock exceptions in logs | Edits retained exactly once |
+| --- | --- | --- | --- | --- | --- | --- |
+| Direct, port 8000 | 4 | 1 | 1 | 2 concurrent-modification refusals | 2 | 6 of 10 |
+| Durable gateway, port 8001 | 2 | 0 | 0 | 0 | 0 | 10 of 10 |
+
+Accepted and materialized gateway revisions agreed, all ten notes became
+searchable, and the gateway logged zero pool timeouts. Gateway
+acknowledgment-to-text-search lag averaged 561.3 ms, with a 375-824 ms range.
+Per-note lags were 457, 660, 601, 591, 537, 824, 375, 435, 628 and 505 ms.
+The throwaway project and directory were removed and two workers restored.
+This revalidated the earlier worker choice, not another 1/2/4 comparison.
+
+Another actual installer run retained all 23 durable operation records,
+verified through MCP status before and after reinstall. Fresh SDK sessions
+discovered 29 tools, searched, read and closed successfully. Both native
+Copilot MCP aliases read successfully afterward. The managed task was Running
+with one loopback listener per port, the installed gateway matched the tested
+source hash, and SQLite, both pins and the two-worker configuration were
+unchanged. Installed Copilot and Claude managed rules, Memory Manager and
+capture instructions contain the MCP-only and explicit-reconciliation rules.
+
+Reports are `durable-installed-concurrency\memory-concurrency.json` and
+`durable-installed-concurrency\reinstall-verification.json` beneath the
+external artifact directory above, with the same 14-day expiry.
 
 ### Service scheduling
 

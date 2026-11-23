@@ -15,6 +15,8 @@ Use only Basic Memory MCP tools for every memory read, search, write, project op
 
 If MCP tools are missing or fail, report the actual blocker and any unsaved work. Do not fall back to the CLI, database, or note files, and do not start or repair the service. The installer may use the CLI for installation and maintenance. That exception does not authorize agents to do so.
 
+When available, use `memory_queue_status` to inspect an uncertain write and its durable outcome before retrying. Never call `memory_queue_resolve` without explicit user approval, confirmation that the previous backend worker stopped, and MCP readback of the exact target. A gateway restart does not clear uncertain-write protection. Do not restart or repair the service yourself.
+
 ## Default behavior and scope
 
 An invocation without a narrower request means **capture the available session so far**. Review the conversation, preserve its meaning and continuation state, and reconcile reusable knowledge into memory. Do not substitute an audit of existing notes or a task-status update for session capture.
