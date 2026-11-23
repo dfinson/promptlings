@@ -14,7 +14,7 @@ import sys
 from contextlib import asynccontextmanager
 
 try:
-    import httpx
+    import httpx2 as httpx
     import uvicorn
     from fastmcp import Client, Context, FastMCP
     from fastmcp.exceptions import ToolError
