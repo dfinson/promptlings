@@ -8,7 +8,8 @@ import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, w
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
 import { dpkgInstalled, externalSkillSources, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
-import { deps, installMemory } from "../lib/memory.js";
+import { configureMemory, deps, installMemory, memoryConfigDirectory, retargetMemoryAliases } from "../lib/memory.js";
+import { adaptMemorySkill, installMemorySkillContracts } from "../lib/memory-skills.js";
 import { capture, packageBin, quoteForCmd, runBuffered, which } from "../lib/run.js";
 import { launchAgentPlist, systemdUnit, windowsServerScript, windowsStopScript, windowsTaskName, windowsTaskScript, windowsTaskSettings } from "../lib/services.js";
 
@@ -17,6 +18,16 @@ const temporary = (t) => {
   const directory = mkdtempSync(join(tmpdir(), "promptlings-test-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   return directory;
+};
+const environment = (t, values) => {
+  const previous = Object.fromEntries(Object.keys(values).map((key) => [key, process.env[key]]));
+  t.after(() => {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+  Object.assign(process.env, values);
 };
 const promptlings = (...args) => spawnSync(process.execPath, [cli, ...args], { encoding: "utf8" });
 
@@ -61,11 +72,68 @@ test("Windows service resolves pythonw from the installed uv environment", { ski
   });
   let script;
   t.mock.method(deps, "powershell", (value) => { script = value; });
-  deps.startService("C:\\Tools\\basic-memory.exe", 8123);
-  assert.equal(script, windowsTaskScript("C:\\Tools\\uv\\basic-memory\\Scripts\\pythonw.exe", 8123));
+  const runtime = "C:\\User\\memory\\memory-service.mjs";
+  deps.startService("C:\\Tools\\basic-memory.exe", 8123, 8124, runtime);
+  assert.equal(script, windowsTaskScript("C:\\Tools\\uv\\basic-memory\\Scripts\\pythonw.exe", 8123,
+    [process.execPath, runtime, "--memory-command", "C:\\Tools\\basic-memory.exe", "--port", "8123", "--proxy-port", "8124",
+      "--config-dir", memoryConfigDirectory(), "--proxy-python", "C:\\Tools\\uv\\basic-memory\\Scripts\\python.exe",
+      "--fastmcp-version", pins.memoryProxy.split("==")[1]]));
 });
 
 const pythonw = process.env.PROMPTLINGS_TEST_PYTHONW || which("pythonw");
+
+test("memory configuration follows explicit and XDG directories and preserves project settings", (t) => {
+  const home = temporary(t);
+  const xdg = join(temporary(t), "config");
+  const explicit = join(temporary(t), "explicit");
+  environment(t, { XDG_CONFIG_HOME: xdg, BASIC_MEMORY_CONFIG_DIR: "", COPILOT_HOME: "" });
+  assert.equal(memoryConfigDirectory(home), join(xdg, "basic-memory"));
+  mkdirSync(join(xdg, "basic-memory"), { recursive: true });
+  const path = join(xdg, "basic-memory", "config.json");
+  writeFileSync(path, JSON.stringify({ projects: { preserved: "project-path" }, materialization_workers: 4, auto_update: true }));
+  configureMemory(home);
+  const config = JSON.parse(readFileSync(path, "utf8"));
+  assert.deepEqual(config.projects, { preserved: "project-path" });
+  assert.equal(config.materialization_workers, pins.memoryWorkers);
+  assert.equal(config.auto_update, false);
+  assert.equal(existsSync(join(home, ".basic-memory", "config.json")), false);
+  process.env.BASIC_MEMORY_CONFIG_DIR = explicit;
+  configureMemory(home);
+  assert.equal(memoryConfigDirectory(home), explicit);
+  assert.equal(JSON.parse(readFileSync(join(explicit, "config.json"), "utf8")).materialization_workers, pins.memoryWorkers);
+  assert.equal(memoryConfigDirectory(home, { BASIC_MEMORY_CONFIG_DIR: "relative-config" }), join(process.cwd(), "relative-config"));
+  assert.equal(memoryConfigDirectory(home, { BASIC_MEMORY_CONFIG_DIR: "~" }), join(process.cwd(), "~"));
+});
+
+test("memory skill adaptation reads external publisher state and preserves local full-body customizations", (t) => {
+  const home = temporary(t);
+  const state = temporary(t);
+  environment(t, { XDG_STATE_HOME: state, COPILOT_HOME: "" });
+  const name = "memory-notes";
+  const source = join(home, ".agents", "skills", name, "SKILL.md");
+  mkdirSync(dirname(source), { recursive: true });
+  writeFileSync(source, "---\nname: memory-notes\ndescription: Memory notes\n---\n# Notes\n\nPreserve this local approval rule.\n");
+  const ref = pins.memorySkills.match(/\/tree\/([^/]+)/)[1];
+  const entry = (skill) => ({ sourceType: "github", source: "basicmachines-co/basic-memory", ref,
+    skillPath: `skills/${skill}/SKILL.md` });
+  const lock = join(state, "skills", ".skill-lock.json");
+  mkdirSync(dirname(lock), { recursive: true });
+  writeFileSync(lock, JSON.stringify({ skills: { [name]: entry(name) } }));
+  assert.deepEqual(installMemorySkillContracts(home), [source]);
+  const adapted = readFileSync(source, "utf8");
+  assert.ok(adapted.includes("Preserve this local approval rule."));
+  assert.deepEqual(installMemorySkillContracts(home), []);
+  for (const replacement of ["memory-doctor", "memory-literary-analysis", "memory-okf"]) {
+    const customized = `---\nname: ${replacement}\ndescription: Local customization\n---\n# Notes\n\nRequire approval before edits.\n`;
+    assert.throws(() => adaptMemorySkill(customized, replacement, replacement), /Customized upstream memory skill/);
+    const path = join(home, ".agents", "skills", replacement, "SKILL.md");
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, customized);
+    writeFileSync(lock, JSON.stringify({ skills: { [replacement]: entry(replacement) } }));
+    assert.throws(() => installMemorySkillContracts(home), /Customized upstream memory skill/);
+    assert.equal(readFileSync(path, "utf8"), customized);
+  }
+});
 test("Windows command helpers suppress child consoles at process creation", {
   skip: process.platform !== "win32",
 }, async () => {
@@ -366,25 +434,56 @@ test("memory installs, starts, waits, then registers clients", async (t) => {
     which: (name) => (name === "basic-memory" ? "/bin/basic-memory" : `/bin/${name}`),
     run: (command) => log.push(`run ${command}`),
     stopPreviousServer: () => log.push("stop"),
-    uvToolInstall: () => log.push("install"),
+    uvToolInstall: (spec, extra) => {
+      assert.equal(spec, pins.memory);
+      assert.deepEqual(extra, [pins.memoryProxy]);
+      log.push("install");
+    },
     uvToolPath: () => {},
     skillsAdd: () => log.push("skills"),
+    configureMemory: () => log.push("configure"),
+    installMemorySkillContracts: () => log.push("contracts"),
+    refreshMemoryReadSide: () => log.push("readside"),
+    installMemoryRuntime: () => { log.push("runtime"); return "/runtime/memory-service.mjs"; },
     portOpen: async () => false,
     startService: () => log.push("start"),
     waitUntilReady: async () => log.push("ready"),
     register: async () => log.push("register"),
+    retargetMemoryAliases: () => log.push("aliases"),
   });
   await installMemory({ skills: false, startup: true, memoryPort: 8123 }, {});
-  assert.deepEqual(log, ["stop", "install", "run basic-memory", "start", "ready", "register"]);
+  assert.deepEqual(log, ["stop", "configure", "install", "run basic-memory", "contracts", "readside", "runtime", "start", "ready", "register", "aliases"]);
 
   log.length = 0;
   await installMemory({ skills: false, startup: true, memoryPort: 8123 }, {});
-  assert.deepEqual(log, ["stop", "install", "run basic-memory", "start", "ready", "register"]);
+  assert.deepEqual(log, ["stop", "configure", "install", "run basic-memory", "contracts", "readside", "runtime", "start", "ready", "register", "aliases"]);
 
   log.length = 0;
   deps.waitUntilReady = async () => { throw new Error("not ready"); };
   await assert.rejects(installMemory({ skills: false, startup: true, memoryPort: 8123 }, {}), /not ready/);
   assert.ok(!log.includes("register"));
+});
+
+test("memory routing preserves duplicate registrations and unrelated client settings", (t) => {
+  const directory = temporary(t);
+  const config = {
+    mcpServers: {
+      "basic-memory": { type: "http", url: "http://127.0.0.1:8000/mcp" },
+      "Basicmachines Co Basic Memory": { type: "http", url: "http://localhost:8000/mcp/", headers: { "x-test": "preserve" } },
+      unrelated: { type: "http", url: "http://127.0.0.1:8765/mcp" },
+    },
+    otherSetting: true,
+  };
+  const path = join(directory, "mcp-config.json");
+  writeFileSync(path, JSON.stringify(config));
+  retargetMemoryAliases({ memoryPort: 8000, memoryProxyPort: 8001 }, directory);
+  const updated = JSON.parse(readFileSync(path, "utf8"));
+  assert.deepEqual(Object.keys(updated.mcpServers), Object.keys(config.mcpServers));
+  assert.equal(updated.mcpServers["basic-memory"].url, "http://127.0.0.1:8001/mcp");
+  assert.equal(updated.mcpServers["Basicmachines Co Basic Memory"].url, "http://127.0.0.1:8001/mcp");
+  assert.deepEqual(updated.mcpServers["Basicmachines Co Basic Memory"].headers, { "x-test": "preserve" });
+  assert.deepEqual(updated.mcpServers.unrelated, config.mcpServers.unrelated);
+  assert.equal(updated.otherSetting, true);
 });
 
 test("cmd quoting rejects unsafe characters and quotes spaces", () => {

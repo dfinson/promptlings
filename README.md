@@ -59,7 +59,14 @@ Restart your assistant after installation. See the [installation guide](docs/ins
 for supported systems, component selection, installation from source, manual
 installation, and the Claude Code plugin.
 
-Memory Manager can help set up Basic Memory project routing.
+Memory Manager can help set up Basic Memory project routing. Agents access
+Basic Memory only through MCP, never its CLI, database or note files. The
+installer runs one pinned SQLite server behind a shared FIFO write proxy.
+FastMCP owns MCP transport and session handling, with a small custom write-safety
+policy. Reads remain concurrent. A separate SQLite journal preserves queued
+requests, completed outcomes and uncertain-write protection across gateway crashes.
+See [Basic Memory setup](docs/installation.md#basic-memory-setup)
+for ports, failure handling and concurrency measurements.
 
 ## Try it
 
