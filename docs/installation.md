@@ -199,12 +199,22 @@ Technical Demo installs: bundled composition guidance and an existing design
 system remain available. Interactive Presentation retains its stricter
 installer-managed design-tool requirements.
 
-Standalone HTML specifications and media approval briefings use the
+Specifications and media approval briefings use the
 [document guidance](../skills/design-writing/references/html-specifications.md).
-Established component libraries are selected and version-pinned in the
-producing agent's authorized external workspace, with their styles and notices
-embedded in the reading copy. They are not added as global installer
-dependencies, and readers need no package installation or network connection.
+Specifications default to an MDX/Starlight reading site with library-owned
+presentation. Other proposals and media briefings retain self-contained HTML. Selected libraries
+are version-pinned in the producing agent's authorized external workspace,
+not added as global installer dependencies. Readers need no package installation.
+An explicit offline copy needs a verified supported export.
+
+Requested team collaboration uses the
+[review contract](../skills/spec-delivery/references/collaborative-review.md):
+an access-controlled dev tunnel, reviewer attribution, shared durable feedback
+and contextual incorporation into the spec. The installer distributes this
+Markdown guidance, not a review server, tunnel CLI, app registration or custom
+exporter. The producing agent reuses available tooling and supported integrations
+and reports a missing required capability instead of silently substituting
+browser-local notes or static mock controls.
 Existing managed-toolchain failure procedures still apply.
 
 Experiment Director and its `ab-testing` routing and `comparative-evaluation`

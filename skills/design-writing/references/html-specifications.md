@@ -1,4 +1,4 @@
-# Visual, standalone intent briefings
+# Library-backed specifications and intent briefings
 
 Use this reference for human-facing proposals, specifications and demo or
 presentation approval packages. The active
@@ -7,16 +7,28 @@ destinations, tracker templates and requested formats take precedence.
 
 ## One proposal, two representations
 
-Keep one authoritative editable source and its figure sources. Generate a
-polished HTML reading copy from those inputs, binding it to their revision
+Keep one authoritative editable source set and its figure sources. Generate a
+reading copy from those inputs, binding it to their revision
 or exact-byte hashes. Regenerate after changes rather than independently
 editing two proposals. Approval identifies the version actually reviewed.
 The reading copy is not a second plan or an execution manifest.
 
-Make the file self-contained: inline styling, embedded images/SVG, and
-embedded licensed fonts or a suitable system-font stack. It must open by
-itself from disk without a server, CDN, network connection or adjacent asset
-folder. Core reading must not depend on JavaScript.
+Specifications default to MDX on Astro Starlight, built as a static site and
+served locally. Use bundled assets and installed, version-pinned libraries,
+not runtime CDNs. Static HTTP serving is not a feedback backend and root-relative
+site paths do not imply that the output opens through `file://`.
+
+Explicit formats and destinations win. Non-specification proposals and media
+approval briefings retain their standalone HTML default: embed library styles, images/SVG and licensed fonts
+or use a system-font stack. That file must open from disk without a server,
+network connection or adjacent assets. An explicitly required offline spec
+copy follows this same contract.
+
+Preserve complete static and printable reading at the same source revision.
+Core requirements, decisions, figures and all illustrated branches must remain
+readable without interactive controls. Use a supported library export or
+ordinary static pages rather than promising that a hidden player prints.
+Verify an offline copy separately when offline delivery is required.
 
 Keep working sources and evidence in session artifacts or the chosen external
 system. Use the host's external artifact location for renders, production
@@ -37,7 +49,9 @@ leave the reader able to explain and own the proposal. Keep it visually
 distinct and readable, not a row of unrelated cards or an inventory of
 everything already said. Reference material may follow separately.
 
-Lead with the selected outcome, status and decision sought. Engineering
+Lead with the selected outcome and actual decision sought. Omit redundant
+"not implemented or approved" disclaimers and internal investigation labels.
+Engineering
 synthesis comes before presentation: preserve the complete opportunity
 catalogue as reference without making it the implementation contract.
 The main path explains the smallest sufficient mechanism, preserved behavior
@@ -48,6 +62,11 @@ consequential choices. Invoke `technical-illustration` for these figures.
 A proposed interface needs representative screens before implementation.
 Nonvisual work may benefit from sequences or comparisons. A genuinely brief
 change can stay brief.
+
+Use one navigation hierarchy, with page groups and only the headings useful
+for orientation. Do not duplicate it in a second contents rail or list every
+subheading. Use meaningful requirement and question names, not machine indexes.
+Structure must explain the content without a color legend.
 
 Each section answers one reader question. Place its figure beside a short
 explanation of what to notice and why it matters, followed by the exact
@@ -82,21 +101,30 @@ acceptance stay visible outside popovers.
 
 ## Use established components
 
-Use a coherent, established component library for navigation, buttons,
-appearance controls, disclosures and comparisons. Keep custom work focused
-on the domain model and document layout. Inspect the library's real
+Use a coherent, established component library for layout, styling, navigation,
+buttons, appearance controls, disclosures and comparisons. For specification
+sites, use documented components, props, configuration and theme plugins,
+not custom component CSS, JavaScript, timers or presentation repair scripts.
+Keep authored work in the content, figures and domain scenarios. Inspect the library's real
 keyboard behavior and styling instead of treating its name as an accessibility
 guarantee.
 
-daisyUI with Tailwind is a suitable low-runtime option: its documented
+Starlight provides document navigation, native chrome and content components.
+Use its native configuration first, adding a compatible theme plugin only for
+an identified unmet requirement. Use supported components for disclosures,
+sequences and image inspection. A framework's presence does
+not make a hand-built widget library-owned. Check the installed version's
+actual exports and behavior before selecting an integration.
+
+For standalone briefings, daisyUI with Tailwind is a suitable low-runtime option: its documented
 [theme controller](https://daisyui.com/components/theme-controller/) and
 [radio comparisons](https://daisyui.com/components/tab/) work through CSS.
 Its [native-details disclosures](https://daisyui.com/components/collapse/)
 can keep supporting content available without an application framework.
 Use actual components, not handwritten substitutes with borrowed class names.
 
-Select and pin available versions for the production. Compile the required
-styles and embed them in the HTML, retaining licenses. Build dependencies stay
+Select and pin available versions for the production. Bundle the required
+styles and assets, embedding them for a standalone copy and retaining licenses. Build dependencies stay
 in the external workspace. Prefer an already suitable library over adding a
 second competing component system. These instructions do not require a
 maintained exporter, new app or repository-owned scripts.
@@ -167,24 +195,43 @@ consequential choice or assumption. Show the resulting state and its reason.
 Expose a counterexample when another assumption favors a different option.
 Do not rig a demonstration to guarantee the author's preferred conclusion.
 
-Provide named states, a clear reset and links to the relevant contract.
+Show one journey screen at a time with its explanation and consequential
+questions beside it. Use a real library player or carousel when needed, not
+tabs styled as one. Provide named states, a clear reset and links to the relevant contract.
 Keep exact requirements and acceptance outside interactive panels. A
 printable account must preserve all branches. State model simplifications
 where they affect the conclusion. Illustrative counters are not measured
 time, cost or performance.
 
-Scenario controls neither record human approval nor launch work. A persistent
-decision journal, backend or collaboration service needs its own authorized
-scope. Use existing components and tools for bounded, task-specific behavior.
+If timed playback is selected, it is finite and reader-started, with automatic
+state highlighting, pause and reset. Switching scenarios stops the prior run.
+A static diagram is not timed playback. Qualify the actual library integration,
+including completion and reduced-motion reading, rather than hand-rolling it
+or silently replacing a requested player.
+
+Scenario controls neither record human approval nor launch work. Requested
+collaboration follows [contextual review](../../spec-delivery/references/collaborative-review.md).
+Use its separate feedback backend, reviewer attribution and version-bound
+incorporation contract. Do not treat illustrative screen markers as
+reviewer-created annotations or option picks as approval.
 
 ## Check the actual reading copy
 
-Open only the HTML from a different directory with networking disabled.
+For a site, serve the exact build and inspect all pages through HTTP. For a
+standalone or required offline copy, open it from a different directory with
+networking disabled.
 Check every embedded figure, internal link, keyboard control, theme and
 required interaction. Inspect dense sections and representative figures at
 desktop and narrow widths, including 320px, and inspect print output.
 For an example, exercise every named branch and reset against its written
 rule. Preserve usable static content when optional interaction is unavailable.
+
+Recheck hidden panels, theme-swapped figures and print content after any
+library or theme change. A build, a library name or a previous successful
+export is not evidence that the current reading copy preserves every branch.
+Keep a prior source baseline when revising and compare required content,
+decisions and source evidence semantically. Word counts or word-multiset
+comparisons can flag loss, but cannot establish meaning or comprehension.
 
 Check source-to-copy agreement and image evidence, not just styling. Ask
 whether a reader can explain the outcome, mechanism, constraints, choices and

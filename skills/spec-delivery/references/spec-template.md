@@ -15,13 +15,24 @@ optional experiments and policy choices distinct. A request for comprehensive
 understanding does not select every discovered opportunity for delivery.
 The main reading path must make the referent of "implement it" unmistakable.
 
-Use a visual-led, standalone HTML reading copy by default, following
+Use a visual-led MDX source set on Astro Starlight by default, following
 [the document guidance](../../design-writing/references/html-specifications.md),
-unless the user or owning destination specifies another format. The structure
+unless the user or owning destination specifies another format. Build and serve
+the reading site locally with library-owned presentation and complete static/print
+content. An explicitly required offline copy needs a verified supported export.
+The structure
 below defines the content, not a requirement to deliver raw Markdown.
 Editable source and the generated reading copy are one proposal at the same
 revision, not a companion execution plan. Preserve the exact reviewed version
 in the approval record.
+
+For requested team collaboration, follow
+[contextual review](collaborative-review.md). Bind annotations, question answers
+and discussions to the reviewed source version. Keep feedback beside its
+passage or screen, provide a general discussion, and reconcile it with the
+intent baseline before revising. The feedback set and reading copy are not
+competing specifications. Record disposition and the resulting revision,
+not just whether a thread was resolved.
 
 Use representative views, comparisons and sequences to make consequential
 design and mechanisms judgeable before implementation. Keep the precise
@@ -164,6 +175,14 @@ A writing or revision request produces this artifact, not an
 unsolicited execution brief.
 
 Assess coverage and comprehension separately. Also assess proportionality.
+Use one navigation hierarchy and meaningful section and question names.
+Supply the background this audience needs without repeating its product
+knowledge. Introduce relevant context before actions and use connected complete
+sentences, not fragments or a legend for internal labels. Question answers
+belong in their own UI, with options and consequences beside the affected
+behavior. Annotating text, exploring a scenario and picking an option do not
+establish approval.
+
 Trace each selected requirement,
 constraint and preserved case to the proposal, and each proposed change back to
 its purpose or justified support work. Check cross-requirement interactions,

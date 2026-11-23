@@ -29,7 +29,7 @@ assistant, including GitHub Copilot CLI and Claude Code.
 | [Memory Manager](agents/context/memory-manager.agent.md) | Saves session context to Basic Memory and retrieves earlier decisions and unfinished work. |
 | [Technical Demo](agents/media/technical-demo.agent.md) | Produces technical videos, including explainers and recorded demonstrations, from story and script approval through production and final review. |
 | [Interactive Presentation](agents/media/interactive-presentation.agent.md) | Builds a locally served interactive experience (a guided storyline of working mini-app stops, embedded demo videos and workshop data capture) and a presenter script for a human to deliver live, verified for the stage. |
-| [Spec Master](agents/orchestration/spec-master.agent.md) | Aligns intent through specifications humans can understand and judge, preserving precise behavior and consequential design. Coordinates separately approved delivery through concurrent lanes and scoped PRs. |
+| [Spec Master](agents/orchestration/spec-master.agent.md) | Develops reviewable specifications, integrates contextual team feedback, and coordinates separately approved delivery while preserving intent and consequential design. |
 | [Experiment Director](agents/orchestration/experiment-director.agent.md) | Designs and conducts controlled comparisons of prompts, skills, agents and workflows, separating measured outcomes from preferences, cost and uncertainty. |
 | [Foreman](agents/orchestration/foreman.agent.md) | Gets your engineering day underway: picks up where yesterday left off, readies the environment, and puts the day's implementation and reviews in motion as independent sessions you can follow directly. |
 
@@ -111,8 +111,8 @@ while only samples need revision. It keeps the older agent's storytelling
 and evidence standards, using HyperFrames by default, Remotion when explicitly
 selected, and real capture for demonstrated behavior.
 
-Demo and presentation approval packages use the same standalone HTML briefing
-contract as specifications. Whole-script narration checks prioritize context,
+Demo and presentation approval packages retain a standalone HTML briefing
+contract. Whole-script narration checks prioritize context,
 visible evidence and first-listen understanding over compressed feature lists.
 Interactive Presentation checks required scope and unjustified additions
 throughout, enabling runtime capabilities only when its chosen stops need them.
@@ -207,12 +207,13 @@ repair, installation or promotion.
 
 ### Specifications and delivery
 
-Human-facing proposals and specifications default to a visual-led, standalone
-HTML reading copy generated from the same authoritative editable content.
+Human-facing specifications default to a visual-led MDX source set on Astro
+Starlight, built as a locally served reading site.
+Other proposals and media approval briefings retain standalone HTML.
 Explicit conversation-only requests and tracker formats still win. The
 [document guidance](skills/design-writing/references/html-specifications.md)
-covers researched typography and navigation, established UI components,
-light/dark appearance, embedded assets, accessible reading and printing.
+covers one navigation hierarchy, library-owned layout and controls,
+light/dark appearance, bundled assets, accessible reading and printing.
 Figures and short explanations lead the reader through the proposal while
 exact requirements remain visible.
 
@@ -235,9 +236,19 @@ justified by actual outcomes, risk or dependencies rather than document headings
 
 Bounded living-spec examples can show how a consequential choice changes the
 outcome while acceptance criteria stay fixed. They provide named states and
-reset, not authorization or a backend. The HTML works offline, including its
-visuals, without a required server or CDN. This is a reading experience, not a
-second independently maintained plan.
+reset, not authorization or a backend. Explicit offline delivery requires a
+verified self-contained copy. This is one proposal at one source revision,
+not a second independently maintained plan.
+
+When team collaboration is requested, Spec Master follows the
+[contextual review contract](skills/spec-delivery/references/collaborative-review.md).
+Share through an access-controlled dev tunnel, establish reviewer attribution,
+and store shared comments and answers outside temporary builds. Reviewers
+annotate passages, discuss screens, answer questions beside their consequences,
+or raise something missing. "Read all feedback" retrieves complete threads and
+their document context, reconciles them with the intended scope, and accounts for
+each item in the revised spec. Picks and resolved threads do not confer approval.
+Verify the shared route and owner readback before presenting it to the team.
 
 To agree on a proposal before implementing it, select Spec Master or ask your
 current agent:
