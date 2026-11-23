@@ -133,6 +133,21 @@ test("uncertain MCP edit results block writes for JSON and fragmented SSE withou
   }
 });
 
+test("confirmed refusals mentioning outcome markers do not block later writes", async (t) => {
+  for (const text of [
+    JSON.stringify({ title: "EDIT_OUTCOME_UNKNOWN", error: "NOTE_REVISION_CONFLICT" }),
+    JSON.stringify({ title: "# Edit Outcome Unknown", error: "NOTE_REVISION_CONFLICT",
+      detail: "The prior result included EDIT_OUTCOME_UNKNOWN." }),
+    '# Note Revision Conflict\n\nNote "# Edit Outcome Unknown" with identifier EDIT_OUTCOME_UNKNOWN changed.',
+  ]) {
+    const f = await fixture(t, async (request, response, message) => {
+      reply(response, message, message.id === 1 ? { isError: true, content: [{ type: "text", text }] } : {});
+    });
+    await (await f.post(tool(1, "edit_note"))).text();
+    assert.equal((await f.post(tool(2, "write_note"))).status, 200);
+  }
+});
+
 test("unknown write outcome blocks subsequent writes but leaves reads available", async (t) => {
   let writes = 0;
   const f = await fixture(t, async (request, response, message) => {
