@@ -330,7 +330,10 @@ lives in a dedicated `promptlings-pr-description-writing` file per supported
 harness, such as
 `~/.copilot/instructions/promptlings-pr-description-writing.instructions.md` or
 `~/.claude/rules/promptlings-pr-description-writing.md`, and each publish
-rewrites it. Its source is [`rules/pr-description-writing.md`](../rules/pr-description-writing.md).
+rewrites it. Copilot's copy uses `applyTo: '**/*'`, which Copilot treats as
+always on. Claude Code's copy has no `paths` frontmatter, because Claude Code
+loads a path-scoped rule only after reading a matching file, and a PR edit can
+happen without one. Its source is [`rules/pr-description-writing.md`](../rules/pr-description-writing.md).
 
 ## Basic Memory setup
 

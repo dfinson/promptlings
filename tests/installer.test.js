@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { discoverAgents, packageRoot, prDescriptionRule, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
+import { discoverAgents, packageRoot, prDescriptionRule, prRuleStart, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
+import { publish } from "../lib/publish.js";
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
 import { dpkgInstalled, externalSkillSources, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
@@ -525,17 +526,12 @@ test("pinned publishers resolve to runnable entry points", async () => {
   assert.ok(Object.values(agents).every((agent) => Array.isArray(agent.supportedTransports)));
 });
 
-test("rulesync publishes staged agents, skills and the PR rule into an isolated home", (t) => {
+test("publish writes staged agents, skills and the PR rule into an isolated home", (t) => {
   const home = temporary(t);
-  const source = join(home, "stage");
-  const rules = stageRulesync(source, { agents: [...reviewAgents, "experiment-director"], includeMemory: false, readSide: false });
-  assert.deepEqual(rules, ["promptlings-pr-description-writing.md"]);
-  const env = { ...process.env, HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: join(home, ".config"),
-    APPDATA: join(home, "AppData", "Roaming"), LOCALAPPDATA: join(home, "AppData", "Local") };
-  const result = spawnSync(process.execPath,
-    [packageBin("rulesync"), "generate", "-g", "--input-roots", ".", "-t", "claudecode", "-f", "subagents,skills,rules"],
-    { cwd: source, env, encoding: "utf8" });
-  assert.equal(result.status, 0, result.stdout + result.stderr);
+  environment(t, { HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: join(home, ".config"),
+    APPDATA: join(home, "AppData", "Roaming"), LOCALAPPDATA: join(home, "AppData", "Local"), COPILOT_HOME: "" });
+  publish({ agents: [...reviewAgents, "experiment-director"], memory: false, readside: true, dashboard: false }, home);
+  assert.deepEqual(readdirSync(join(home, "rulesync", "rules")), ["promptlings-pr-description-writing.md"]);
   assert.ok(existsSync(join(home, ".claude", "agents", "sparring-partner.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "review-ensemble", "SKILL.md")));
   const alignment = join(home, ".claude", "skills", "intent-alignment", "SKILL.md");
@@ -554,7 +550,10 @@ test("rulesync publishes staged agents, skills and the PR rule into an isolated 
   assert.ok(existsSync(join(home, ".claude", "skills", "comparative-evaluation", "references", "protocol-template.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "comparative-evaluation", "references", "sources.md")));
   assert.ok(!existsSync(join(home, ".claude", "skills", "promptlings-memory-capture")));
-  assert.equal(instructionBody(join(home, ".claude", "rules", "promptlings-pr-description-writing.md")),
-    instructionBody(join(packageRoot, "rules", "pr-description-writing.md")));
+  const claudeRule = join(home, ".claude", "rules", "promptlings-pr-description-writing.md");
+  assert.ok(readFileSync(claudeRule, "utf8").startsWith(prRuleStart), "Claude Code rule must not be path-scoped");
+  assert.equal(instructionBody(claudeRule), instructionBody(join(packageRoot, "rules", "pr-description-writing.md")));
+  const copilotRule = join(home, ".copilot", "instructions", "promptlings-pr-description-writing.instructions.md");
+  assert.match(readFileSync(copilotRule, "utf8").replace(/\r\n/g, "\n"), /^---\napplyTo: '\*\*\/\*'\n---\n/);
   assert.ok(!existsSync(join(home, ".claude", "rules", "promptlings-memory.md")));
 });
