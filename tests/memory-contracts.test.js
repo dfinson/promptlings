@@ -19,6 +19,7 @@ test("memory source retention and qualified recall survive publication staging",
   assert.equal(readFileSync(join(directory, ...skillPath), "utf8"),
     withTargets(read(...skillPath), "promptlings-memory-capture"));
   assert.equal(readFileSync(join(directory, "rules", "promptlings-memory.md"), "utf8"), readSideRule());
+  assert.equal(readFileSync(join(directory, "claudecode", "rules", "promptlings-memory.md"), "utf8"), readSideRule());
 });
 
 test("capture contract requires retained evidence before derived publication", () => {
