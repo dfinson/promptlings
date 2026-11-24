@@ -528,8 +528,9 @@ test("pinned publishers resolve to runnable entry points", async () => {
 
 test("publish writes staged agents, skills and the PR rule into an isolated home", (t) => {
   const home = temporary(t);
-  environment(t, { HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: join(home, ".config"),
-    APPDATA: join(home, "AppData", "Roaming"), LOCALAPPDATA: join(home, "AppData", "Local"), COPILOT_HOME: "" });
+  environment(t, { HOME: home, USERPROFILE: home, HOME_DIR: home, XDG_CONFIG_HOME: join(home, ".config"),
+    APPDATA: join(home, "AppData", "Roaming"), LOCALAPPDATA: join(home, "AppData", "Local"), COPILOT_HOME: "",
+    HERMES_HOME: "", KIMI_CODE_HOME: "", DEEPAGENTS_HOME: "" });
   publish({ agents: [...reviewAgents, "experiment-director"], memory: false, readside: true, dashboard: false }, home);
   assert.deepEqual(readdirSync(join(home, "rulesync", "rules")), ["promptlings-pr-description-writing.md"]);
   assert.ok(existsSync(join(home, ".claude", "agents", "sparring-partner.md")));
