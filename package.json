@@ -17,6 +17,7 @@
     "lib/",
     "agents/",
     "skills/",
+    "rules/",
     "dashboard/",
     "npm-shrinkwrap.json",
     "!**/__pycache__",

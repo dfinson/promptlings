@@ -23,6 +23,7 @@ function printPlan(options) {
     console.log(`Agents: ${options.agents.join(", ")}`);
     console.log(`Skills: all bundled skills${includesMemorySkill(options) ? "" : " except promptlings-memory-capture"}.`);
     console.log(`Memory read-side rule: ${on(includesReadSide(options))}.`);
+    console.log("PR description rule: yes.");
     console.log(`Foreman dashboard: ${on(includesDashboard(options))}.`);
   }
   if (steps.memory) {

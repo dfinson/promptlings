@@ -4,7 +4,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
-import { discoverAgents, packageRoot, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
+import { discoverAgents, packageRoot, prDescriptionRule, readSideRule, skillFiles, stageRulesync, withTargets } from "../lib/content.js";
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
 import { dpkgInstalled, externalSkillSources, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
@@ -252,6 +252,7 @@ test("frontmatter gains rulesync targets", () => {
   assert.equal(withTargets("---\r\nname: x\r\n---\r\nbody\r\n", "x"), '---\ntargets: ["*"]\nname: x\n---\nbody\n');
   assert.throws(() => withTargets("name: x", "x"), /No frontmatter/);
   assert.match(readSideRule(), /^---\ntargets: \["\*"\]\nglobs: \["\*\*\/\*"\]\n---\n<!-- memory-manager-read-side-start -->/);
+  assert.match(prDescriptionRule(), /^---\ntargets: \["\*"\]\nglobs: \["\*\*\/\*"\]\n---\n<!-- promptlings-pr-description-writing-start -->/);
 });
 
 test("options select agents and phases", () => {
@@ -524,14 +525,15 @@ test("pinned publishers resolve to runnable entry points", async () => {
   assert.ok(Object.values(agents).every((agent) => Array.isArray(agent.supportedTransports)));
 });
 
-test("rulesync publishes staged agents and skills into an isolated home", (t) => {
+test("rulesync publishes staged agents, skills and the PR rule into an isolated home", (t) => {
   const home = temporary(t);
   const source = join(home, "stage");
-  stageRulesync(source, { agents: [...reviewAgents, "experiment-director"], includeMemory: false, readSide: false });
+  const rules = stageRulesync(source, { agents: [...reviewAgents, "experiment-director"], includeMemory: false, readSide: false });
+  assert.deepEqual(rules, ["promptlings-pr-description-writing.md"]);
   const env = { ...process.env, HOME: home, USERPROFILE: home, XDG_CONFIG_HOME: join(home, ".config"),
     APPDATA: join(home, "AppData", "Roaming"), LOCALAPPDATA: join(home, "AppData", "Local") };
   const result = spawnSync(process.execPath,
-    [packageBin("rulesync"), "generate", "-g", "--input-roots", ".", "-t", "claudecode", "-f", "subagents,skills"],
+    [packageBin("rulesync"), "generate", "-g", "--input-roots", ".", "-t", "claudecode", "-f", "subagents,skills,rules"],
     { cwd: source, env, encoding: "utf8" });
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.ok(existsSync(join(home, ".claude", "agents", "sparring-partner.md")));
@@ -552,4 +554,7 @@ test("rulesync publishes staged agents and skills into an isolated home", (t) =>
   assert.ok(existsSync(join(home, ".claude", "skills", "comparative-evaluation", "references", "protocol-template.md")));
   assert.ok(existsSync(join(home, ".claude", "skills", "comparative-evaluation", "references", "sources.md")));
   assert.ok(!existsSync(join(home, ".claude", "skills", "promptlings-memory-capture")));
+  assert.equal(instructionBody(join(home, ".claude", "rules", "promptlings-pr-description-writing.md")),
+    instructionBody(join(packageRoot, "rules", "pr-description-writing.md")));
+  assert.ok(!existsSync(join(home, ".claude", "rules", "promptlings-memory.md")));
 });
