@@ -310,6 +310,7 @@ Both forms take the same commands and options.
 | Bundled skills | `rulesync` skills | Every harness with global skill support |
 | External skills | [`skills`](https://github.com/vercel-labs/skills) | Every harness it supports |
 | Memory read-side rule | `rulesync` rules | Harnesses with dedicated global rule files |
+| PR description rule | `rulesync` rules | Harnesses with dedicated global rule files |
 | Basic Memory MCP | [`add-mcp`](https://github.com/neon-solutions/add-mcp) | Detected harnesses |
 
 Agent and skill publication includes harnesses that are not installed, so
@@ -317,6 +318,22 @@ unused harness directories can appear in your home directory. Paths follow
 each publisher's defaults. `add-mcp` does not honor `CLAUDE_CONFIG_DIR`.
 Stdio-only clients such as Claude Desktop connect through
 [`mcp-remote`](https://github.com/geelen/mcp-remote).
+
+The PR description rule ships with the bundled `pr-description-writing` skill,
+so every `install` and `publish` includes it, independent of memory options.
+It requires agents to load that skill before creating a pull request or changing
+its title or description by any route, including one-paragraph patches, and to
+reload it after context compaction. Hosts can list a skill by name only or drop
+its full text after compaction, so a skill trigger alone does not reliably
+activate it. **This applies to future sessions across repositories.** The rule
+lives in a dedicated `promptlings-pr-description-writing` file per supported
+harness, such as
+`~/.copilot/instructions/promptlings-pr-description-writing.instructions.md` or
+`~/.claude/rules/promptlings-pr-description-writing.md`, and each publish
+rewrites it. Copilot's copy uses `applyTo: '**/*'`, which Copilot treats as
+always on. Claude Code's copy has no `paths` frontmatter, because Claude Code
+loads a path-scoped rule only after reading a matching file, and a PR edit can
+happen without one. Its source is [`rules/pr-description-writing.md`](../rules/pr-description-writing.md).
 
 ## Basic Memory setup
 

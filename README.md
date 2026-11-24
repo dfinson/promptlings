@@ -87,7 +87,9 @@ agent to use one without switching personas.
 
 PR titles, descriptions, and review comments are written for people.
 [pr-description-writing](skills/pr-description-writing/SKILL.md) applies whenever
-an agent creates or edits a pull request. It reads the repository's PR template
+an agent creates or edits a pull request. The installer also publishes a global
+rule that requires loading it before any PR title or description change, however
+small. The skill reads the repository's PR template
 and instructions first, shows user-visible changes with before/after screenshots
 (a video only when the user or template asks), and writes the description in plain English.
 [review-comment-writing](skills/review-comment-writing/SKILL.md) pairs every

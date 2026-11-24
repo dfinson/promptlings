@@ -1,6 +1,6 @@
 ---
 name: pr-description-writing
-description: Draft or update a pull request title and description using plain prose, real before/after evidence and useful explanatory figures, following the repository's template and instructions. Use whenever an agent creates or edits PR text. Video requires a user or template request.
+description: Draft or update a pull request title and description using plain prose, real before/after evidence and useful explanatory figures, following the repository's template and instructions. Load before any PR creation or title/body change by any route, including gh pr create, gh pr edit, --title/--body/--body-file, PR tools or the API, and for small patches such as appending one paragraph. Reload after context compaction. Video requires a user or template request.
 ---
 
 # PR Description Writing
