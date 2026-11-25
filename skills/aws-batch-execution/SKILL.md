@@ -9,11 +9,11 @@ Use the primitive the workload already fits. Choose **AWS Batch** when a queue a
 
 Bind the approved account, profile or role, and region. Check `aws sts get-caller-identity` with that selection and carry it on every call. Confirm the exact definition revision or function version, runtime limits, input version, output destination and permitted workload identity. For large files, pass references and return files through a run-specific object prefix such as an approved S3 location. Do not pass credentials in overrides, change IAM, or create queues and clusters to fit these examples.
 
-For an unproved publication path, use the `remote-container-jobs` batch preflight: the workload identity writes an authorized marker and the caller reads it before launch. For Batch submission and Lambda invocation, set `AWS_RETRY_MODE=standard` and `AWS_MAX_ATTEMPTS=1` in the launch process only. Neither API accepts a client idempotency token. Put the run key in the Job name or event so a lost response can be reconciled without a second submission. Observation calls can keep their normal retries.
+For an unproved publication path, use the `remote-container-jobs` batch preflight: the workload identity writes an authorized marker and the caller reads it before launch. Batch submission and ordinary Lambda invocation do not accept a client idempotency token. Set `AWS_RETRY_MODE=standard` and `AWS_MAX_ATTEMPTS=1` in those launch processes only. Observation calls can keep their normal retries.
 
 ## AWS Batch: identify the job and its attempts
 
-Pass the approved queue and **revision** of the definition. Supply run-specific inputs using the definition's declared parameters. Capture the response's `jobId`, not just the reusable job name.
+Pass the approved queue and **revision** of the definition. Put the unique run key in the job name and supply inputs using the definition's declared parameters. Capture the response's `jobId`. Batch does not enforce uniqueness of job names.
 
 ```text
 aws batch submit-job --profile PROFILE --region REGION --job-name RUN_NAME --job-queue QUEUE --job-definition DEFINITION_REVISION
@@ -44,6 +44,8 @@ aws lambda invoke --profile PROFILE --region REGION --function-name QUALIFIED_AR
 
 Check CLI success, `FunctionError`, the executed version and the application response. HTTP 200 with `FunctionError` is a failed invocation. An asynchronous `Event` acceptance is not completion. Use it only if there is an existing, correlated completion or failure destination. Never invoke again solely because the client disconnected.
 
+For ordinary synchronous invocations, a run key in the event is not a recoverable execution ID. Lambda's default logs record an AWS request ID, not the event key. If the response is lost, use independent evidence, such as a workload result or log that records the run key and outcome. Without it, report the outcome unknown and do not retry. For a directly invoked **durable function**, `--durable-execution-name` is a provider idempotency key for starting that execution with the same payload within retention. It does not make the function's individual steps exactly once.
+
 For all three paths, verify each declared output independently of provider status. Return the ID or invocation correlation, terminal evidence, diagnostic location and recovered files. Keep failed attempts distinguishable. A redelivery must not overwrite a successful attempt's output. Limit any authorized cancellation and teardown to the recorded run, not a shared definition, function, queue or cluster.
 
-[Batch states](https://docs.aws.amazon.com/batch/latest/userguide/job_states.html) | [DescribeJobs](https://docs.aws.amazon.com/cli/latest/reference/batch/describe-jobs.html) | [RunTask](https://docs.aws.amazon.com/cli/latest/reference/ecs/run-task.html) | [ECS waiter](https://docs.aws.amazon.com/cli/latest/reference/ecs/wait/tasks-stopped.html) | [Lambda invocation](https://docs.aws.amazon.com/lambda/latest/dg/invocation-sync.html)
+[Batch states](https://docs.aws.amazon.com/batch/latest/userguide/job_states.html) | [DescribeJobs](https://docs.aws.amazon.com/cli/latest/reference/batch/describe-jobs.html) | [RunTask](https://docs.aws.amazon.com/cli/latest/reference/ecs/run-task.html) | [ECS waiter](https://docs.aws.amazon.com/cli/latest/reference/ecs/wait/tasks-stopped.html) | [Lambda invocation](https://docs.aws.amazon.com/lambda/latest/dg/invocation-sync.html) | [Durable execution names](https://docs.aws.amazon.com/lambda/latest/dg/durable-execution-idempotency.html)

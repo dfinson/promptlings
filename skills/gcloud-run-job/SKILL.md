@@ -7,7 +7,7 @@ description: Execute a Google Cloud Run Job with gcloud and recover the results 
 
 Use a Job when the container runs a command and exits. It does not need an HTTP listener. Check the approved account, project, region, Job, image, arguments, task count, task timeout, retries and service account. Pass the project and region explicitly rather than changing the active gcloud configuration. A missing or unauthorized Job is not permission to deploy a replacement.
 
-Make the input immutable and choose an output location readable by the caller and writable by the workload. Use a run-specific prefix in an approved bucket where possible. For parallel work, distinguish task index and attempt so that a retry does not overwrite a different task's results. Supply non-secret run inputs as execution overrides when permitted, not as permanent updates to the Job. Do not grant IAM permissions or emit secret values to fix a denied override.
+Make the input immutable and choose an output location readable by the caller and writable by the workload. Before launch, configure the writer to put each attempt's files under `RUN_KEY/CLOUD_RUN_EXECUTION/CLOUD_RUN_TASK_INDEX/CLOUD_RUN_TASK_ATTEMPT/` in the approved destination, using the actual variable values. Two executions of the same logical run can both have task 0, attempt 0. Supply non-secret run inputs as execution overrides when permitted, not as permanent updates to the Job. Do not grant IAM permissions or emit secret values to fix a denied override.
 
 For an unproved publication path, use the `remote-container-jobs` batch preflight: the workload identity writes an authorized marker and the caller reads it before launch.
 
@@ -22,7 +22,7 @@ gcloud run jobs execute JOB --project PROJECT --region REGION --update-env-vars=
 gcloud run jobs executions describe EXECUTION --project PROJECT --region REGION --format="yaml(metadata.name,status)"
 ```
 
-After a retry, empty name or disconnect, reconcile **all** executions carrying the run key using their effective overrides or workload evidence. Distinguish their attempts and artifacts by execution name as well as task index. If correlation is inconclusive, report the unknown outcome. Do not submit again or substitute `latestCreatedExecution`, which might belong to another caller.
+Unless you verified a single transport attempt and received its execution name, reconcile **all** executions carrying the run key using their effective overrides or workload evidence. Do this even on CLI success: gcloud can return the second execution's name without exposing the first. Follow every match and keep its results separate. If correlation is inconclusive, report the unknown outcome. Do not submit again or substitute `latestCreatedExecution`, which might belong to another caller.
 
 ## Distinguish execution, task and output
 
