@@ -111,7 +111,7 @@ execution is restricted.
 | Component | What the installer provides |
 | --- | --- |
 | Python, uv, Git, and GitHub CLI | Native packages, requiring Python 3.11+ |
-| Basic Memory | Pinned SQLite uv tool, MCP-only memory skills, shared write proxy, MCP registration, and user-login startup |
+| Basic Memory | Pinned SQLite uv tool, MCP-only memory skills, shared queue proxy, MCP registration, and user-login startup |
 | Playwright | Global npm application, published skill, and Chrome browser |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
 | Technical Demo | Pinned upstream motion-art-direction and animation-principles skills (HyperFrames skills come from the HyperFrames row) and Markdown production/writing/capture guidance. A reusable user-local runtime for the opt-in Remotion route includes Remotion 4.0.539 (CLI, Player, bundler, renderer and media), React, TypeScript and matching Chrome Headless Shell |
@@ -338,8 +338,11 @@ happen without one. Its source is [`rules/pr-description-writing.md`](../rules/p
 ## Basic Memory setup
 
 Basic Memory 0.24.1 uses its unchanged SQLite backend on `127.0.0.1:8000`.
-All MCP clients register `http://127.0.0.1:8001/mcp`, the shared write proxy,
-rather than the backend port. FastMCP 4.1.3 owns protocol forwarding, tool
+All MCP clients register the Promptlings-managed `basic-memory` server at
+`http://127.0.0.1:8001/mcp`, the shared queue proxy, rather than the backend
+port. The installer does not register the backend port directly with supported
+client harnesses. The backend remains the proxy's upstream dependency.
+FastMCP 4.1.3 owns protocol forwarding, tool
 discovery, typed results, sessions and HTTP/SSE transport. It is explicitly
 pinned in Basic Memory's existing uv environment, without patching Basic Memory.
 The installer copies `memory-proxy.py` and the Node service supervisor to
@@ -363,12 +366,20 @@ initialization response before reporting success.
 
 ### Agent access and write serialization
 
-Agents must use only Basic Memory MCP tools. Running `basic-memory` or `bm`,
-starting another MCP server, opening `memory.db`, or accessing Basic Memory
-note files directly is prohibited. An MCP failure is a blocker, not permission
-to fall back to the CLI. Installer installation and maintenance commands are
-exempt. The generated read-side rule, Memory Manager and bundled capture skill
-carry this contract.
+Agents and skills must use only the Promptlings-managed `basic-memory` MCP
+registration, which routes through the shared queue proxy. Do not select another
+Basic Memory MCP registration or connect directly to the backend. Running
+`basic-memory` or `bm`, starting another MCP server, opening `memory.db`, or
+accessing Basic Memory note files directly is prohibited. A proxy failure is a
+blocker, not permission to switch servers or fall back to the CLI. Installer
+installation and maintenance commands are exempt. The generated read-side
+rule, Memory Manager, Foreman, bundled capture skill and adapted upstream
+memory skills carry this contract.
+
+Before registering clients, the installer probes the proxy's MCP tool list and
+requires the proxy-specific `memory_queue_status` tool alongside Basic Memory's
+read and write tools. A Basic Memory endpoint that lacks the queue tool is
+rejected rather than treated as the client-facing proxy.
 
 The installer also adapts the pinned upstream memory skills and their installed
 Copilot/Claude copies. CLI-only doctor, literary-analysis and OKF recipes become

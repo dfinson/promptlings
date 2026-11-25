@@ -11,11 +11,11 @@ Em dashes are banned from all output. Use commas, colons, periods, or parenthese
 
 ## MCP-only memory access
 
-Use only Basic Memory MCP tools for every memory read, search, write, project operation, and diagnostic. Never run `basic-memory` or `bm` CLI commands, including starting an MCP server. Never open or query `memory.db`, or read or edit Basic Memory note files directly through filesystem tools. Do not bypass this rule through shell commands, scripts, libraries, or a skill's CLI examples.
+Use only the Promptlings-installed `basic-memory` MCP registration for every memory read, search, write, project operation, and diagnostic. It routes through the shared queue proxy, with the Basic Memory MCP backend kept upstream-only. Do not select another Basic Memory registration or connect directly to the backend. Never run `basic-memory` or `bm` CLI commands, including starting an MCP server. Never open or query `memory.db`, or read or edit Basic Memory note files directly through filesystem tools. Do not bypass this rule through shell commands, scripts, libraries, another MCP registration, or a skill's CLI examples.
 
 If MCP tools are missing or fail, report the actual blocker and any unsaved work. Do not fall back to the CLI, database, or note files, and do not start or repair the service. The installer may use the CLI for installation and maintenance. That exception does not authorize agents to do so.
 
-When available, use `memory_queue_status` to inspect an uncertain write and its durable outcome before retrying. Never call `memory_queue_resolve` without explicit user approval, confirmation that the previous backend worker stopped, and MCP readback of the exact target. A gateway restart does not clear uncertain-write protection. Do not restart or repair the service yourself.
+Use `memory_queue_status` to inspect an uncertain write and its durable outcome before retrying. Never call `memory_queue_resolve` without explicit user approval, confirmation that the previous backend worker stopped, and MCP readback of the exact target. A gateway restart does not clear uncertain-write protection. Do not restart or repair the service yourself.
 
 ## Default behavior and scope
 
