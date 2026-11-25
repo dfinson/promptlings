@@ -83,6 +83,16 @@ The [skills directory](skills/) also contains methods for investigation, test
 analysis, writing, narration, and design documents. You can ask your current
 agent to use one without switching personas.
 
+### Offload work to remote compute
+
+Use [remote-container-jobs](skills/remote-container-jobs/SKILL.md) to move a build, test or service off your PC.
+It covers creating or adopting the durable base, driving a live service, and bringing back a batch result before teardown.
+For a batch job on a known target, go directly to [Docker on a remote machine](skills/docker-remote-run/SKILL.md),
+[Kubernetes Job](skills/kubectl-batch-job/SKILL.md), [Azure Container Apps Job](skills/azure-container-apps-job/SKILL.md),
+[AWS Batch, ECS or Lambda](skills/aws-batch-execution/SKILL.md), or [Google Cloud Run Job](skills/gcloud-run-job/SKILL.md).
+Each follows the specific execution and checks the returned files, not just whether the launch command succeeded.
+Promptlings installs these skills through its existing Rulesync publisher.
+
 ### Pull request and review text
 
 PR titles, descriptions, and review comments are written for people.
