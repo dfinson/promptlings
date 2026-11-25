@@ -9,7 +9,7 @@ import { publish } from "../lib/publish.js";
 import { experienceAgent, parseArgs, phases, reviewAgents } from "../lib/options.js";
 import { dpkgInstalled, externalSkillSources, listedNames, mergeSkillLocks, npmMissing, pendingSkillSources, regString, skillSourceInstalled, skillsAddConcurrent, verifyExperience, windowsPackageIds } from "../lib/tools.js";
 import { pins } from "../lib/pins.js";
-import { configureMemory, deps, installMemory, memoryConfigDirectory, retargetMemoryAliases } from "../lib/memory.js";
+import { configureMemory, deps, installMemory, memoryConfigDirectory, provisionMemoryPostgres, retargetMemoryAliases } from "../lib/memory.js";
 import { adaptMemorySkill, installMemorySkillContracts } from "../lib/memory-skills.js";
 import { capture, packageBin, quoteForCmd, runBuffered, which } from "../lib/run.js";
 import { launchAgentPlist, systemdUnit, windowsServerScript, windowsStopScript, windowsTaskName, windowsTaskScript, windowsTaskSettings } from "../lib/services.js";
@@ -104,6 +104,153 @@ test("memory configuration follows explicit and XDG directories and preserves pr
   assert.equal(JSON.parse(readFileSync(join(explicit, "config.json"), "utf8")).materialization_workers, pins.memoryWorkers);
   assert.equal(memoryConfigDirectory(home, { BASIC_MEMORY_CONFIG_DIR: "relative-config" }), join(process.cwd(), "relative-config"));
   assert.equal(memoryConfigDirectory(home, { BASIC_MEMORY_CONFIG_DIR: "~" }), join(process.cwd(), "~"));
+});
+
+test("memory backend choice preserves existing storage unless explicitly selected", (t) => {
+  const home = temporary(t);
+  environment(t, { BASIC_MEMORY_CONFIG_DIR: join(home, "config") });
+  const path = join(memoryConfigDirectory(home), "config.json");
+  configureMemory(home);
+  assert.equal(JSON.parse(readFileSync(path)).database_backend, "sqlite");
+  const external = { database_backend: "postgres", database_url: "postgresql+asyncpg://existing:fixture@localhost:6543/notes",
+    semantic_vector_index: "milvus", projects: { notes: { path: "notes", mode: "local" } } };
+  writeFileSync(path, JSON.stringify(external));
+  configureMemory(home);
+  let config = JSON.parse(readFileSync(path));
+  for (const [key, value] of Object.entries(external)) assert.deepEqual(config[key], value);
+  configureMemory(home, { backend: "postgres", databaseUrl: "postgresql+asyncpg://fixture:password@127.0.0.1:5433/basic_memory" });
+  config = JSON.parse(readFileSync(path));
+  assert.equal(config.database_backend, "postgres");
+  assert.equal(config.semantic_vector_index, "pgvector");
+  assert.deepEqual(config.projects, external.projects);
+  configureMemory(home, { backend: "sqlite" });
+  config = JSON.parse(readFileSync(path));
+  assert.equal(config.database_backend, "sqlite");
+  assert.equal("database_url" in config, false);
+  writeFileSync(path, '{"database_url":"fixture-secret", invalid');
+  assert.throws(() => configureMemory(home), (error) =>
+    /config.json is invalid/.test(error.message) && !error.message.includes("fixture-secret"));
+  writeFileSync(path, "null");
+  assert.throws(() => configureMemory(home), /must contain an object/);
+});
+
+test("Postgres options are explicit, scoped to memory and never use 5432 or service ports", () => {
+  const all = [...discoverAgents().keys()];
+  assert.equal(parseArgs([], all).memoryBackend, undefined);
+  assert.equal(parseArgs(["memory", "--memory-backend", "postgres"], all).memoryPostgresPort, 5433);
+  assert.equal(parseArgs(["--memory-backend", "sqlite"], all).memoryBackend, "sqlite");
+  assert.equal(parseArgs(["memory", "--memory-backend", "postgres", "--memory-postgres-port", "6543"], all).memoryPostgresPort, 6543);
+  for (const args of [
+    ["--memory-backend", "other"],
+    ["publish", "--memory-backend", "postgres"],
+    ["tools", "--memory-backend", "postgres"],
+    ["--no-memory", "--memory-backend", "postgres"],
+    ["--memory-postgres-port", "6543"],
+    ["--memory-backend", "sqlite", "--memory-postgres-port", "6543"],
+    ...["5432", "8000", "8001", "0", "65536"].map((port) => ["--memory-backend", "postgres", "--memory-postgres-port", port]),
+  ]) assert.throws(() => parseArgs(args, all), /backend|port|require/);
+  const result = promptlings("memory", "--memory-backend", "postgres", "--dry-run");
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Dedicated pgvector Postgres container: loopback port=5433/);
+  assert.doesNotMatch(result.stdout, /postgresql\+asyncpg:|POSTGRES_PASSWORD=/);
+});
+
+const postgresFixture = (t) => {
+  const home = temporary(t);
+  environment(t, { BASIC_MEMORY_CONFIG_DIR: join(home, "config") });
+  const calls = [];
+  t.mock.method(deps, "which", () => "docker");
+  t.mock.method(deps, "portOpen", async () => false);
+  t.mock.method(deps, "capture", (command, args) => { calls.push({ command, args }); return ""; });
+  t.mock.method(deps, "run", (command, args, options) => { calls.push({ command, args, options }); return { status: 0 }; });
+  t.mock.method(deps, "powershell", () => {});
+  return { home, calls, statePath: join(memoryConfigDirectory(home), "promptlings-postgres.json") };
+};
+
+test("Postgres provisioning isolates its port, volume and credentials and authenticates before returning", async (t) => {
+  const { home, calls, statePath } = postgresFixture(t);
+  const url = await provisionMemoryPostgres({ memoryPort: 8000, memoryProxyPort: 8001 }, home);
+  const state = JSON.parse(readFileSync(statePath));
+  assert.match(url, /^postgresql\+asyncpg:\/\/promptlings:[a-f0-9]{64}@127\.0\.0\.1:5433\/basic_memory$/);
+  const creation = calls.find(({ args }) => args[0] === "run");
+  assert.ok(creation.args.includes("127.0.0.1:5433:5432"));
+  assert.ok(creation.args.includes(`type=volume,source=promptlings-memory-postgres-${state.owner}-data,target=/var/lib/postgresql/data`));
+  assert.ok(creation.args.includes("unless-stopped"));
+  assert.equal(creation.args.at(-1), pins.memoryPostgres);
+  assert.ok(calls.some(({ args }) => args.includes("pg_isready")));
+  const auth = calls.find(({ args }) => args.includes("psql"));
+  assert.equal(auth.options.env.PGPASSWORD, state.password);
+  assert.equal(creation.options.env.POSTGRES_PASSWORD, state.password);
+  for (const { args } of calls) assert.equal(args.join(" ").includes(state.password), false);
+  assert.equal(calls.some(({ args }) => args.includes("rm") || args.includes("prune")), false);
+});
+
+test("Postgres provisioning refuses occupied ports and resource adoption without credentials", async (t) => {
+  const { home, calls, statePath } = postgresFixture(t);
+  t.mock.method(deps, "portOpen", async () => true);
+  await assert.rejects(provisionMemoryPostgres({}, home), /already in use/);
+  assert.equal(existsSync(statePath), false);
+  t.mock.method(deps, "capture", (command, args) => args[0] === "container" ? args[args.indexOf("--filter") + 1].slice(7, -1) : "");
+  await assert.rejects(provisionMemoryPostgres({}, home), /no saved credentials/);
+  assert.equal(calls.some(({ args }) => args[0] === "run"), false);
+  await assert.rejects(provisionMemoryPostgres({ memoryPostgresPort: 5432 }, home), /5432/);
+});
+
+test("Postgres reruns verify ownership, image, mapping and volume before starting an existing container", async (t) => {
+  const { home, calls, statePath } = postgresFixture(t);
+  await provisionMemoryPostgres({}, home);
+  const state = JSON.parse(readFileSync(statePath));
+  const name = `promptlings-memory-postgres-${state.owner}`;
+  const volume = `${name}-data`;
+  const labels = { "io.promptlings.memory.postgres": state.owner };
+  const container = { labels, image: pins.memoryPostgres, ports: { "5432/tcp": [{ HostIp: "127.0.0.1", HostPort: "5433" }] },
+    mounts: [{ Type: "volume", Name: volume, Destination: "/var/lib/postgresql/data", RW: true }] };
+  t.mock.method(deps, "capture", (command, args) => {
+    if (args[1] === "ls") return args[0] === "container" ? name : volume;
+    return JSON.stringify(args[0] === "volume" ? labels : container);
+  });
+  calls.length = 0;
+  await provisionMemoryPostgres({}, home);
+  assert.ok(calls.some(({ args }) => args[1] === "start"));
+  assert.equal(calls.some(({ args }) => args[0] === "run"), false);
+  assert.equal(JSON.parse(readFileSync(statePath)).password, state.password);
+  for (const corrupt of [
+    () => { container.labels = {}; },
+    () => { container.labels = labels; container.image = "postgres:17"; },
+    () => { container.image = pins.memoryPostgres; container.ports["5432/tcp"][0].HostIp = "0.0.0.0"; },
+    () => { container.ports["5432/tcp"][0].HostIp = "127.0.0.1"; container.mounts = []; },
+  ]) {
+    corrupt();
+    calls.length = 0;
+    await assert.rejects(provisionMemoryPostgres({}, home), /Refusing to reuse/);
+    assert.equal(calls.some(({ args }) => args[1] === "start"), false);
+  }
+  container.mounts = [{ Type: "volume", Name: volume, Destination: "/var/lib/postgresql/data", RW: true }];
+  delete labels["io.promptlings.memory.postgres"];
+  await assert.rejects(provisionMemoryPostgres({}, home), /volume is not owned/);
+});
+
+test("Postgres readiness failure retains resources and credentials for a non-destructive retry", async (t) => {
+  const { home, calls, statePath } = postgresFixture(t);
+  t.mock.method(deps, "delay", async () => {});
+  t.mock.method(deps, "run", (command, args) => { calls.push({ args }); return { status: args.includes("pg_isready") ? 1 : 0 }; });
+  await assert.rejects(provisionMemoryPostgres({}, home), /did not become ready/);
+  assert.equal(existsSync(statePath), true);
+  assert.equal(calls.filter(({ args }) => args.includes("pg_isready")).length, 60);
+  assert.equal(calls.some(({ args }) => args.includes("rm")), false);
+});
+
+test("Postgres retries refuse changed ports or corrupt saved credentials without leaking their content", async (t) => {
+  const { home, calls, statePath } = postgresFixture(t);
+  await provisionMemoryPostgres({}, home);
+  const state = readFileSync(statePath, "utf8");
+  calls.length = 0;
+  await assert.rejects(provisionMemoryPostgres({ memoryPostgresPort: 6543 }, home), /original port/);
+  assert.equal(readFileSync(statePath, "utf8"), state);
+  assert.equal(calls.some(({ args }) => args[0] === "run" || args[1] === "start"), false);
+  writeFileSync(statePath, '{"password":"fixture-secret", invalid');
+  await assert.rejects(provisionMemoryPostgres({}, home), (error) =>
+    /credential state is invalid/.test(error.message) && !error.message.includes("fixture-secret"));
 });
 
 test("memory skill adaptation reads external publisher state and preserves local full-body customizations", (t) => {
@@ -429,6 +576,8 @@ test("root-level pinned skills participate in installer reuse", () => {
 });
 
 test("memory installs, starts, waits, then registers clients", async (t) => {
+  environment(t, { BASIC_MEMORY_DATABASE_BACKEND: "", BASIC_MEMORY_DATABASE_URL: "", BASIC_MEMORY_SEMANTIC_VECTOR_INDEX: "" });
+  for (const key of ["BASIC_MEMORY_DATABASE_BACKEND", "BASIC_MEMORY_DATABASE_URL", "BASIC_MEMORY_SEMANTIC_VECTOR_INDEX"]) delete process.env[key];
   const log = [];
   const saved = { ...deps };
   t.after(() => Object.assign(deps, saved));
@@ -464,6 +613,71 @@ test("memory installs, starts, waits, then registers clients", async (t) => {
   deps.waitUntilReady = async () => { throw new Error("not ready"); };
   await assert.rejects(installMemory({ skills: false, startup: true, memoryPort: 8123 }, {}), /not ready/);
   assert.ok(!log.includes("register"));
+
+  log.length = 0;
+  deps.waitUntilReady = async () => log.push("ready");
+  deps.provisionMemoryPostgres = async () => { log.push("postgres"); return "fixture-url"; };
+  let projects = {
+    notes: { path: "notes", mode: "local" },
+    "legacy notes": "legacy",
+    mirrored: { path: "mirror", mode: "cloud", local_sync_path: "mirror" },
+    remote: { mode: "cloud" },
+    "remote path": { path: "remote", mode: "cloud" },
+  };
+  deps.configureMemory = (home, config) => {
+    assert.deepEqual(config, { backend: "postgres", databaseUrl: "fixture-url" });
+    log.push("configure");
+    return { projects };
+  };
+  const reindexes = [];
+  deps.run = (command, args) => {
+    if (args[0] === "reindex") {
+      reindexes.push(args);
+      log.push("reindex");
+    } else log.push(`run ${command}`);
+  };
+  await installMemory({ skills: false, startup: true, memoryPort: 8123, memoryBackend: "postgres" }, {});
+  assert.deepEqual(reindexes, [
+    ["reindex", "--full", "--project", "notes"],
+    ["reindex", "--full", "--project", "legacy notes"],
+    ["reindex", "--full", "--project", "mirrored"],
+  ]);
+  assert.deepEqual(log, ["postgres", "stop", "configure", "install", "run basic-memory", "reindex", "reindex", "reindex", "contracts", "readside", "runtime", "start", "ready", "register", "aliases"]);
+  log.length = 0;
+  reindexes.length = 0;
+  projects = { remote: { mode: "cloud" } };
+  await installMemory({ skills: false, startup: true, memoryPort: 8123, memoryBackend: "postgres" }, {});
+  assert.deepEqual(reindexes, [["reindex", "--full"]]);
+  assert.deepEqual(log, ["postgres", "stop", "configure", "install", "run basic-memory", "reindex", "contracts", "readside", "runtime", "start", "ready", "register", "aliases"]);
+  log.length = 0;
+  reindexes.length = 0;
+  projects = undefined;
+  await installMemory({ skills: false, startup: true, memoryPort: 8123, memoryBackend: "postgres" }, {});
+  assert.deepEqual(reindexes, [["reindex", "--full"]]);
+  log.length = 0;
+  reindexes.length = 0;
+  projects = { notes: "notes", missing: { path: "missing" }, later: "later" };
+  deps.run = (command, args) => {
+    if (args[0] === "reindex") {
+      reindexes.push(args);
+      if (args.at(-1) === "missing") throw new Error("Project not found: missing");
+    }
+  };
+  await assert.rejects(installMemory({ skills: false, startup: true, memoryPort: 8123, memoryBackend: "postgres" }, {}), /Project not found: missing/);
+  assert.deepEqual(reindexes, [
+    ["reindex", "--full", "--project", "notes"],
+    ["reindex", "--full", "--project", "missing"],
+  ]);
+  assert.ok(!log.includes("start"));
+  assert.ok(!log.includes("register"));
+  log.length = 0;
+  process.env.BASIC_MEMORY_DATABASE_URL = "fixture-env-override";
+  await assert.rejects(installMemory({ startup: true, memoryPort: 8123, memoryBackend: "postgres" }, {}), /environment overrides/);
+  assert.deepEqual(log, []);
+  delete process.env.BASIC_MEMORY_DATABASE_URL;
+  deps.provisionMemoryPostgres = async () => { throw new Error("Docker unavailable"); };
+  await assert.rejects(installMemory({ startup: true, memoryPort: 8123, memoryBackend: "postgres" }, {}), /Docker unavailable/);
+  assert.deepEqual(log, []);
 });
 
 test("memory routing preserves duplicate registrations and unrelated client settings", (t) => {

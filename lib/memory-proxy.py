@@ -2,10 +2,12 @@
 
 import argparse
 import asyncio
+import hashlib
 import json
 import logging
 import math
 import os
+import re
 import socket
 import sqlite3
 import time
@@ -34,6 +36,9 @@ from starlette.responses import JSONResponse
 LOG = logging.getLogger("promptlings.memory")
 READY = "PROMPTLINGS_MEMORY_PROXY_READY"
 CONTROL_TOOLS = frozenset({"memory_queue_status", "memory_queue_resolve"})
+RECEIPT = "promptlings_operation_id"
+# Basic Memory's SQLite busy_timeout is 10 seconds. Leave time for lock recovery.
+WRITE_TIMEOUT = 600.0
 
 
 class WriteJournal:
@@ -65,18 +70,20 @@ class WriteJournal:
                 os.chmod(path, 0o600)
             with self.connection:
                 schema = self.connection.execute("PRAGMA user_version").fetchone()[0]
-                if schema not in (0, 1):
+                if schema not in (0, 1, 2):
                     raise RuntimeError(f"Unsupported write journal schema: {schema}")
                 self.connection.execute("""CREATE TABLE IF NOT EXISTS writes (
                     sequence INTEGER PRIMARY KEY AUTOINCREMENT,
                     operation_id TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
                     arguments TEXT NOT NULL, target TEXT NOT NULL, state TEXT NOT NULL,
                     created REAL NOT NULL, updated REAL NOT NULL, deadline REAL NOT NULL,
-                    result TEXT, resolution TEXT
+                    result TEXT, resolution TEXT, reconciliation TEXT
                 )""")
                 if "target" not in {row[1] for row in self.connection.execute("PRAGMA table_info(writes)")}:
                     raise RuntimeError("Write journal schema lacks target summaries. Preserve it and inspect before migration.")
-                self.connection.execute("PRAGMA user_version=1")
+                if "reconciliation" not in {row[1] for row in self.connection.execute("PRAGMA table_info(writes)")}:
+                    self.connection.execute("ALTER TABLE writes ADD COLUMN reconciliation TEXT")
+                self.connection.execute("PRAGMA user_version=2")
                 # A persisted dispatch cannot be distinguished from a committed write.
                 self.connection.execute(
                     "UPDATE writes SET state='unknown', updated=? WHERE state='dispatched'", (time.time(),),
@@ -100,6 +107,18 @@ class WriteJournal:
 
     def unknown(self):
         return bool(self.connection.execute("SELECT 1 FROM writes WHERE state='unknown' LIMIT 1").fetchone())
+
+    def uncertain(self):
+        return self.connection.execute(
+            "SELECT operation_id,reconciliation FROM writes WHERE state='unknown' ORDER BY sequence",
+        ).fetchall()
+
+    def prepare(self, operation_id, reconciliation):
+        with self.connection:
+            self.connection.execute(
+                "UPDATE writes SET reconciliation=?, updated=? WHERE operation_id=?",
+                (json.dumps(reconciliation), time.time(), operation_id),
+            )
 
     def enqueue(self, name, arguments, timeout, capacity):
         with self.connection:
@@ -165,20 +184,24 @@ class WriteJournal:
                 value["arguments"] = json.loads(record["arguments"])
                 value["result"] = json.loads(record["result"]) if record["result"] else None
                 value["resolution"] = json.loads(record["resolution"]) if record["resolution"] else None
+                value["reconciliation"] = json.loads(record["reconciliation"]) if record["reconciliation"] else None
             values.append(value)
         return {
-            "blocked": self.unknown(), "operations": values,
+            "blocked": self.unknown(), "block_scope": "affected targets, or all mutations when identity is unresolved",
+            "operations": values,
             "next_before_sequence": min(row["sequence"] for row in recent) if len(recent) == 50 else None,
         }
 
-    def resolve(self, operation_id, outcome, evidence):
+    def resolve(self, operation_id, outcome, evidence, result=None, automatic=False):
         with self.connection:
             record = self.get(operation_id)
             if record["state"] != "unknown":
                 raise ToolError("QUEUE_NOT_UNKNOWN: only an uncertain operation can be reconciled.")
             self.connection.execute(
-                "UPDATE writes SET state=?, updated=?, resolution=? WHERE operation_id=?",
-                (f"resolved_{outcome}", time.time(), json.dumps({"outcome": outcome, "evidence": evidence}), operation_id),
+                "UPDATE writes SET state=?, updated=?, resolution=?, result=COALESCE(?,result) WHERE operation_id=?",
+                (f"resolved_{outcome}", time.time(),
+                 json.dumps({"outcome": outcome, "evidence": evidence, "automatic": automatic}),
+                 result.model_dump_json() if result is not None else None, operation_id),
             )
 
 
@@ -188,7 +211,7 @@ class MemoryHTTPTransport(StreamableHttpTransport):
         options = transport_options or TransportOptions()
         headers = (_get_forwardable_http_headers() if options.forward_incoming_headers else {}) | self.headers
         read_timeout = session_kwargs.get("read_timeout_seconds")
-        timeout = httpx2.Timeout(30.0, read=600.0 if read_timeout is None else read_timeout)
+        timeout = httpx2.Timeout(30.0, read=WRITE_TIMEOUT + 60 if read_timeout is None else read_timeout)
         client = create_mcp_http_client(headers=headers, timeout=timeout, auth=self.auth)
         self._session_id = None
         client.event_hooks.setdefault("response", []).append(self._capture_session_id)
@@ -213,9 +236,9 @@ READ_TOOLS = frozenset({
 def outcome_unknown(result):
     if not result.is_error:
         return False
-    if isinstance(result.structured_content, dict):
-        if result.structured_content.get("error") == "EDIT_OUTCOME_UNKNOWN":
-            return True
+    diagnostic = payload(result)
+    if diagnostic and diagnostic.get("error") == "EDIT_OUTCOME_UNKNOWN":
+        return True
     for item in result.content:
         if item.type != "text":
             continue
@@ -230,8 +253,47 @@ def outcome_unknown(result):
     return False
 
 
+def payload(result):
+    if isinstance(result.structured_content, dict):
+        value = result.structured_content
+        # FastMCP wraps the object branch of a union return schema in "result".
+        return value["result"] if len(value) == 1 and isinstance(value.get("result"), dict) else value
+    for item in result.content:
+        if item.type == "text":
+            try:
+                value = json.loads(item.text)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(value, dict):
+                return value
+    return None
+
+
+def lock_timeout(result):
+    if not result.is_error:
+        return False
+    text = "\n".join(item.text for item in result.content if item.type == "text").lower()
+    data = payload(result)
+    if data:
+        text += "\n" + str(data.get("detail", "")).lower() + "\n" + str(data.get("error", "")).lower()
+    return any(marker in text for marker in (
+        "database is locked", "database table is locked", "sqlite_busy", "sqlite_locked",
+        "lock timeout", "locknotavailable",
+    ))
+
+
+def authoritative(note):
+    return (
+        isinstance(note, dict) and not note.get("error")
+        and isinstance(note.get("content"), str)
+        and isinstance(note.get("frontmatter"), dict)
+        and isinstance(note.get("file_path"), str)
+        and note.get("checksum") == hashlib.sha256(note["content"].encode("utf-8")).hexdigest()
+    )
+
+
 class WritePolicy(Middleware):
-    def __init__(self, queue_timeout=300.0, write_timeout=600.0, max_queue=1000, journal_path=":memory:"):
+    def __init__(self, queue_timeout=300.0, write_timeout=WRITE_TIMEOUT, max_queue=1000, journal_path=":memory:"):
         for timeout in (queue_timeout, write_timeout):
             if not math.isfinite(timeout) or timeout <= 0:
                 raise ValueError("Write and queue deadlines must be finite and positive.")
@@ -245,6 +307,8 @@ class WritePolicy(Middleware):
         self.journal = WriteJournal(journal_path)
         self.failed = False
         self.active_operation = None
+        self.proxy = None
+        self.retry_delays = (0.25, 1.0)
         self.recovery_ready = asyncio.Event()
         self.resolved = asyncio.Event()
         try:
@@ -260,10 +324,154 @@ class WritePolicy(Middleware):
         return self.failed or self.read_journal(self.journal.unknown)
 
     def block(self, operation_id, reason):
-        LOG.error("Operation %s: %s. Mutation lane blocked until explicit reconciliation.", operation_id, reason)
-        result = self.result(operation_id, f"WRITE_OUTCOME_UNKNOWN: {reason}. Do not replay. Reconcile this operation.", True)
+        LOG.error("Operation %s: %s. Affected target awaits reconciliation.", operation_id, reason)
+        result = self.result(operation_id, f"WRITE_OUTCOME_UNKNOWN: {reason}. Do not replay. Inspect memory_queue_status.", True)
         self.transition(operation_id, "unknown", result)
         return result
+
+    async def read_target(self, guard):
+        try:
+            async with asyncio.timeout(min(30, self.write_timeout)):
+                result = await self.proxy.call_tool("read_note", {
+                    "identifier": guard["identifier"], "project_id": guard["project_id"],
+                    "output_format": "json", "include_frontmatter": True,
+                }, run_middleware=False)
+        except Exception as cause:
+            raise ToolError(f"RECONCILIATION_READ_FAILED: upstream read failed ({type(cause).__name__}).") from cause
+        note = payload(result)
+        if note is None or (result.is_error and note.get("error") != "NOTE_NOT_FOUND"):
+            raise ToolError("RECONCILIATION_READ_FAILED: exact note read did not return a note or NOTE_NOT_FOUND.")
+        return note
+
+    async def prepare(self, operation_id, name, arguments):
+        """Persist a receipt and original revision before any dispatch."""
+        if self.proxy is None or name not in ("write_note", "edit_note"):
+            return None
+        metadata = arguments.get("metadata")
+        if isinstance(metadata, dict) and RECEIPT in metadata:
+            raise ToolError(f"QUEUE_RESERVED_METADATA: {RECEIPT} is reserved for proxy recovery.")
+        if not isinstance(arguments.get("content"), str):
+            return None
+        project_id = arguments.get("project_id")
+        identifier = arguments.get("identifier")
+        if name == "edit_note" and not project_id and isinstance(identifier, str):
+            if identifier.startswith("memory://") or (not arguments.get("project") and identifier.count("/") >= 2):
+                # Native edit routing can infer or reject a project from this identifier.
+                return None
+        if project_id and arguments.get("workspace"):
+            return None
+        if arguments.get("workspace") and not arguments.get("project"):
+            return None
+        if not project_id:
+            try:
+                async with asyncio.timeout(min(30, self.write_timeout)):
+                    projects = payload(await self.proxy.call_tool(
+                        "list_memory_projects", {"output_format": "json"}, run_middleware=False,
+                    ))
+            except Exception as cause:
+                raise ToolError(f"RECONCILIATION_PROJECT_FAILED: upstream project lookup failed ({type(cause).__name__}).") from cause
+            rows = projects.get("projects", []) if projects else []
+            if not isinstance(rows, list):
+                raise ToolError("RECONCILIATION_READ_FAILED: project discovery returned an invalid project list.")
+            route = arguments.get("project")
+            workspace = arguments.get("workspace")
+            if workspace and route:
+                route = f"{workspace}/{route}"
+            matches = [
+                row for row in rows if isinstance(row, dict) and (
+                    route in (row.get("name"), row.get("qualified_name")) if route
+                    else row.get("is_default") and row.get("workspace_is_default", True)
+                )
+            ]
+            if len(matches) != 1 or not matches[0].get("external_id"):
+                return None
+            project_id = matches[0]["external_id"]
+        if not isinstance(project_id, str):
+            return None
+        directory = arguments.get("directory", arguments.get("folder", arguments.get("dir", arguments.get("path"))))
+        if name == "write_note":
+            if not isinstance(arguments.get("title"), str) or not isinstance(directory, str):
+                return None
+            title = arguments["title"]
+            # Slug titles have the same filename under either backend filename setting.
+            exact_write_path = f"{directory.strip('/')}/{title}.md".lstrip("/") if re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", title) else None
+            identifier = exact_write_path or title
+        if not isinstance(identifier, str) or not identifier.strip():
+            return None
+        guard = {"project_id": project_id, "identifier": identifier, "file_path": None,
+                 "aliases": [identifier], "arguments": dict(arguments), "retry_safe": False, "response_lost": False}
+        note = await self.read_target(guard)
+        if name == "write_note" and (not exact_write_path or note.get("file_path") != exact_write_path):
+            # Title resolution is only a receipt discovery hint, never a path precondition.
+            note = {"error": "NOTE_NOT_FOUND"}
+        if not note.get("error") and not authoritative(note):
+            raise ToolError("RECONCILIATION_PARTIAL_STATE: accepted content and checksum disagree. Request was not dispatched.")
+        if authoritative(note):
+            guard.update({
+                "identifier": note["file_path"], "file_path": note["file_path"], "checksum": note["checksum"],
+                "previous_receipt": note["frontmatter"].get(RECEIPT),
+                "aliases": [value for value in (identifier, note.get("title"), note.get("permalink"), note["file_path"]) if value],
+            })
+        if name in ("write_note", "edit_note"):
+            metadata = arguments.get("metadata")
+            if metadata is not None and not isinstance(metadata, dict):
+                return None
+            forwarded = guard["arguments"]
+            forwarded["metadata"] = {**(metadata or {}), RECEIPT: operation_id}
+            forwarded["project_id"] = project_id
+            forwarded.pop("workspace", None)
+            if guard["file_path"] and (name == "edit_note" or arguments.get("overwrite") is True):
+                forwarded.setdefault("expected_checksum", guard["checksum"])
+                if forwarded["expected_checksum"] is None:
+                    forwarded["expected_checksum"] = guard["checksum"]
+                guard["retry_safe"] = True
+            elif name == "write_note" and arguments.get("overwrite") is False:
+                guard["retry_safe"] = True
+                guard["create_only"] = True
+            elif name == "write_note" and arguments.get("overwrite") is True and isinstance(arguments.get("expected_checksum"), str) and arguments["expected_checksum"]:
+                guard["retry_safe"] = True
+        self.journal.prepare(operation_id, guard)
+        return guard
+
+    def conflicts(self, guard):
+        for row in self.read_journal(self.journal.uncertain):
+            other = json.loads(row["reconciliation"]) if row["reconciliation"] else None
+            if not guard or not other:
+                return True
+            if guard["project_id"] != other["project_id"]:
+                continue
+            if guard.get("previous_receipt") == row["operation_id"]:
+                return True
+            if guard["file_path"] and other["file_path"]:
+                if guard["file_path"] == other["file_path"]:
+                    return True
+            else:
+                return True
+        return False
+
+    async def reconcile(self, operation_id, guard):
+        if not guard or not self.proxy or self.failed:
+            return None
+        try:
+            note = await self.read_target(guard)
+        except Exception as cause:
+            LOG.warning("Readback for %s failed: %s", operation_id, cause)
+            return None
+        if authoritative(note) and note["frontmatter"].get(RECEIPT) == operation_id:
+            diagnostic = {
+                "reconciled": True, "outcome": "applied", "title": note.get("title"),
+                "file_path": note["file_path"], "permalink": note.get("permalink"), "checksum": note["checksum"],
+            }
+            result = self.result(operation_id, ToolResult(
+                content=json.dumps(diagnostic), structured_content={"result": diagnostic},
+            ))
+            self.journal.resolve(operation_id, "applied", {
+                "file_path": note["file_path"], "checksum": note["checksum"], "receipt": operation_id,
+                "scope": "accepted note content, not completion of derived indexing or materialization",
+            }, result, automatic=True)
+            self.resolved.set()
+            return result
+        return None
 
     @staticmethod
     def result(operation_id, value, error=False):
@@ -286,7 +494,7 @@ class WritePolicy(Middleware):
             try:
                 remaining = self.queue_timeout if deadline is None else max(0, deadline - time.time())
                 async with asyncio.timeout(remaining):
-                    if not allow_blocked and not recovering:
+                    if not recovering:
                         await self.recovery_ready.wait()
                     await self.lock.acquire()
             except TimeoutError:
@@ -329,7 +537,7 @@ class WritePolicy(Middleware):
             return await call_next(context)
         operation_id = None
         try:
-            if self.blocked:
+            if self.failed:
                 raise ToolError("QUEUE_BLOCKED: prior write outcome is unknown. Request was not dispatched. Admission was refused.")
             capacity = self.max_queue + (0 if self.lock.locked() else 1)
             operation_id = self.journal.enqueue(
@@ -337,10 +545,22 @@ class WritePolicy(Middleware):
             )
             LOG.info("Durably admitted mutation %s (%s)", operation_id, context.message.name)
             deadline = self.read_journal(self.journal.get, operation_id)["deadline"]
-            async with self.mutation(deadline=deadline):
+            async with self.mutation(deadline=deadline, allow_blocked=True):
                 if time.time() >= deadline:
                     raise TimeoutError
-                return await self.execute(operation_id, lambda: call_next(context))
+                if self.failed:
+                    raise ToolError("QUEUE_BLOCKED: journal persistence failed. Request was not dispatched.")
+                async with asyncio.timeout(max(0, deadline - time.time())):
+                    guard = await self.prepare(operation_id, context.message.name, context.message.arguments or {})
+                    for row in self.read_journal(self.journal.uncertain):
+                        saved = json.loads(row["reconciliation"]) if row["reconciliation"] else None
+                        await self.reconcile(row["operation_id"], saved)
+                if self.conflicts(guard):
+                    raise ToolError("QUEUE_BLOCKED: this target has an unresolved write. Request was not dispatched.")
+                forwarded = context if guard is None else context.copy(
+                    message=context.message.model_copy(update={"arguments": guard["arguments"]}),
+                )
+                return await self.execute(operation_id, lambda: call_next(forwarded), guard)
         except (TimeoutError, ToolError) as cause:
             if operation_id is None or self.failed:
                 raise
@@ -355,43 +575,94 @@ class WritePolicy(Middleware):
                 self.transition(operation_id, "cancelled", self.result(operation_id, "Cancelled before dispatch.", True))
             raise
 
-    async def execute(self, operation_id, call):
+    async def execute(self, operation_id, call, guard=None):
+        had_uncertainty = self.read_journal(self.journal.get, operation_id)["state"] == "unknown"
         self.transition(operation_id, "dispatched")
         self.active_operation = operation_id
         try:
             # A caller disconnect must not free the lane before outcome persistence.
             with anyio.CancelScope(shield=True):
-                try:
-                    with anyio.fail_after(self.write_timeout):
-                        result = await call()
-                except TimeoutError:
-                    return self.block(operation_id, "ACTIVE_WRITE_TIMEOUT: active response deadline expired")
-                except asyncio.CancelledError:
-                    self.block(operation_id, "Active write was interrupted")
-                    raise
-                except (NotFoundError, ValidationError) as cause:
-                    result = self.result(operation_id, f"WRITE_REJECTED: {cause}", True)
-                    self.transition(operation_id, "rejected", result)
-                    return result
-                except Exception:
-                    return self.block(operation_id, "Active write transport or protocol failed")
-                result = self.result(operation_id, result)
-                self.transition(operation_id, "unknown" if outcome_unknown(result) else "completed", result)
-                if outcome_unknown(result):
-                    LOG.error("Operation %s reported EDIT_OUTCOME_UNKNOWN; mutations remain blocked.", operation_id)
-                return result
+                expires = time.monotonic() + self.write_timeout
+                for attempt in range(len(self.retry_delays) + 1):
+                    uncertain = False
+                    prior_response_lost = had_uncertainty or (guard.get("response_lost", True) if guard else True)
+                    if guard:
+                        guard["response_lost"] = True
+                        self.journal.prepare(operation_id, guard)
+                    try:
+                        with anyio.fail_after(max(0, expires - time.monotonic())):
+                            result = self.result(operation_id, await call())
+                    except asyncio.CancelledError:
+                        self.block(operation_id, "Active write was interrupted")
+                        raise
+                    except (NotFoundError, ValidationError) as cause:
+                        if attempt or had_uncertainty:
+                            return self.block(operation_id, f"Recovery dispatch rejected: {cause}")
+                        result = self.result(operation_id, f"WRITE_REJECTED: {cause}", True)
+                        self.transition(operation_id, "rejected", result)
+                        return result
+                    except Exception as cause:
+                        result = self.block(operation_id, f"Active write response failed ({type(cause).__name__})")
+                        uncertain = True
+                    if not uncertain and guard:
+                        guard["response_lost"] = prior_response_lost or outcome_unknown(result)
+                        self.journal.prepare(operation_id, guard)
+                    if not uncertain and not outcome_unknown(result) and not lock_timeout(result):
+                        if (attempt or had_uncertainty) and result.is_error:
+                            self.transition(operation_id, "unknown", result)
+                            settled = await self.reconcile(operation_id, guard)
+                            if settled:
+                                return settled
+                            # A conflict after a lost response does not prove the first attempt failed.
+                            return self.block(operation_id, "Guarded retry rejected without an operation receipt")
+                        self.transition(operation_id, "completed", result)
+                        return result
+                    if not uncertain:
+                        self.transition(operation_id, "unknown", result)
+                    settled = await self.reconcile(operation_id, guard)
+                    if settled:
+                        return settled
+                    can_retry = guard and guard["retry_safe"]
+                    if guard and guard.get("create_only"):
+                        can_retry = can_retry and not guard["response_lost"] and lock_timeout(result) and not outcome_unknown(result)
+                    if not can_retry or attempt == len(self.retry_delays):
+                        if guard and guard["file_path"] and not guard["response_lost"] and lock_timeout(result):
+                            try:
+                                note = await self.read_target(guard)
+                            except ToolError as cause:
+                                LOG.warning("Final lock readback for %s failed: %s", operation_id, cause)
+                                return result
+                            if authoritative(note) and note["checksum"] == guard.get("checksum"):
+                                failure = self.result(operation_id, "WRITE_NOT_APPLIED: lock retries exhausted. Accepted revision is unchanged.", True)
+                                self.journal.resolve(operation_id, "not_applied", {
+                                    "checksum": note["checksum"], "file_path": note["file_path"],
+                                    "reason": "all dispatched workers returned and the accepted base revision is unchanged",
+                                }, failure, automatic=True)
+                                return failure
+                        return result
+                    delay = self.retry_delays[attempt]
+                    if time.monotonic() + delay >= expires:
+                        return result
+                    LOG.warning("Retrying guarded operation %s after uncertain/locked result (attempt %s).", operation_id, attempt + 2)
+                    await asyncio.sleep(delay)
+                    self.transition(operation_id, "dispatched")
         finally:
             self.active_operation = None
 
     async def recover(self, proxy):
+        self.proxy = proxy
         try:
+            async with self.mutation(allow_blocked=True, recovering=True):
+                for row in self.read_journal(self.journal.uncertain):
+                    guard = json.loads(row["reconciliation"]) if row["reconciliation"] else None
+                    if await self.reconcile(row["operation_id"], guard):
+                        continue
+                    record = self.read_journal(self.journal.get, row["operation_id"])
+                    if guard and guard["retry_safe"] and not guard.get("create_only") and record["deadline"] > time.time():
+                        await self.execute(row["operation_id"], lambda record=record, guard=guard: proxy.call_tool(
+                            record["name"], guard["arguments"], run_middleware=False,
+                        ), guard)
             for record in self.recovery_records:
-                while self.blocked:
-                    self.resolved.clear()
-                    try:
-                        await asyncio.wait_for(self.resolved.wait(), max(0, record["deadline"] - time.time()))
-                    except TimeoutError:
-                        break
                 if record["deadline"] <= time.time():
                     self.transition(record["operation_id"], "expired", self.result(
                         record["operation_id"], "QUEUE_TIMEOUT: persisted wait expired before recovery dispatch.", True,
@@ -415,25 +686,64 @@ class WritePolicy(Middleware):
                                 await asyncio.sleep(1)
                     if tool is None:
                         continue
-                    async with self.mutation(deadline=record["deadline"], recovering=True):
-                        arguments = json.loads(self.read_journal(self.journal.get, record["operation_id"])["arguments"])
+                    async with self.mutation(deadline=record["deadline"], recovering=True, allow_blocked=True):
+                        saved = self.read_journal(self.journal.get, record["operation_id"])
+                        arguments = json.loads(saved["arguments"])
                         if time.time() >= record["deadline"]:
                             raise TimeoutError
+                        try:
+                            async with asyncio.timeout(max(0, record["deadline"] - time.time())):
+                                guard = await self.prepare(record["operation_id"], record["name"], arguments)
+                        except ToolError as cause:
+                            if self.failed:
+                                raise
+                            self.transition(record["operation_id"], "rejected", self.result(record["operation_id"], str(cause), True))
+                            continue
+                        if self.conflicts(guard):
+                            self.transition(record["operation_id"], "rejected", self.result(
+                                record["operation_id"], "QUEUE_BLOCKED: affected target has an unresolved write. Not dispatched.", True,
+                            ))
+                            continue
                         await self.execute(record["operation_id"], lambda: proxy.call_tool(
-                            record["name"], arguments, run_middleware=False,
-                        ))
+                            record["name"], guard["arguments"] if guard else arguments, run_middleware=False,
+                        ), guard)
                 except (TimeoutError, ToolError) as cause:
                     if not isinstance(cause, TimeoutError) and not str(cause).startswith("QUEUE_TIMEOUT:"):
                         raise
                     self.transition(record["operation_id"], "expired", self.result(
                         record["operation_id"], "QUEUE_TIMEOUT: persisted wait expired before recovery dispatch.", True,
                     ))
-            self.recovery_ready.set()
         except asyncio.CancelledError:
             raise
         except Exception:
             self.failed = True
             LOG.exception("Durable queue recovery failed; mutation admission is blocked.")
+        finally:
+            self.recovery_ready.set()
+
+    async def reconcile_pending(self):
+        while True:
+            await asyncio.sleep(5)
+            try:
+                if self.failed or not self.read_journal(self.journal.unknown):
+                    continue
+                async with self.mutation(allow_blocked=True, recovering=True):
+                    for row in self.read_journal(self.journal.uncertain):
+                        guard = json.loads(row["reconciliation"]) if row["reconciliation"] else None
+                        await self.reconcile(row["operation_id"], guard)
+            except asyncio.CancelledError:
+                raise
+            except (sqlite3.Error, OSError):
+                self.persistence_failure()
+                return
+            except ToolError as cause:
+                LOG.warning("Pending reconciliation deferred: %s", cause)
+                if self.failed:
+                    return
+            except Exception:
+                self.failed = True
+                LOG.exception("Automatic reconciliation failed; mutation admission is blocked.")
+                return
 
     async def resolve(self, operation_id, outcome, evidence, backend_restarted):
         if not backend_restarted or not evidence.strip():
@@ -506,6 +816,7 @@ def create_app(backend_url, policy=None, max_body_bytes=64 * 1024 * 1024):
         provider_error_strategy="raise", mask_error_details=False, tasks=False,
     )
     proxy.add_middleware(policy)
+    policy.proxy = proxy
 
     @proxy.tool
     async def memory_queue_status(operation_id: str | None = None, before_sequence: int | None = None) -> dict:
@@ -520,8 +831,8 @@ def create_app(backend_url, policy=None, max_body_bytes=64 * 1024 * 1024):
     async def memory_queue_resolve(
         operation_id: str, outcome: Literal["applied", "not_applied"], evidence: str, backend_restarted: bool,
     ) -> dict:
-        """User-authorized reconciliation only: confirm the previous backend stopped and read the target via MCP.
-        Record whether the uncertain write applied. Never replay it. This unblocks later queued writes.
+        """Manual fallback only, with explicit user approval: stop the prior backend and read the exact target via MCP.
+        Automatic receipt reconciliation normally settles note writes. This resolves remaining ambiguous outcomes.
         """
         return await policy.resolve(operation_id, outcome, evidence, backend_restarted)
 
@@ -538,11 +849,13 @@ def create_app(backend_url, policy=None, max_body_bytes=64 * 1024 * 1024):
     async def lifespan(app):
         async with original_lifespan(app) as state:
             recovery = asyncio.create_task(policy.recover(proxy))
+            reconciliation = asyncio.create_task(policy.reconcile_pending())
             try:
                 yield state
             finally:
                 recovery.cancel()
-                await asyncio.gather(recovery, return_exceptions=True)
+                reconciliation.cancel()
+                await asyncio.gather(recovery, reconciliation, return_exceptions=True)
                 policy.journal.close()
 
     app.router.lifespan_context = lifespan

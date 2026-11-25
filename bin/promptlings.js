@@ -28,6 +28,10 @@ function printPlan(options) {
   }
   if (steps.memory) {
     console.log(`Basic Memory: login startup=${on(options.startup)}, backend port=${options.memoryPort}, MCP proxy port=${options.memoryProxyPort}, skills=${on(options.skills)}.`);
+    console.log(`Memory storage: ${options.memoryBackend || "preserve existing backend, otherwise SQLite"}.`);
+    if (options.memoryBackend === "postgres") {
+      console.log(`Dedicated pgvector Postgres container: loopback port=${options.memoryPostgresPort}, persistent volume, generated credentials. Requires Docker running. Reindexes Markdown before service startup.`);
+    }
   }
   for (const notice of options.notices ?? []) console.log(notice);
   console.log("Agent, skill and memory files go to your home directory and global agent configuration. No repository files are changed.");
