@@ -36,15 +36,21 @@ Inspect both `failures` and every returned `taskArn` at launch. Do not wait on a
 
 ## Lambda: inspect the invocation response
 
-Use a version-qualified function ARN with an approved event payload. Check its configured timeout, supported invocation mode and output size first. For a synchronous request, choose `READ_SECONDS` longer than the function timeout and a fresh local response file:
+Use a numbered function version and an approved event payload. Check the invocation mode, timeout and output size first. Choose **one** launch form. For an ordinary synchronous function only, use the single-attempt settings above, `READ_SECONDS` longer than the function timeout and a fresh local response file:
 
 ```text
 aws lambda invoke --profile PROFILE --region REGION --function-name QUALIFIED_ARN --invocation-type RequestResponse --cli-read-timeout READ_SECONDS --payload fileb://EVENT.json RESPONSE.json
 ```
 
-Check CLI success, `FunctionError`, the executed version and the application response. HTTP 200 with `FunctionError` is a failed invocation. An asynchronous `Event` acceptance is not completion. Use it only if there is an existing, correlated completion or failure destination. Never invoke again solely because the client disconnected.
+If this ordinary invocation loses its response, a run key in the event is not a recoverable execution ID. Lambda's default logs record an AWS request ID, not the event key. Use independent evidence, such as a workload result or log recording the key and outcome. Without it, report the outcome unknown and do not retry.
 
-For ordinary synchronous invocations, a run key in the event is not a recoverable execution ID. Lambda's default logs record an AWS request ID, not the event key. If the response is lost, use independent evidence, such as a workload result or log that records the run key and outcome. Without it, report the outcome unknown and do not retry. For a directly invoked **durable function**, `--durable-execution-name` is a provider idempotency key for starting that execution with the same payload within retention. It does not make the function's individual steps exactly once.
+For a directly invoked **durable function**, record a unique `EXECUTION_NAME`, the numbered function ARN and the immutable event **before the first request**. Supply that name on the initial call and reuse it with the same payload and target for retries within retention. An unnamed retry, or reuse after retention expires, can start another execution. The name deduplicates starts, not individual step effects. For work that fits the durable synchronous limit, set `READ_SECONDS` longer than the allowed synchronous execution time:
+
+```text
+aws lambda invoke --profile PROFILE --region REGION --function-name QUALIFIED_ARN --durable-execution-name EXECUTION_NAME --invocation-type RequestResponse --cli-read-timeout READ_SECONDS --payload fileb://EVENT.json RESPONSE.json
+```
+
+For either synchronous form, check CLI success, `FunctionError`, the executed version and the application response. HTTP 200 with `FunctionError` is a failed invocation. If the workload instead requires asynchronous `Event` invocation, acceptance is not completion. Use it only with an existing way to correlate and observe the final outcome.
 
 For all three paths, verify each declared output independently of provider status. Return the ID or invocation correlation, terminal evidence, diagnostic location and recovered files. Keep failed attempts distinguishable. A redelivery must not overwrite a successful attempt's output. Limit any authorized cancellation and teardown to the recorded run, not a shared definition, function, queue or cluster.
 
