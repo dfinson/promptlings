@@ -9,6 +9,8 @@ Bind the subscription ID, resource group and Job name explicitly. Verify the exp
 
 The Job definition can serve many callers. Its name alone does not identify your run. Arrange a unique input and result reference and an approved identity or secret reference before launch. Prefer a run-specific object-store path. An OCI artifact is an alternative only when the workload may push and the caller may pull. Image-pull permission does not establish result-write permission. Do not assume registry administrator credentials or enable them.
 
+For an unproved publication path, use the `remote-container-jobs` batch preflight: the workload identity writes an authorized marker and the caller reads it before launch. Within the run prefix, keep each replica's and retry attempt's files distinct, or use a single publisher that aggregates and checks all expected outputs. One readable file does not prove every producer delivered its result.
+
 ## Follow the execution, not the Job's latest entry
 
 Start the authorized run once. The start response names the execution. Record it immediately. The following command shapes assume the installed CLI supports these flags. Substitute the actual names, including any authorized per-run override at start.

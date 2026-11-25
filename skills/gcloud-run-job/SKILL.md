@@ -9,16 +9,20 @@ Use a Job when the container runs a command and exits. It does not need an HTTP 
 
 Make the input immutable and choose an output location readable by the caller and writable by the workload. Use a run-specific prefix in an approved bucket where possible. For parallel work, distinguish task index and attempt so that a retry does not overwrite a different task's results. Supply non-secret run inputs as execution overrides when permitted, not as permanent updates to the Job. Do not grant IAM permissions or emit secret values to fix a denied override.
 
+For an unproved publication path, use the `remote-container-jobs` batch preflight: the workload identity writes an authorized marker and the caller reads it before launch.
+
 ## Capture this execution
 
-Start once and keep the execution name from **this invocation**. The default command waits for startup, not for completion. `--async` returns earlier. `--wait` waits for completion. For a long run, capture the identity at startup so a local disconnect does not lose the handle.
+Bind a unique run key to the submission, for example with an authorized `--update-env-vars=OFFLOAD_RUN_ID=RUN_KEY` override for a workload that consumes it. The run API creates an execution per accepted request and has no idempotency key. A transport retry can create a second execution even if you issue only one command. For non-repeatable work, require workload-side deduplication of each logical task's effects across executions and retries. A verified single-attempt submission path can address transport replay, but not task retries. Do not launch unless both are accounted for.
+
+Keep the execution name returned by this invocation. The default command waits for startup, not for completion. `--async` returns earlier. `--wait` waits for completion. The example assumes the workload consumes the override:
 
 ```text
-gcloud run jobs execute JOB --project PROJECT --region REGION --format="value(metadata.name)"
+gcloud run jobs execute JOB --project PROJECT --region REGION --update-env-vars=OFFLOAD_RUN_ID=RUN_KEY --format="value(metadata.name)"
 gcloud run jobs executions describe EXECUTION --project PROJECT --region REGION --format="yaml(metadata.name,status)"
 ```
 
-An empty name or interrupted command is not a reason to execute again. If an execution cannot be uniquely correlated with this invocation, report the unknown outcome. Do not substitute `latestCreatedExecution`, which might belong to another caller.
+After a retry, empty name or disconnect, reconcile **all** executions carrying the run key using their effective overrides or workload evidence. Distinguish their attempts and artifacts by execution name as well as task index. If correlation is inconclusive, report the unknown outcome. Do not submit again or substitute `latestCreatedExecution`, which might belong to another caller.
 
 ## Distinguish execution, task and output
 

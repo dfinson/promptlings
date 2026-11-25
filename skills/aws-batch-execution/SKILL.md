@@ -9,6 +9,8 @@ Use the primitive the workload already fits. Choose **AWS Batch** when a queue a
 
 Bind the approved account, profile or role, and region. Check `aws sts get-caller-identity` with that selection and carry it on every call. Confirm the exact definition revision or function version, runtime limits, input version, output destination and permitted workload identity. For large files, pass references and return files through a run-specific object prefix such as an approved S3 location. Do not pass credentials in overrides, change IAM, or create queues and clusters to fit these examples.
 
+For an unproved publication path, use the `remote-container-jobs` batch preflight: the workload identity writes an authorized marker and the caller reads it before launch. For Batch submission and Lambda invocation, set `AWS_RETRY_MODE=standard` and `AWS_MAX_ATTEMPTS=1` in the launch process only. Neither API accepts a client idempotency token. Put the run key in the Job name or event so a lost response can be reconciled without a second submission. Observation calls can keep their normal retries.
+
 ## AWS Batch: identify the job and its attempts
 
 Pass the approved queue and **revision** of the definition. Supply run-specific inputs using the definition's declared parameters. Capture the response's `jobId`, not just the reusable job name.
@@ -34,7 +36,13 @@ Inspect both `failures` and every returned `taskArn` at launch. Do not wait on a
 
 ## Lambda: inspect the invocation response
 
-Use a qualified function ARN with an approved event payload. Check its configured timeout, supported invocation mode and output size first. For a synchronous request, `aws lambda invoke --profile PROFILE --region REGION --function-name QUALIFIED_ARN --invocation-type RequestResponse --payload fileb://EVENT.json RESPONSE.json` writes the payload to the named local file. Choose a fresh destination. Check CLI success, `FunctionError`, the executed version and the application response. HTTP 200 with `FunctionError` is a failed invocation. An asynchronous `Event` acceptance is not completion. Use it only if there is an existing, correlated completion or failure destination. Never invoke again solely because the client disconnected.
+Use a version-qualified function ARN with an approved event payload. Check its configured timeout, supported invocation mode and output size first. For a synchronous request, choose `READ_SECONDS` longer than the function timeout and a fresh local response file:
+
+```text
+aws lambda invoke --profile PROFILE --region REGION --function-name QUALIFIED_ARN --invocation-type RequestResponse --cli-read-timeout READ_SECONDS --payload fileb://EVENT.json RESPONSE.json
+```
+
+Check CLI success, `FunctionError`, the executed version and the application response. HTTP 200 with `FunctionError` is a failed invocation. An asynchronous `Event` acceptance is not completion. Use it only if there is an existing, correlated completion or failure destination. Never invoke again solely because the client disconnected.
 
 For all three paths, verify each declared output independently of provider status. Return the ID or invocation correlation, terminal evidence, diagnostic location and recovered files. Keep failed attempts distinguishable. A redelivery must not overwrite a successful attempt's output. Limit any authorized cancellation and teardown to the recorded run, not a shared definition, function, queue or cluster.
 
