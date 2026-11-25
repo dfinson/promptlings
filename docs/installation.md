@@ -111,7 +111,7 @@ execution is restricted.
 | Component | What the installer provides |
 | --- | --- |
 | Python, uv, Git, and GitHub CLI | Native packages, requiring Python 3.11+ |
-| Basic Memory | Pinned SQLite uv tool, MCP-only memory skills, shared queue proxy, MCP registration, and user-login startup |
+| Basic Memory | Pinned uv tool with SQLite by default, opt-in dedicated Postgres, MCP-only memory skills, shared queue proxy, MCP registration, and user-login startup |
 | Playwright | Global npm application, published skill, and Chrome browser |
 | HyperFrames | Global npm application, published skills, rendering browser, FFmpeg, and FFprobe |
 | Technical Demo | Pinned upstream motion-art-direction and animation-principles skills (HyperFrames skills come from the HyperFrames row) and Markdown production/writing/capture guidance. A reusable user-local runtime for the opt-in Remotion route includes Remotion 4.0.539 (CLI, Player, bundler, renderer and media), React, TypeScript and matching Chrome Headless Shell |
@@ -139,6 +139,8 @@ pinned package dependencies.
 | `--no-startup` | Rejected when installing memory: client-launched servers bypass the shared queue. Use `--no-memory` to omit the service |
 | `--memory-port 8123` | Use a different Basic Memory backend port |
 | `--memory-proxy-port 8124` | Use a different client-facing proxy port (default: backend port + 1) |
+| `--memory-backend postgres` | Opt into a dedicated pgvector Postgres container and reindex Markdown; `sqlite` explicitly selects SQLite. Without this option, preserve the existing backend or default to SQLite |
+| `--memory-postgres-port 5433` | Dedicated Postgres loopback port, only with `--memory-backend postgres`. Port 5432 and the memory service ports are rejected |
 | `--no-playwright` | Skip Playwright CLI, its browser, and skill. Linux Chrome is still required by HyperFrames |
 | `--no-hyperframes` | Skip HyperFrames, media binaries, and skills |
 | `--no-demo` | Skip VS Code, Demo Time, vscode-playwright, motion-art-direction, animation-principles, the Remotion runtime and Headless Shell, LibreOffice, Poppler, and diff2html |
@@ -417,17 +419,51 @@ Stdio-only clients use the pinned `mcp-remote` bridge to the same proxy.
 
 Queued writes wait at most 300 seconds and the queue holds at most 1,000 waiting
 requests. Timeout or queue-full errors state that the request was not dispatched.
-A dispatched write has a ten-minute response limit. Transport failure or a
-server-side HTTP or protocol failure can leave its commit outcome unknown. That blocks
-further writes until explicit reconciliation, including after a restart, while reads remain available.
+A dispatched write has a ten-minute response budget, well above Basic Memory's
+ten-second SQLite lock timeout. The upstream transport allows another minute
+so it does not expire before the proxy. Transport failure or a
+server-side HTTP or protocol failure can leave its commit outcome unknown.
+The proxy reads the accepted note back to reconcile it automatically.
 The same protection applies to MCP error results reporting
 `EDIT_OUTCOME_UNKNOWN` or the default `Edit Outcome Unknown` heading. Middleware
 inspects decoded typed results, not a custom streaming JSON parser. Confirmed
 revision conflicts containing those words in a title or detail remain refusals,
 not unknown outcomes.
-Read the exact target first and reconcile any accepted change before retrying.
-The proxy never automatically retries a dispatched request, including an
-`edit_note` failure after an accepted note commit. Client disconnection does not
+For resolvable `write_note` and `edit_note` requests, the proxy reserves the
+`promptlings_operation_id` frontmatter field and merges its receipt into
+caller metadata. Full JSON MCP readback must contain that exact receipt and a
+SHA-256 matching the accepted content before an uncertain write is marked
+`resolved_applied`. This proves accepted note content, not completion of
+Markdown materialization, indexing or vector synchronization. Basic Memory
+0.24.1's MCP edit path accepts content transactionally before materialization.
+A stale file or mismatched content/checksum is not proof of failure.
+
+Existing-note edits and guarded explicit overwrites reuse the original accepted
+checksum on retries. For `write_note`, the proxy adds a checksum only when an
+exact path read resolves an unchanged lowercase slug filename. Other titles
+retain caller-supplied checksums, but fuzzy title matches never become path
+preconditions. Explicit `overwrite=false` creates can retry a returned lock
+refusal without replacing an existing note. They are not replayed after lost
+or uncertain responses: a delayed creator could otherwise recreate a note
+after a later deletion. At most two retries use 250 ms and
+one-second backoffs within the active response budget. A lost response can
+leave the original worker running, so an unchanged read alone never proves
+that worker failed. Lock errors with returned workers and unchanged accepted
+base content can settle as `resolved_not_applied` after retries are exhausted.
+Omitted overwrite preserves Basic Memory's configured behavior and is not
+assumed safe for automatic replay. Missing-note edits and unresolved targets
+remain manual when readback cannot prove acceptance.
+
+Known target barriers use project UUID and canonical note path, including
+aliases resolved through MCP. Unrelated notes continue through the serialized
+mutation lane. Unknown tools or unresolved identities retain a conservative
+broader barrier rather than risking duplicate edits. This includes title-derived
+write targets whose filenames cannot be established exactly. Receipts are checked
+again before subsequent writes and every five seconds while uncertainty
+remains. Implicit project-bearing edit identifiers keep Basic Memory's native
+routing and ambiguity checks instead of being pinned to a guessed default
+project. Use an explicit project UUID to make those targets reconcilable.
+Client disconnection does not
 cancel an active write: cancellation shielding retains its lane through the
 backend result. Terminating the frontend session can still lose the response
 after a successful commit, so the caller must reconcile the target.
@@ -443,8 +479,9 @@ for isolated deployments and crash tests.
 On restart, definitely undispatched requests resume in their recorded FIFO
 order within their original 300-second deadline. Expired requests remain
 recorded as explicit non-dispatch outcomes. Any recorded dispatch without a
-completed outcome becomes uncertain and blocks later mutations. It is never
-automatically replayed. Queued cancellation is also recorded before dispatch.
+completed outcome becomes uncertain. Recovery first reads back its persisted
+receipt, then may retry only its persisted guarded arguments within the original
+deadline. Ambiguous targets remain blocked. Queued cancellation is also recorded before dispatch.
 Completed results persist before returning to the caller, so a response lost
 in a crash can be retrieved without executing the write again.
 
@@ -460,13 +497,14 @@ find the exact request through the status history and inspect its stored
 arguments before retrying. Do not assume identical requests came from the
 same caller.
 
-Only with explicit user approval, stop the previous backend worker through
+When automatic reconciliation cannot settle an operation, only with explicit
+user approval, stop the previous backend worker through
 the managed service and read the exact target through MCP. Then call
 `memory_queue_resolve` with the uncertain operation ID, `outcome=applied` or
 `outcome=not_applied`, the readback evidence and `backend_restarted=true`.
-Resolution records the finding and unblocks later queued writes. It never
-replays the uncertain request. A verified `not_applied` outcome permits a
-separately requested new write, not an automatic retry.
+Manual resolution records the finding and releases the remaining barrier. It
+does not dispatch a replay. A manually verified `not_applied` outcome permits
+a separately requested new write.
 
 The journal contains full requests and results and is retained without
 automatic pruning. Keep it private with the user's managed runtime.
@@ -636,7 +674,8 @@ the external artifact directory above, with the same 14-day expiry.
 
 ### Durable queue crash acceptance
 
-Real crash/restart acceptance on this Windows host on 2026-11-23 used
+Historical acceptance of the earlier manual-reconciliation gateway on this
+Windows host on 2026-11-23 used
 Basic Memory 0.24.1, FastMCP 4.1.3 and two materialization workers.
 It killed the isolated gateway process tree at two confirmed commit boundaries,
 using the real installed backend and a separate durable journal.
@@ -657,7 +696,9 @@ The report is
 `durable-crash-acceptance\a79183d1-29d9-43e8-a7f3-bc9c7c93b8b6\memory-crash.json`
 beneath the external artifact directory above, with the same 14-day expiry.
 
-To repeat this Windows acceptance, pause other memory writers and select an
+The following legacy Windows acceptance exercises manual fallback and changes
+the managed service. It is not evidence for automatic receipt reconciliation.
+Run it only with explicit authorization, pause other memory writers and select an
 already installed, isolated Python containing the pinned FastMCP dependency:
 
 ```powershell
@@ -851,6 +892,70 @@ and its qualifications rather than treating a search snippet as the complete rul
 
 Provider accounts, secrets, licensed assets, and narration voice choices remain
 separate production inputs.
+
+## Opt-in Postgres memory storage
+
+SQLite remains the default. To provision a separate Postgres backend, first
+install and start Docker, then run:
+
+```sh
+npx promptlings memory --memory-backend postgres --yes
+```
+
+The installer uses the `pgvector/pgvector:pg17` image tag, a persistent named
+volume, and loopback port `5433`. Use `--memory-postgres-port 6543` to select
+another dedicated port. Port `5432` is forbidden: the installer never adopts
+the Nexus Postgres service or any unrelated database. Container and volume
+names are derived from the resolved Basic Memory config directory. Reuse
+requires matching ownership labels, the configured image tag, loopback port mapping,
+the persistent volume, and saved credentials. A mismatch fails without deleting
+or replacing resources. The container uses `unless-stopped` restart policy,
+but Docker must be running for memory to work.
+
+A generated password is retained in `promptlings-postgres.json` alongside Basic
+Memory's `config.json`. Both files contain credentials: protect them and do not
+commit or paste them into logs. The installer restricts credential files to the
+current user (POSIX mode `0600` or a Windows user-only ACL). Passwords are passed
+to Docker through the child environment, not printed command arguments or the
+installation plan. Docker administrators can still inspect container credentials.
+Basic Memory v0.24.1 logs the full database URL, including its password, at INFO.
+Treat backend logs as secret-bearing too; restrict access and do not commit or
+share them without redacting credentials.
+Back up these files together with the volume and Markdown;
+do not remove the credential file while keeping the container or volume.
+
+The explicit choice sets `database_backend` to `postgres`, `database_url` to
+`postgresql+asyncpg://user:pass@127.0.0.1:PORT/basic_memory`, and
+`semantic_vector_index` to `pgvector`. Basic Memory 0.24.1 includes its Postgres
+drivers in the base package; there is no Postgres extra to install.
+Its migrations create `pg_trgm` and database initialization creates vector storage.
+After database readiness and authentication checks, the installer runs
+`basic-memory reindex --full --project <name>` once for each configured local
+Markdown project, including legacy string entries and cloud projects with a
+`local_sync_path`. Cloud-only projects without `local_sync_path` are excluded.
+Each reindex invocation first reconciles `config.json` into the selected database,
+creating missing local project records before looking up the named project.
+Existing SQLite registrations are not required, and no separate project-add
+command is needed. With no local projects, it runs `basic-memory reindex --full`
+to initialize the fresh database. If reconciliation fails and a named project
+remains unregistered, its rebuild fails explicitly rather than allowing a global
+rebuild to succeed on zero registered projects. Rebuilds finish before starting
+the MCP service or registering clients. A failed rebuild stops installation without deleting the
+database, volume, credentials, or Markdown. This is a rebuild from Markdown,
+not a transfer of SQLite-only metadata or identifiers. The old SQLite files
+remain untouched. Back up existing memory before switching.
+
+Without `--memory-backend`, reinstallation preserves an existing non-SQLite
+backend and URL; it does not provision or take ownership of that database.
+Use `--memory-backend sqlite` to explicitly select SQLite and clear the stored
+database URL. Database or semantic-index environment overrides must be removed
+before an explicit backend choice, since they would override the installer
+configuration. Rerunning the Postgres option uses the same credentials and
+resources, and repeats the full rebuild. Switching an existing dedicated
+container to another port is not automated.
+
+Installer-owned CLI use is limited to setup and maintenance. Agents must
+continue using the Promptlings-managed Basic Memory MCP proxy, never the CLI.
 
 ## Manual installation
 
