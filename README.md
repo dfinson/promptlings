@@ -224,19 +224,21 @@ Starlight, built as a locally served reading site.
 Other proposals and media approval briefings retain standalone HTML.
 Explicit conversation-only requests and tracker formats still win. The
 [document guidance](skills/design-writing/references/html-specifications.md)
-covers one navigation hierarchy, library-owned layout and controls,
-light/dark appearance, bundled assets, accessible reading and printing.
-Figures and short explanations lead the reader through the proposal while
-exact requirements remain visible.
+covers a single right-hand contents list, few headings, deliberately designed
+components with contrast-checked colors, legible diagrams, light/dark
+appearance, bundled assets, accessible reading and printing. Screens, stepped
+diagrams and cards lead the reader; prose is the last resort, each fact
+appears once and exact requirements remain visible.
 
 Existing-UI changes can use matched actual-current/proposed views. Current
 remains untouched, while Proposed carries meaningful clickable explanations.
 Essential behavior and acceptance remain visible outside annotations.
 
 Every intent document begins with a clear top-down overview before its detail
-and ends with a shorter synthesis of the outcome, approach and commitment.
-This applies to specifications and demo/script briefings across formats.
-The framing helps the reader understand and own the proposal, without
+and closes with the reader's actual decision. A demo/script briefing closes with
+a shorter synthesis of the outcome, approach and commitment. A visual
+specification's opening screen already carries that picture, so it closes in
+one line. The framing helps the reader understand and own the proposal, without
 changing verbatim narration or adding boilerplate to routine comments.
 
 Engineering synthesis comes first: select the smallest coherent mechanism
@@ -252,14 +254,19 @@ reset, not authorization or a backend. Explicit offline delivery requires a
 verified self-contained copy. This is one proposal at one source revision,
 not a second independently maintained plan.
 
-When team collaboration is requested, Spec Master follows the
-[contextual review contract](skills/spec-delivery/references/collaborative-review.md).
-Share through an access-controlled dev tunnel, establish reviewer attribution,
-and store shared comments and answers outside temporary builds. Reviewers
-annotate passages, discuss screens, answer questions beside their consequences,
-or raise something missing. "Read all feedback" retrieves complete threads and
-their document context, reconciles them with the intended scope, and accounts for
-each item in the revised spec. Picks and resolved threads do not confer approval.
+Every specification site is commentable. Spec Master follows the
+[contextual review contract](skills/spec-delivery/references/collaborative-review.md),
+establishes reviewer attribution and records a durable feedback store outside
+temporary builds before the first build, so it always knows where to read.
+Sharing through an access-controlled dev tunnel is an option, not the default.
+Reviewers annotate passages, discuss screens, answer questions beside their
+consequences, or raise something missing. When you review alone on localhost,
+Spec Master acts on each comment as it arrives and replies on the note. With
+several reviewers it reads the store when asked or when resuming the spec, and
+live watching is opt-in. "Read all feedback" retrieves
+complete threads and their document context, reconciles them with the intended
+scope, and accounts for each item in the revised spec. Picks and resolved
+threads do not confer approval.
 Verify the shared route and owner readback before presenting it to the team.
 
 To agree on a proposal before implementing it, select Spec Master or ask your

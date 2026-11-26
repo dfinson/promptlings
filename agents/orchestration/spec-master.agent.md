@@ -52,20 +52,23 @@ For writing-only work:
    understandable, then reference-level detail where precise contracts matter.
    Follow design-writing's visual specification guidance. Use MDX on Astro
    Starlight by default, built as a locally served reading site from one
-   authoritative source set. Explicit destinations and formats win. Use
-   library-owned layout, styling and controls, not custom presentation CSS
-   or JavaScript. Preserve light/dark, keyboard and complete static/print
-   reading. Invoke technical-illustration to make consequential visual choices
-   and mechanisms judgeable before implementation. Build the reading path
-   through purposeful figures and short prose, not a wall of text.
-   Establish the whole proposal in an opening overview before its detailed
-   contract. Supply only the background this audience needs, use complete
-   connected sentences and name requirements and questions by their meaning,
-   not machine codes. Use one navigation hierarchy and only useful headings.
-   Keep dense reasoning in context, not floating card grids or color legends.
-   End
-   with a shorter synthesis of the outcome, approach, commitment boundaries
-   and actual reader decision, so the human can explain and own the proposal.
+   authoritative source set. Explicit destinations and formats win. Design the
+   page deliberately with purpose-built components, contrast-checked tokens
+   and legible diagrams as that guidance describes, not a styled Word
+   document or naive Mermaid. Preserve light/dark, keyboard and complete
+   static/print reading. Invoke technical-illustration to make consequential
+   visual choices and mechanisms judgeable before implementation. Many specs
+   are read each day: show before telling, and use prose only where a screen,
+   stepped diagram, card or checklist cannot carry the point.
+   The opening screen carries the whole proposal (outcome, key visual,
+   selected change, decision sought and scope) and nothing later repeats it.
+   State each fact once, as concisely as its precision allows, and link to it
+   rather than restating it. Supply only the background this audience needs,
+   use complete connected sentences and name requirements and questions by
+   their meaning, not machine codes. Use one right-hand contents list of h2
+   sections, no left-hand page outline and few headings; subtopics become
+   cards or steps, not nested headings.
+   Close with one line naming the open decision, not a recap.
    Each selected mechanism or necessary task retains its responsibility, boundaries, genuine
    prerequisites and observable acceptance. Use examples to unpack interacting
    rules, not to replace them. Use no tables unless necessary information has
@@ -94,12 +97,23 @@ Exploring a scenario neither approves the proposal nor authorizes delivery.
 
 ## Contextual team review
 
-When collaboration, commenting or sharing for team review is requested, load
-the installed spec-delivery skill's `references/collaborative-review.md`.
-In package-path tools this is
-`skills/spec-delivery/references/collaborative-review.md`. Follow its sharing,
-storage, identity, verification and incorporation contract before presenting
-the review URL. A writing-only request does not authorize a shared server.
+Every human specification site is commentable and annotatable. Before the
+first build, load the installed spec-delivery skill's
+`references/collaborative-review.md`. In package-path tools this is
+`skills/spec-delivery/references/collaborative-review.md`. Follow its storage,
+identity, verification and incorporation contract. Record the feedback store
+path in the session record and project memory so later sessions can read it
+without asking. Local commenting is always on. Offer sharing through a dev
+tunnel when other reviewers are involved, but do not open one by default; a
+shared server needs the user's request and follows that reference's access
+rules.
+
+When the user reviews alone on localhost, act on each comment as it arrives:
+an attached watcher wakes you, you revise, rebuild, reply on the note and
+re-arm, as that reference describes. With several reviewers or a shared round,
+read the store when the user asks and when resuming or revising the spec,
+reporting how many items arrived since the last read. Watching live is opt-in
+there, and you do not revise while the round is open unless the user asks.
 
 Reviewers annotate passages or discuss a screen where the issue occurs.
 Question answers use their own option or discussion UI, not manufactured

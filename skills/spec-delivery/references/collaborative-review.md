@@ -1,9 +1,58 @@
 # Contextual specification review
 
-Use this contract when the user requests team collaboration, shared commenting
-or incorporation of a specification's feedback. It extends specification work,
-not product implementation or permission to publish private material publicly.
+Every human specification site is commentable and annotatable. Apply this
+contract to every such spec, not only on request. Local commenting is the
+default. Sharing beyond the user's machine, for example through a dev tunnel,
+is an option the user chooses. This contract extends specification work, not
+product implementation or permission to publish private material publicly.
 Explicit destinations, access restrictions and script/test authoring rules win.
+A conversation-only or tracker-format spec uses that destination's own comment
+mechanism instead.
+
+## Know where feedback lives before building
+
+Choose the feedback store before the first build and record it in the session
+record and project memory. Default to
+`%USERPROFILE%\Documents\spec-reviews\<spec-slug>\` (or the platform's
+documents folder), with `notes\` for annotations and threads and `answers\` for
+question answers. Never use the build output, the spec source tree or an
+expiring artifact directory such as `C:\agent-artifacts`. The reading site's
+"How to comment" panel names the review round, and the agent can always find
+feedback from the recorded store path without asking the user.
+
+Answers use a stable, versioned record so they can be parsed without the site:
+a schema version and one entry per submission with its stable ID, question ID,
+reviewed version, time, reviewer name and client ID, picks keyed by option
+group and the optional explanation. Notes keep the library's record with its
+quote, selector context, thread and resolution state.
+
+## Ingest feedback on a defined trigger
+
+The trigger depends on who is reviewing.
+
+**Single reviewer on localhost (the default local review).** Act on each comment
+as it arrives. Run a finite watcher in the spec's workspace that waits on the
+store with the platform's file-change notification (no polling or sleep loop),
+debounces briefly, prints each changed record and exits. Run it as an attached
+async shell so its exit wakes the agent. On wake, read the full record and its
+passage, revise the source within scope, rebuild, reply on the note with the
+disposition through the annotations API, then re-arm the watcher. Your own reply
+also changes the store, so skip records you authored and IDs already handled.
+Stop the watcher when the user ends the review.
+
+**Several reviewers, or any shared round.** Read the store when the user asks
+("read the feedback", "incorporate comments", "what did people say") and at the
+start of any resumed session or revision of the spec. On resume, report how many
+items arrived since the last watermark before doing other spec work. Do not
+revise while the round is open unless the user asks: reviewers are still
+responding and early picks are not consensus. Watching live is opt-in; when
+enabled, report new items as they arrive and still revise only on request.
+
+Each ingestion produces a digest grouped by page and question. It keeps each
+reviewer's latest pick per option group while preserving the history, quotes
+each annotated passage and carries stable IDs and the reviewed version. The
+digest is navigation; incorporation follows the full records below. Never copy
+reviewer content into a PR body or an unrelated project.
 
 ## Prepare one reviewable version
 
@@ -13,49 +62,77 @@ revision or exact-byte hashes for the complete source/asset set and build.
 Record the source-to-build mapping and review-round identifier. Schema versions,
 build times and a mutable URL are not reviewed-version identities.
 
-Use library-owned presentation and existing collaboration tools or supported
-public integrations in the authorized external workspace. For Starlight,
-starlight-annotations is a candidate for quote-anchored notes, replies, an
-overview and server-backed storage. Verify the installed version and supported
-storage/auth adapter. Do not invent exports, assume browser-local storage is
-shared, or copy a task-specific server into Promptlings.
+Use existing collaboration integrations in the spec's external workspace. For
+Starlight, starlight-annotations provides quote-anchored notes, replies, an
+overview and server-backed storage, served by a small local server for the site
+and its feedback routes. Verify the installed version and its storage and auth
+adapter. Do not invent exports, assume browser-local storage is shared, or copy
+a task-specific server into Promptlings. Question answers and screen
+discussions may use purpose-built components that write to the same store.
+
+A verified local setup (starlight-annotations 0.5.1, Starlight 0.43): one
+`node:http` server passes requests to `createAnnotationsHandler` with
+`fsStorage` pointed at the recorded store (through `toNodeMiddleware`), and
+everything it does not handle falls through to a static server for the build
+output. A single local reviewer uses `staticAuth` with the owner's name, so
+there is no sign-in. Notes are one JSON file per page, keyed by the URL path
+without its trailing slash (the home page is `index`). The API lives under
+`/_annotations`; threads are flat, so a reply targets the root note ID. Writes
+must come from the served origin, so bind and browse on `127.0.0.1`
+consistently rather than mixing in `localhost`. Serve only through this
+server: a leftover `astro preview` on the same port answers instead and looks
+like a broken site. Stop it by its owned process ID.
+
+Snapshot each distinct build's pages, keyed by a hash of their contents, beside
+the store (not in the build output), so every note can be read against the
+version it was written on. Acting on comments as they arrive produces many
+versions, and this keeps each disposition traceable.
 
 If a required integration is missing, preserve the readable spec and name the
-blocked capability. Do not substitute a static mock, a custom widget or a new
-script, test suite or service without the authority required to create it.
+blocked capability. Do not substitute a static mock that looks commentable.
 
 ## Put feedback where the question occurs
 
-Make text commenting discoverable through the library's selection or paragraph
-control, with a short instruction or library-backed demonstration near entry.
-Preserve keyboard and touch access, not only a hover trigger. Notes retain their
-passage, surrounding selector context, author, time, stable ID and complete
-thread, including reply-to relationships and resolution state.
+Teach commenting on first view with a short, dismissible "How to comment"
+panel: hovering a paragraph offers Comment, selecting text offers Annotate,
+captions take comments on images and questions have their own answer cards.
+The new-note box takes focus; the plugin focuses it while its drawer is still
+hidden, so move focus once the drawer's opening transition ends. A hover
+Comment button can select the block's text and hand it to the plugin's own
+Annotate control. Preserve keyboard and touch access, not only a hover trigger.
+Render images as figures with captions so they take comments. In shared review,
+ask for the reviewer's name before the first comment. Threads
+support reply, resolve and reopen, and only the author deletes a note. Notes
+retain their passage, surrounding selector context, author, time, stable ID and
+complete thread, including reply-to relationships and resolution state.
 
 Keep authored visual callouts distinct from reviewer annotations. Text
 selection cannot target image pixels. Use commentable captions or a screen-level
 discussion with a stable screen ID when image-region notes are unsupported.
 Keep important behavior and acceptance readable outside callouts.
 
-Questions use native option/answer or discussion controls, not prefilled
-annotation text. Listed options accept a pick without requiring an explanation.
-An explanation is optional; Other requires its alternative. Preserve option
-group names, stable question/option IDs and the actual wording at the reviewed
-version. Free-text questions and "Anything we missed" have their own discussions.
+Questions use option cards or discussion controls, not prefilled annotation
+text. Listed options accept a pick without requiring an explanation. An
+explanation is optional; Other requires its alternative. Show who picked each
+option and allow replies. Preserve option group names, stable question/option
+IDs and the actual wording at the reviewed version. Free-text questions and
+"Anything we missed" have their own discussions.
 
 Place consequential questions beside the relevant experience, with links to
 one canonical answer record. A question overview must not duplicate answers or
-create a second vote. Keep choices and consequences together under expandable
-headings when that avoids jumping between isolated cards. Reviewer picks and
-counts are feedback, not consensus, approval or instructions to implement.
+create a second vote. Keep each choice and its consequence on the same card.
+Reviewer picks and counts are feedback, not consensus, approval or instructions
+to implement.
 
-## Share deliberately through a dev tunnel
+## Optionally share through a dev tunnel
 
-A team-review sharing request authorizes preparing its access-controlled review
+Offer sharing when the spec has reviewers beyond the user. Do not open a tunnel
+by default. A sharing request authorizes preparing an access-controlled review
 endpoint, not anonymous public access, unrelated global configuration changes
 or new application registrations. Resolve the intended audience and access
-policy before exposure. Reuse existing serving and dev-tunnel tooling and inspect
-its current CLI/help or official documentation before using flags.
+policy (for example tenant-restricted with an expiry) before exposure. Reuse
+existing serving and dev-tunnel tooling and inspect its current CLI/help or
+official documentation before using flags.
 
 Record the local server, verified port and owned process/tunnel identities,
 stable shared URL, access policy and expiry in the existing session record.
@@ -72,11 +149,11 @@ not verification of the named person. Expiry or switching identity must not
 silently destroy ownership history or double-count that reviewer as a new vote.
 A different identity mechanism requires the appropriate authorization.
 
-Store comments and answers server-side outside temporary builds and expiring
-artifact directories. Record their approved location, retention and recovery
-procedure without embedding private feedback in unrelated projects. Rebuilding
-or restarting the reading site must preserve the feedback and reviewer identity
-state. Changing access, retention or expiry requires user authority.
+The store chosen above serves local and shared review alike. Record its
+retention and recovery procedure without embedding private feedback in
+unrelated projects. Rebuilding or restarting the reading site must preserve the
+feedback and reviewer identity state. Changing access, retention or expiry
+requires user authority.
 
 State the availability window, what must remain running, and how to resume
 after sleep, sign-out, reboot or tunnel expiry. Keep intentionally shared
@@ -91,13 +168,14 @@ within the authorized scope. Inspect individual results and failure exits.
 Do not create tests or scripts unless explicitly requested. Preserve every
 real comment, answer, thread and identity when removing your sample data.
 
-Exercise the actual shared URL as reviewer and owner: access restrictions,
-identity entry and navigation, comment/save/reload, replies, listed picks
-without a reason, Other, open discussion, and the owner's complete readback.
-Exercise overlapping submissions where multiple reviewers are expected.
-Verify storage readback, incoming-feedback refresh and origin handling through
-the real HTTPS/proxy path. Never disable cross-origin checks to make it work.
-An explicit refresh is sufficient when automatic updates are unavailable.
+Exercise the served URL (and the shared URL when one exists) as reviewer and
+owner: identity entry and navigation, comment/save/reload, replies, listed
+picks without a reason, Other, open discussion, and the agent's readback from
+the recorded store path. For a shared review, also check access restrictions,
+overlapping submissions from two simulated reviewers, and storage readback and
+origin handling through the real HTTPS/proxy path. Never disable cross-origin
+checks to make it work. An explicit refresh is sufficient when automatic
+updates are unavailable.
 
 Surface load/save/delete failures beside the affected control, with retained
 input and a usable retry. An unavailable store must not look like no feedback.

@@ -36,7 +36,10 @@ Reference appendices and license notices may follow without becoming another
 main reading path.
 
 Keep overview and close proportional to the document. They do not excuse an
-oversized or unreadable body. In script briefings they frame the document,
+oversized or unreadable body, and the close never restates the overview. When
+the opening already carries the whole picture, as in a visual specification,
+the close is one line naming the reader's open decision or next action.
+In script briefings they frame the document,
 outside the verbatim spoken text, preserving the approved narration and hook.
 This is not a requirement for boilerplate in routine chat, inline review
 comments or spoken-only output.

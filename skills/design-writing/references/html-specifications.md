@@ -1,4 +1,4 @@
-# Library-backed specifications and intent briefings
+# Visual specifications and intent briefings
 
 Use this reference for human-facing proposals, specifications and demo or
 presentation approval packages. The active
@@ -35,19 +35,44 @@ system. Use the host's external artifact location for renders, production
 dependencies and large outputs. Content approval does not authorize committing
 these artifacts to product Git history.
 
-## Design a reading path
+## Design a lean reading path
 
-Start with a genuine overview before the detailed sections: purpose, outcome,
-selected scope, how the main parts fit and what the reader will judge.
-Use placement, typography and grouping to make that the first reading level.
-A contents rail helps navigation but cannot supply the overview's argument.
-Where useful, let one representative visual orient the reader to the whole.
+People read many specifications a day. A spec exists to give a human the
+context to judge a proposal quickly. Judge every heading, paragraph, figure
+and component by whether it shortens that path.
 
-End the substantive reading path with a shorter synthesis of the outcome,
-chosen mechanism, commitment boundaries and actual open decision. It should
-leave the reader able to explain and own the proposal. Keep it visually
-distinct and readable, not a row of unrelated cards or an inventory of
-everything already said. Reference material may follow separately.
+- State each fact once, where the reader needs it. Link to it instead of
+  restating it in an overview, a closing summary, a caption and a card.
+  Repetition is a defect, not reinforcement. Leanness removes duplicates,
+  bookkeeping and padding. It never removes a required constraint, decision,
+  failure case or acceptance condition.
+- Show before telling. Use a screen, stepped diagram, comparison, option card,
+  state explorer or checklist whenever it conveys the point faster than prose.
+  Prose says what to notice and why it matters. A wall of text is the last
+  resort, not the first.
+- Use one table of contents, on the right only. In Starlight, limit the
+  in-page contents to h2 with
+  `tableOfContents: { minHeadingLevel: 2, maxHeadingLevel: 2 }`. Hide the
+  left sidebar on a single-page spec, for example with route middleware that
+  sets `starlightRoute.hasSidebar = false`. A multi-page spec may keep a left
+  list of page links only, without heading sublists. Never show a nested
+  outline, and never show the same headings on both sides.
+- Use few headings. An h2 marks a reader question worth jumping to. Most
+  content needs no h3, and h4 is never used to subdivide. An option, rule,
+  screen or appendix entry does not get its own heading: use a card, a
+  labeled step or a disclosure.
+- Put status, version, owner and review round in a one-line header, not a
+  metadata block, badge row or color legend.
+
+The opening screen carries the whole picture: a title, a one-sentence outcome,
+a framed key visual of the proposed screen or mechanism with its caption, the
+selected change in three steps or fewer, the decision sought, and a compact
+in-scope and out-of-scope pair. Nothing later repeats it. Avoid oversized hero
+banners, decorative card grids and marketing copy.
+
+End with the open decision or the next action in one line. Do not add a
+closing synthesis that restates the opening. Reference material follows as
+cards or disclosures.
 
 Lead with the selected outcome and actual decision sought. Omit redundant
 "not implemented or approved" disclaimers and internal investigation labels.
@@ -63,15 +88,14 @@ A proposed interface needs representative screens before implementation.
 Nonvisual work may benefit from sequences or comparisons. A genuinely brief
 change can stay brief.
 
-Use one navigation hierarchy, with page groups and only the headings useful
-for orientation. Do not duplicate it in a second contents rail or list every
-subheading. Use meaningful requirement and question names, not machine indexes.
+Use meaningful requirement and question names, not machine indexes.
 Structure must explain the content without a color legend.
 
 Each section answers one reader question. Place its figure beside a short
 explanation of what to notice and why it matters, followed by the exact
 requirements or acceptance it clarifies. Keep comparable views at comparable
-scales. Use several readable views instead of a crowded master diagram.
+scales. Use several readable views, or one diagram revealed step by step,
+instead of a crowded master diagram.
 
 Restructure text walls rather than wrapping them in cards, shrinking fonts,
 turning paragraphs into images or hiding the contract behind toggles.
@@ -99,22 +123,62 @@ and visible actions/results connect to the exact contract. Use a different
 visual form when no meaningful UI comparison exists. Essential scope and
 acceptance stay visible outside popovers.
 
-## Use established components
+## Design the page deliberately
 
-Use a coherent, established component library for layout, styling, navigation,
-buttons, appearance controls, disclosures and comparisons. For specification
-sites, use documented components, props, configuration and theme plugins,
-not custom component CSS, JavaScript, timers or presentation repair scripts.
-Keep authored work in the content, figures and domain scenarios. Inspect the library's real
-keyboard behavior and styling instead of treating its name as an accessibility
-guarantee.
+A spec is a product people use, not a word-processor document rendered to
+HTML. Decide how the reader will absorb each part, then choose the element
+that serves it.
 
-Starlight provides document navigation, native chrome and content components.
-Use its native configuration first, adding a compatible theme plugin only for
-an identified unmet requirement. Use supported components for disclosures,
-sequences and image inspection. A framework's presence does
-not make a hand-built widget library-owned. Check the installed version's
-actual exports and behavior before selecting an integration.
+Start from Starlight, its documented configuration and a coherent theme
+plugin. Add purpose-built components where library components do not present
+the content well. Build them in the spec's external workspace, style them with
+the site's design tokens and reuse them across pages. They are designed parts
+of the page. Do not patch library output with ad hoc CSS overrides, rehype
+fixes or scripts that hide defects. Check the installed version's actual
+exports and behavior before selecting an integration, and inspect real keyboard
+behavior instead of treating a library's name as an accessibility guarantee.
+
+Define a small token set for both appearances: page surface, raised surface,
+text, muted text, accent, focus and one status set. Check the contrast of every
+text and background pairing that appears, including diagram labels, inactive
+controls, captions and callouts. Never ship default library or diagram colors
+without checking them against the theme.
+
+Choose components by content, not by formula:
+
+- **Screen journey:** one screen at a time, framed, with its caption and
+  consequential questions beside it. The reader advances by clicking the
+  highlighted control on the screen, with arrow keys or through a thumbnail
+  filmstrip. Show the position and allow zoom. Never auto-advance.
+- **Image set:** a manual gallery with captions, visible position, keyboard
+  arrows, thumbnails and zoom (for example `starlight-image-zoom`). Use it for
+  unordered views. An ordered journey uses the screen journey instead.
+- **Stepped diagram:** Next reveals one stage at a time and highlights what
+  changed, with Previous, Reset and Show all. Use it when a mechanism is easier
+  to follow as a sequence than as one finished picture.
+- **Decision cards:** options inline beside the affected behavior, with the
+  recommendation marked, the consequence on each card and the answer control
+  from [contextual review](../../spec-delivery/references/collaborative-review.md).
+- **State explorer:** selectable states and transitions for a lifecycle whose
+  rules matter.
+- **Acceptance checklist:** each item linked to the requirement it proves.
+- **Reference cards or disclosures:** appendix entries, citations and supporting
+  detail, instead of tables.
+
+Every component has keyboard operation, visible focus, accessible names and a
+reduced-motion mode. Print and no-JS rendering show every step, branch, screen
+and option expanded.
+
+### Diagrams
+
+Naive Mermaid is not acceptable: the default theme, automatic layout with
+crossing edges, dozens of nodes, unlabeled arrows and low-contrast labels.
+Invoke `technical-illustration` for consequential figures and prefer authored
+SVG when spatial layout carries meaning. If Mermaid is used, map its theme to
+the site tokens in both appearances, label edges with their meaning and keep
+each view readable at delivery size. Split or step-reveal a diagram rather than
+adding nodes. Inspect the rendered result, not the source. A diagram that needs
+a color legend is redesigned.
 
 For standalone briefings, daisyUI with Tailwind is a suitable low-runtime option: its documented
 [theme controller](https://daisyui.com/components/theme-controller/) and
@@ -134,9 +198,8 @@ maintained exporter, new app or repository-owned scripts.
 - Use descriptive, visually distinct headings and predictable grouping.
   [NN/g's heading-led scanning research](https://www.nngroup.com/articles/layer-cake-pattern-scanning/)
   supports a readable hierarchy, not a particular decorative theme.
-- Provide stable in-page links and a contents list for long documents. A
-  desktop contents rail can become an in-flow list on narrow screens.
-  This is a layout choice, not a universal research requirement.
+- Provide stable in-page links. The single right-hand h2 contents list can
+  become an in-flow list on narrow screens.
 - [USWDS typography guidance](https://designsystem.digital.gov/components/typography/)
   recommends at least an effective 16px for body text, at least 1.5 line
   height for long passages and a good long-text target of 66 characters.
@@ -195,9 +258,8 @@ consequential choice or assumption. Show the resulting state and its reason.
 Expose a counterexample when another assumption favors a different option.
 Do not rig a demonstration to guarantee the author's preferred conclusion.
 
-Show one journey screen at a time with its explanation and consequential
-questions beside it. Use a real library player or carousel when needed, not
-tabs styled as one. Provide named states, a clear reset and links to the relevant contract.
+Show a journey through the screen journey component, not tabs styled as one.
+Provide named states, a clear reset and links to the relevant contract.
 Keep exact requirements and acceptance outside interactive panels. A
 printable account must preserve all branches. State model simplifications
 where they affect the conclusion. Illustrative counters are not measured
@@ -205,13 +267,14 @@ time, cost or performance.
 
 If timed playback is selected, it is finite and reader-started, with automatic
 state highlighting, pause and reset. Switching scenarios stops the prior run.
-A static diagram is not timed playback. Qualify the actual library integration,
-including completion and reduced-motion reading, rather than hand-rolling it
-or silently replacing a requested player.
+A static diagram is not timed playback. Verify the chosen component's
+completion and reduced-motion reading rather than silently replacing a
+requested player.
 
-Scenario controls neither record human approval nor launch work. Requested
-collaboration follows [contextual review](../../spec-delivery/references/collaborative-review.md).
-Use its separate feedback backend, reviewer attribution and version-bound
+Scenario controls neither record human approval nor launch work. Every
+specification site is commentable through
+[contextual review](../../spec-delivery/references/collaborative-review.md).
+Use its feedback backend, reviewer attribution and version-bound
 incorporation contract. Do not treat illustrative screen markers as
 reviewer-created annotations or option picks as approval.
 
@@ -225,6 +288,13 @@ required interaction. Inspect dense sections and representative figures at
 desktop and narrow widths, including 320px, and inspect print output.
 For an example, exercise every named branch and reset against its written
 rule. Preserve usable static content when optional interaction is unavailable.
+
+Check the page as a reader would. There is exactly one contents list, on the
+right, with h2 entries only. No fact, requirement or rationale is stated twice.
+The opening carries the whole picture and nothing restates it. Each rendered
+diagram is legible with sufficient contrast in both appearances. Every
+component works by keyboard and prints expanded. Commenting works on the
+served build.
 
 Recheck hidden panels, theme-swapped figures and print content after any
 library or theme change. A build, a library name or a previous successful
