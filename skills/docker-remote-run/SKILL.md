@@ -13,7 +13,7 @@ Confirm the approved context, expected host, image digest, command, input files 
 
 Use a reviewed image available to that engine, or use an authorized remote build with a minimal build context. A bind mount resolves on the **daemon host**: `-v` with a laptop path can silently create an empty directory on the VM. For local inputs, create a stopped container and copy the declared files into an existing directory inside it. Do not send an entire checkout or environment file when the command only needs one input.
 
-Before `create`, record authority and exact operations to stop and remove the container and any run-owned volumes, networks, staged files or image. Set concrete workload, shutdown and recovery deadlines. Docker `wait` and a disconnected CLI do not impose a runtime deadline. Verify an existing authorized remote deadline mechanism if the container must stop without the client. Do not promise automatic expiry without one.
+Docker `wait` and a disconnected CLI do not stop a container. Use an existing remote timeout mechanism if the run must expire without the client.
 
 ## Run, recover, then remove
 
@@ -36,22 +36,22 @@ docker --context CONTEXT container cp CONTAINER_ID:/work/result.json LOCAL_RESUL
 
 Retrieve required files into a run-specific local destination. Verify they can be opened and meet the caller's contract. On failure, recover available diagnostics without turning missing files into success. Don't use `--rm`: it can remove the filesystem before `cp`.
 
-## Stop promptly, then remove
+## When done, stop and remove
 
-On cancellation, failure, interruption or workload deadline, inspect the recorded ID and ownership label on the same engine. Stop it if still running. Use the recorded finite grace period, never `--timeout -1`. `stop` escalates to a forced kill when that period expires. Run long waits through the host's background execution mechanism rather than holding teardown behind a synchronous wait.
+On completion, failure, cancellation or timeout, use the same context and recorded ID. Stop the container if still running with a finite grace period:
 
 ```text
 docker --context CONTEXT container stop --timeout GRACE_SECONDS CONTAINER_ID
 docker --context CONTEXT container inspect --format "{{json .State}}" CONTAINER_ID
 ```
 
-Verify it is no longer running or restarting. Recover files and logs from the stopped container within the recovery window, then remove it by ID:
+Verify it is not running or restarting, recover required files and logs, then remove it:
 
 ```text
 docker --context CONTEXT container rm CONTAINER_ID
 docker --context CONTEXT container inspect CONTAINER_ID
 ```
 
-Require an explicit not-found result from the correct daemon to verify removal, not a transport or permission error. Remove each authorized run-owned volume, network, staged file or temporary image by its recorded identity and verify absence. Account for a container created but never started, and resources from partial setup. Never prune the engine, delete shared images or volumes, or remove the shared host. If recovery is unresolved, retain the stopped container or required storage with its reason, owner, exact next action and concrete expiry or review time. Missing output is not a reason to leave the container running.
+Verify not-found from that daemon, not a connection error. Remove run-owned temporary volumes, networks and staging too, including partial setup. Do not prune shared resources. Missing output is not a reason to keep the container running. Report any retained resource and its next removal action.
 
 [Remote engine access](https://docs.docker.com/engine/security/protect-access/) | [Bind mounts](https://docs.docker.com/engine/storage/bind-mounts/) | [Wait](https://docs.docker.com/reference/cli/docker/container/wait/) | [Copy](https://docs.docker.com/reference/cli/docker/container/cp/) | [Bounded stop](https://docs.docker.com/reference/cli/docker/container/stop/)
