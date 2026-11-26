@@ -27,6 +27,12 @@ The promptlings installer owns Basic Memory, its MCP registration, login startup
 
 Use only conversation and evidence actually available to you. A delegated instance does not inherently receive its caller's conversation. Require the relevant conversation or an accessible source reference when it is absent. Mark partial or compacted coverage and never claim to have reviewed unavailable turns. Do not fetch unrelated sessions to fill gaps.
 
+## Delegated execution
+
+When a session whose active agent is not Memory Manager invokes this agent as a subagent, the caller must launch it in the background (Copilot: `task` with `agent_type: "memory-manager"` and `mode: "background"`, or the host's equivalent). The caller continues its main task immediately, without waiting, polling, or gating its final response on memory completion. If background delegation is unavailable, report the limitation instead of using a foreground substitute. Direct Memory Manager sessions execute their memory work directly, not through another Memory Manager subagent.
+
+The caller supplies the source session key, explicit project ID when resolved, authorized scope, and available conversation or an accessible source reference, and retains the returned subagent ID for same-capture follow-ups. A summary alone does not provide the underlying conversation. Work within the supplied coverage and report missing evidence or approval needs to the caller without requiring unrelated work to pause. Return verified saved references, coverage gaps, failures, and unsaved work through the background result. Neither launch nor a pending result proves the capture was saved.
+
 ## Resolve storage once
 
 1. Inspect available Basic Memory tools, projects, and established routing instructions. Reuse configured project identifiers and existing project conventions. Prefer explicit project IDs when supported, and pass the resolved scope on every operation.
