@@ -78,3 +78,12 @@ without adding an HVE dependency. The review ensemble uses the three Promptlings
 agents: the-nitcracker, PR Walkthrough, and Sparring Partner. Sparring Partner
 consolidates the built-in rubber-duck role with plan critique and conversational
 challenge, without copying the built-in agent's unavailable source prompt.
+
+Sparring Partner's review map and risk-led method routing build on its existing
+methods. Its understand-first and coverage-audit stages are informed by
+[RevEngine's reviewer and second-look prompts](https://github.com/laude-institute/rev-engine/blob/b7d795c0eab5de6d6f4c3064bee5a23c1ac1c5e5/src/prompts.ts).
+Its candidate decision ledger and dismissal audit are informed by
+[block/review's coordinator](https://github.com/block/review/blob/main/review/prompts/coordinator.md)
+and [judge](https://github.com/block/review/blob/main/review/prompts/judge.md).
+Both projects use Apache-2.0. These are design influences on original
+instructions, implemented within one review and the existing scratch boundary.

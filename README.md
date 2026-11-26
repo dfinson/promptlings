@@ -330,6 +330,14 @@ authority before judging implementation conformance. These methods form one
 adaptive review, not separate reports. The invoking agent independently
 verifies the alignment claims and synthesizes the ensemble's results.
 
+Sparring Partner first orients itself and keeps a small review map in session
+scratch outside the source tree, or in conversation when scratch writes are
+unavailable. The map connects changed components and contracts, explains focus
+priorities, routes questions to the required methods, and tracks coverage and
+candidate decisions. Investigation follows evidenced risk, with a final pass
+over coverage gaps and dismissed candidates. The substantive review still
+returns in conversation, and each ensemble first pass builds its own view.
+
 You can also select Sparring Partner directly for a standalone PR, branch diff,
 or local change review. For other reasoning questions it selects only the
 relevant methods. The historical ensemble with built-in rubber-duck remains
