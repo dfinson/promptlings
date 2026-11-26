@@ -29,6 +29,12 @@ Save proactively at these moments, without waiting to be asked:
 
 Routine orchestration can stay out of derived notes. It is not a reason to discard available source evidence. Preserve proposals and in-progress hypotheses in their original context without promoting them to accepted knowledge.
 
+## Background delegation
+
+When the active agent is not Memory Manager, any delegation of memory work to a Memory Manager subagent must run in the background (Copilot: `task` with `agent_type: "memory-manager"` and `mode: "background"`, or the host's equivalent). Continue the main task immediately, without waiting, polling, or gating its final response on the save. This applies to the escalations below as well as full session capture. If the host cannot launch a background subagent, report the limitation instead of using a foreground substitute. Direct routine saves with this skill remain supported, and bounded recall needed for the main task is not background capture.
+
+Provide the source session key, explicit project ID when resolved, authorized scope, and available conversation or an accessible source reference. A summary alone is not access to the underlying conversation. Retain the returned subagent ID for same-capture follow-ups, not duplicate captures. Report pending work as pending, not saved. Process a completion notification when available and relay verified references, failures, and unsaved coverage without blocking unrelated work. Memory Manager sessions execute this procedure directly and do not delegate it to another Memory Manager.
+
 ## 1. Route
 
 1. Resolve the project from the established routing instructions. Repositories map by canonical remote identity without credentials. Domain work maps to its domain project.
