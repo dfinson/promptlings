@@ -1,5 +1,9 @@
 # Copilot Instructions
 
+## Publishing from this checkout
+
+Before using this checkout to publish or reinstall Promptlings agents, skills, or rules, load the repository's [`rulesync-publishing`](skills/rulesync-publishing/SKILL.md) skill and follow its preflight before writing to any local installation. If skill invocation is unavailable, read the linked file directly. This is a checkout maintenance procedure, not a step for people installing the published npm package.
+
 ## No Scripts or Tests Without an Explicit Request
 
 **Do not create or add scripts unless the user explicitly requests scripts. Do not create or add tests unless the user explicitly requests tests.**
