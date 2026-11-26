@@ -29,10 +29,12 @@ easier. Do not require prose to fail first or an implementation to cross a
 complexity threshold. A trivial change may need only a few sentences.
 Remove figures that merely decorate or repeat prose.
 
-For specification sites, follow the caller's library-only presentation contract.
+For specification sites, follow the caller's presentation contract: map figure
+colors to the site's contrast-checked tokens so they stay legible in light and
+dark, and split or step-reveal a dense mechanism rather than adding nodes.
 Keep one screen and its explanation together, with consequential questions
-beside it. Use a supported player or disclosure, not custom presentation CSS
-or JavaScript. Static figures remain this skill's output, not permission to
+beside it. Present screen sequences through the caller's screen journey
+component. Static figures remain this skill's output, not permission to
 build a separate interactive application.
 
 ## Compose the useful view
@@ -84,7 +86,7 @@ important qualifications and requested action in readable text too. Complex
 figures need an accessible account of the relationships or values they convey.
 
 Authored markers explain a visual; they are not reviewer-created feedback.
-When collaboration is requested, give each screen a stable identity and a
+For every specification site, give each screen a stable identity and a
 commentable caption or supported screen discussion. Preserve the caller's
 reviewed-version mapping. Do not claim text annotations support image regions.
 

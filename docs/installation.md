@@ -203,16 +203,17 @@ installer-managed design-tool requirements.
 
 Specifications and media approval briefings use the
 [document guidance](../skills/design-writing/references/html-specifications.md).
-Specifications default to an MDX/Starlight reading site with library-owned
-presentation. Other proposals and media briefings retain self-contained HTML. Selected libraries
+Specifications default to an MDX/Starlight reading site with deliberately
+designed components and one right-hand contents list. Other proposals and media briefings retain self-contained HTML. Selected libraries
 are version-pinned in the producing agent's authorized external workspace,
 not added as global installer dependencies. Readers need no package installation.
 An explicit offline copy needs a verified supported export.
 
-Requested team collaboration uses the
+Every specification site is commentable through the
 [review contract](../skills/spec-delivery/references/collaborative-review.md):
-an access-controlled dev tunnel, reviewer attribution, shared durable feedback
-and contextual incorporation into the spec. The installer distributes this
+reviewer attribution, a durable feedback store at a recorded path and
+contextual incorporation into the spec. Sharing through an access-controlled
+dev tunnel is optional. The installer distributes this
 Markdown guidance, not a review server, tunnel CLI, app registration or custom
 exporter. The producing agent reuses available tooling and supported integrations
 and reports a missing required capability instead of silently substituting
