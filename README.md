@@ -91,6 +91,8 @@ For a batch job on a known target, go directly to [Docker on a remote machine](s
 [Kubernetes Job](skills/kubectl-batch-job/SKILL.md), [Azure Container Apps Job](skills/azure-container-apps-job/SKILL.md),
 [AWS Batch, ECS or Lambda](skills/aws-batch-execution/SKILL.md), or [Google Cloud Run Job](skills/gcloud-run-job/SKILL.md).
 Each follows the specific execution and checks the returned files, not just whether the launch command succeeded.
+Teardown is defined before launch, starts promptly on completion, cancellation or failure, and verifies that owned compute has stopped.
+Required results are preserved, temporary resources are removed, and any retained resource has an owner and a concrete expiry or review time.
 Promptlings installs these skills through its existing Rulesync publisher.
 
 ### Pull request and review text

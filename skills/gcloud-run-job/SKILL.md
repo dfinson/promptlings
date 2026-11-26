@@ -9,6 +9,8 @@ Use a Job when the container runs a command and exits. It does not need an HTTP 
 
 Make the input immutable and choose an output location readable by the caller and writable by the workload. Before launch, configure the writer to put each attempt's files under `RUN_KEY/CLOUD_RUN_EXECUTION/CLOUD_RUN_TASK_INDEX/CLOUD_RUN_TASK_ATTEMPT/` in the approved destination, using the actual variable values. Two executions of the same logical run can both have task 0, attempt 0. Supply non-secret run inputs as execution overrides when permitted, not as permanent updates to the Job. Do not grant IAM permissions or emit secret values to fix a denied override.
 
+Record teardown authority, the execution-specific cancel command, concrete workload deadline including retries, supported shutdown grace, bounded recovery window and every temporary resource's disposition before launch. Verify task timeout and retry settings provide the intended remote backstop. A task timeout is not a whole-execution deadline, and a client wait timeout does not cancel remote work.
+
 For an unproved publication path, use the `remote-container-jobs` batch preflight: the workload identity writes an authorized marker and the caller reads it before launch.
 
 ## Capture this execution
@@ -34,6 +36,19 @@ Read logs for this execution, not the whole Job. For example, in a shell that ac
 gcloud run jobs logs read JOB --project PROJECT --region REGION --log-filter='labels."run.googleapis.com/execution_name"="EXECUTION"'
 ```
 
-On success or failure, retrieve declared files and available diagnostics from the exact run prefix. Report execution name, terminal condition, failed task evidence and which files were verified. A successful execution with a missing required file is an incomplete delivery. Do not delete the shared Job to stop an execution or delete the bucket after collecting one result.
+On success or failure, retrieve declared files and available diagnostics from the exact run prefix. Report execution name, terminal condition, failed task evidence and which files were verified. A successful execution with a missing required file is an incomplete delivery.
 
-[Execute flags](https://docs.cloud.google.com/sdk/gcloud/reference/run/jobs/execute) | [Execution details](https://docs.cloud.google.com/run/docs/managing/job-executions) | [Task attempt results](https://docs.cloud.google.com/run/docs/reference/rest/v2/projects.locations.jobs.executions.tasks) | [Job logs](https://docs.cloud.google.com/sdk/gcloud/reference/run/jobs/logs/read) | [Google's general Cloud Run skill](https://github.com/GoogleCloudPlatform/cloud-run-mcp/blob/main/skills/cloud-run/SKILL.md)
+## Cancel promptly and account for every execution
+
+On cancellation, failure, interruption or workload deadline, recheck ownership and cancel each active execution reconciled to this run key. Do not cancel another caller's execution or delete a shared Job to stop work.
+
+```text
+gcloud run jobs executions cancel EXECUTION --project PROJECT --region REGION --async
+gcloud run jobs executions describe EXECUTION --project PROJECT --region REGION
+```
+
+Read back each execution and its tasks until terminal within the teardown observation window. Verify no owned tasks remain active. An accepted asynchronous operation is not proof of shutdown. Recover durable outputs and retained diagnostics after stopping. Do not keep tasks running while waiting for a missing file.
+
+Remove only recorded, authorized temporary resources after recovery, including a Job definition only if this run created it for temporary use and no other execution depends on it. Provider-retained execution history is not running compute. Verify removal separately from cancellation, and preserve required results under their recorded retention policy. Never delete the shared bucket, registry or Job. If cancellation, correlation or recovery is unresolved, account for every known execution and retained resource with its identity, observed state, cost exposure, reason, owner, exact next action and concrete expiry or review time.
+
+[Execute flags](https://docs.cloud.google.com/sdk/gcloud/reference/run/jobs/execute) | [Cancel execution](https://docs.cloud.google.com/sdk/gcloud/reference/run/jobs/executions/cancel) | [Execution details](https://docs.cloud.google.com/run/docs/managing/job-executions) | [Task attempt results](https://docs.cloud.google.com/run/docs/reference/rest/v2/projects.locations.jobs.executions.tasks) | [Job logs](https://docs.cloud.google.com/sdk/gcloud/reference/run/jobs/logs/read) | [Google's general Cloud Run skill](https://github.com/GoogleCloudPlatform/cloud-run-mcp/blob/main/skills/cloud-run/SKILL.md)
