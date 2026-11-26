@@ -43,4 +43,8 @@ Give each run its own input and output locations and ownership marker. Keep a no
 
 Report the platform outcome, the workload's exit evidence when exposed, each required output actually retrieved and verified, and any available diagnostics. A successful build with a missing `report.json` is incomplete delivery. An absent exit code is unknown, not zero.
 
-On success, failure or interruption, account for every run-owned resource. Recover results before removing their only copy. Verify ownership and identity again before authorized teardown. If recovery is blocked or state is unknown, retain what is needed and give the caller the handle, remaining resources and next recovery step. Leave shared definitions, infrastructure, other executions and their artifacts alone.
+## When done, tear it down
+
+As soon as the work is done or no longer needed, stop its compute and remove the temporary resources you created. Do this in the same workflow, including failure, cancellation, timeout and partial setup. Use `try/finally` or the host's equivalent, and set a remote timeout where supported so a lost client does not leave work running.
+
+Collect required results without keeping compute alive indefinitely for missing files. Use the recorded run identities and the provider's native stop/remove operations. Verify workers have stopped and removed resources are absent. A successful request is not verification. Preserve shared infrastructure and required results. If anything remains, report exactly what, why and the next removal action. Do not defer teardown to another session.

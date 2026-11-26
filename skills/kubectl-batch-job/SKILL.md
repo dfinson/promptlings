@@ -11,6 +11,8 @@ Bind the approved context and namespace on **every** API call. Confirm the clust
 
 Use one uniquely named Job per run. Pass non-secret run identifiers and input references to the workload. Use existing secret references or workload identity for protected access. Set the intended `backoffLimit`, `activeDeadlineSeconds`, `completions`, `parallelism` and `restartPolicy` explicitly. For a single command intended to run once, use one completion, one Pod at a time, `Never` and zero configured retries. Job execution is not an exactly-once guarantee. Make external writes safe to repeat.
 
+Use a finite `terminationGracePeriodSeconds` and `activeDeadlineSeconds`. `ttlSecondsAfterFinished` can remove finished Jobs after result collection, but does not stop active work.
+
 Have the workload publish declared files **before it exits** to an approved object prefix or persistent volume with a known reader. For an unproved publication path, use the `remote-container-jobs` batch preflight: the workload identity writes an authorized marker and the caller reads it before submission. Keep outputs distinct by task and attempt. Leave enough time before TTL-based deletion to collect status and logs. A completed Pod can still be listed, but `kubectl cp` needs a running container with `tar`. It is not a batch result store.
 
 ## Submit once and follow the controller
@@ -30,6 +32,12 @@ For each owned Pod, inspect `status.containerStatuses` for the workload containe
 
 Read `kubectl --context CONTEXT -n NAMESPACE logs POD -c CONTAINER` against the Pod UID, container state, container IDs and restart count observed before and after the read. `--previous` selects `lastState.terminated` when available. While the container is waiting to restart, plain logs can select that same instance. Do not count the two reads as separate attempts. If a restart or Pod replacement prevents attribution, report it as unknown. Older instances need a retained log source.
 
-Return the Job UID, terminal condition and reason, relevant attempt evidence and verified output locations. Missing required outputs remain a delivery failure even if the controller reports `Complete`. For authorized deletion of the Job and its Pods, set both `preconditions.uid` to the recorded Job UID and `propagationPolicy` to `Background` or `Foreground` in the same `DeleteOptions`. A name-only delete can remove a replacement, and a raw `batch/v1` delete without a propagation policy can orphan Pods. If the client cannot enforce the intended deletion, skip it and report retention or configured TTL. Before reporting teardown complete, verify the original Job and its Pods are gone. Report any remaining by UID. Preserve the namespace, shared claims, service account and cluster.
+Return the Job UID, terminal condition and reason, relevant attempt evidence and verified output locations. Missing required outputs remain a delivery failure even if the controller reports `Complete`.
+
+## When done, delete the Job and its Pods
+
+Collect available results and logs, then delete the run's Job immediately, including on failure, cancellation or timeout. Use `DeleteOptions` with `preconditions.uid` matching the recorded Job UID and `propagationPolicy` set to `Background` or `Foreground`, so a replacement is protected and owned Pods are removed.
+
+Record Pod UIDs and nodes before deletion. Verify the Job and owned Pods are gone. On a lost-node or forced-removal path, API absence does not prove containers stopped: require runtime termination or node fencing before removing dependencies. Report unresolved shutdown rather than claiming success. Remove run-owned temporary resources, preserving shared resources and required outputs. See [Pod termination](https://kubernetes.io/docs/concepts/workloads/pods/pod-termination/).
 
 [Job controller, retries and terminal conditions](https://kubernetes.io/docs/concepts/workloads/controllers/job/) | [kubectl cp requirements](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_cp/)

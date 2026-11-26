@@ -9,6 +9,8 @@ Bind the subscription ID, resource group and Job name explicitly. Verify the exp
 
 The Job definition can serve many callers. Its name alone does not identify your run. Arrange a unique input and result reference and an approved identity or secret reference before launch. Prefer a run-specific object-store path. An OCI artifact is an alternative only when the workload may push and the caller may pull. Image-pull permission does not establish result-write permission. Do not assume registry administrator credentials or enable them.
 
+Set replica timeout and retry limits. A local wait timeout does not stop replicas.
+
 For an unproved publication path, use the `remote-container-jobs` batch preflight: the workload identity writes an authorized marker and the caller reads it before launch. Within the run prefix, keep each replica's and retry attempt's files distinct, or use a single publisher that aggregates and checks all expected outputs. One readable file does not prove every producer delivered its result.
 
 ## Follow the execution, not the Job's latest entry
@@ -28,6 +30,18 @@ The preview replica and log commands depend on CLI extension support and replica
 
 ## Return the outcome
 
-Read the declared artifact under the exact run prefix or digest. Report the execution status separately from the workload's exit evidence and verified files. A replica timeout can kill the publisher itself: report the timeout or observed platform state and the missing artifact, not a constructed exit code. Where stopping is authorized, target the execution, not all executions of a shared Job. Remove a Job definition only if this run created and owns it. Leave the environment, registry and other executions intact.
+Read the declared artifact under the exact run prefix or digest. Report the execution status separately from the workload's exit evidence and verified files. A replica timeout can kill the publisher itself: report the timeout or observed platform state and the missing artifact, not a constructed exit code.
 
-[Job, execution and replica semantics](https://learn.microsoft.com/en-us/azure/container-apps/jobs) | [CLI execution](https://learn.microsoft.com/en-us/cli/azure/containerapp/job/execution) | [Replica discovery](https://learn.microsoft.com/en-us/cli/azure/containerapp/job/replica) | [CLI logs](https://learn.microsoft.com/en-us/cli/azure/containerapp/job/logs)
+## When done, tear it down
+
+When done, or on failure, cancellation or timeout, stop the captured execution if still active. Do not stop other executions of a shared Job.
+
+```text
+az containerapp job stop --subscription SUB --resource-group RG --name JOB --job-execution-name EXECUTION
+az containerapp job execution show --subscription SUB --resource-group RG --name JOB --job-execution-name EXECUTION
+az containerapp job replica list --subscription SUB --resource-group RG --name JOB --execution EXECUTION
+```
+
+Verify terminal execution and no active owned replicas. Collect results, remove temporary resources created for this run and verify removal. Delete the Job definition only if it is run-owned and unused by other executions. Preserve shared infrastructure and required outputs. Missing files do not justify keeping replicas running. Report anything retained and its next removal action.
+
+[Job, execution and replica semantics](https://learn.microsoft.com/en-us/azure/container-apps/jobs) | [Execution-specific stop](https://learn.microsoft.com/en-us/cli/azure/containerapp/job#az-containerapp-job-stop) | [CLI execution](https://learn.microsoft.com/en-us/cli/azure/containerapp/job/execution) | [Replica discovery](https://learn.microsoft.com/en-us/cli/azure/containerapp/job/replica) | [CLI logs](https://learn.microsoft.com/en-us/cli/azure/containerapp/job/logs)

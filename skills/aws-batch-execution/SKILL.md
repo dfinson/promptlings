@@ -9,6 +9,8 @@ Use the primitive the workload already fits. Choose **AWS Batch** when a queue a
 
 Bind the approved account, profile or role, and region. Check `aws sts get-caller-identity` with that selection and carry it on every call. Confirm the exact definition revision or function version, runtime limits, input version, output destination and permitted workload identity. For large files, pass references and return files through a run-specific object prefix such as an approved S3 location. Do not pass credentials in overrides, change IAM, or create queues and clusters to fit these examples.
 
+Set supported remote timeouts. Batch attempt timeouts do not bound queue time or all retries, and an ECS waiter does not stop a task.
+
 For an unproved publication path, use the `remote-container-jobs` batch preflight: the workload identity writes an authorized marker and the caller reads it before launch. Batch submission and ordinary Lambda invocation do not accept a client idempotency token. Set `AWS_RETRY_MODE=standard` and `AWS_MAX_ATTEMPTS=1` in those launch processes only. Observation calls can keep their normal retries.
 
 ## AWS Batch: identify the job and its attempts
@@ -52,6 +54,35 @@ aws lambda invoke --profile PROFILE --region REGION --function-name QUALIFIED_AR
 
 For either synchronous form, check CLI success, `FunctionError`, the executed version and the application response. HTTP 200 with `FunctionError` is a failed invocation. If the workload instead requires asynchronous `Event` invocation, acceptance is not completion. Use it only with an existing way to correlate and observe the final outcome.
 
-For all three paths, verify each declared output independently of provider status. Return the ID or invocation correlation, terminal evidence, diagnostic location and recovered files. Keep failed attempts distinguishable. A redelivery must not overwrite a successful attempt's output. Limit any authorized cancellation and teardown to the recorded run, not a shared definition, function, queue or cluster.
+For all three paths, verify each declared output independently of provider status. Return the ID or invocation correlation, terminal evidence, diagnostic location and recovered files. Keep failed attempts distinguishable. A redelivery must not overwrite a successful attempt's output.
 
-[Batch states](https://docs.aws.amazon.com/batch/latest/userguide/job_states.html) | [DescribeJobs](https://docs.aws.amazon.com/cli/latest/reference/batch/describe-jobs.html) | [RunTask](https://docs.aws.amazon.com/cli/latest/reference/ecs/run-task.html) | [ECS waiter](https://docs.aws.amazon.com/cli/latest/reference/ecs/wait/tasks-stopped.html) | [Lambda invocation](https://docs.aws.amazon.com/lambda/latest/dg/invocation-sync.html) | [Durable execution names](https://docs.aws.amazon.com/lambda/latest/dg/durable-execution-idempotency.html)
+## When done, tear it down
+
+When done, or on failure, cancellation or timeout, stop active compute for the recorded run. Collect results and remove run-owned temporary resources. Missing output is not a reason to keep compute running.
+
+**Batch:** Terminate the recorded job, including queued work. Verify terminal state for its children and attempts too.
+
+```text
+aws batch terminate-job --profile PROFILE --region REGION --job-id JOB_ID --reason "Run cancelled or deadline reached"
+aws batch describe-jobs --profile PROFILE --region REGION --jobs JOB_ID
+```
+
+**ECS:** Stop every returned task ARN in its cluster and verify `STOPPED`.
+
+```text
+aws ecs stop-task --profile PROFILE --region REGION --cluster CLUSTER --task TASK_ARN --reason "Run cancelled or deadline reached"
+aws ecs describe-tasks --profile PROFILE --region REGION --cluster CLUSTER --tasks TASK_ARN
+```
+
+**Lambda:** Ordinary invocations have no stop API. Wait for completion or the function timeout, accounting for asynchronous retries. Do not change a shared function to cancel one run. For a durable execution, resolve its exact ARN from the recorded version and execution name, then stop it:
+
+```text
+aws lambda stop-durable-execution --profile PROFILE --region REGION --durable-execution-arn EXECUTION_ARN
+aws lambda get-durable-execution --profile PROFILE --region REGION --durable-execution-arn EXECUTION_ARN
+```
+
+Durable `STOPPED` does not interrupt an already-running step. Verify that invocation finished before removing its dependencies. Otherwise report unresolved shutdown and retain those dependencies. See [stopping semantics](https://docs.aws.amazon.com/durable-execution/getting-started/manage-executions/).
+
+Verify temporary resources are removed, preserving shared resources and required outputs. Provider-retained execution history is not active compute. Report anything retained and its next removal action.
+
+[Batch states](https://docs.aws.amazon.com/batch/latest/userguide/job_states.html) | [DescribeJobs](https://docs.aws.amazon.com/cli/latest/reference/batch/describe-jobs.html) | [TerminateJob](https://docs.aws.amazon.com/cli/latest/reference/batch/terminate-job.html) | [RunTask](https://docs.aws.amazon.com/cli/latest/reference/ecs/run-task.html) | [StopTask](https://docs.aws.amazon.com/cli/latest/reference/ecs/stop-task.html) | [ECS waiter](https://docs.aws.amazon.com/cli/latest/reference/ecs/wait/tasks-stopped.html) | [Lambda invocation](https://docs.aws.amazon.com/lambda/latest/dg/invocation-sync.html) | [Durable execution names](https://docs.aws.amazon.com/lambda/latest/dg/durable-execution-idempotency.html) | [Stop durable execution](https://docs.aws.amazon.com/cli/latest/reference/lambda/stop-durable-execution.html)
