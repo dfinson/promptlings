@@ -108,10 +108,12 @@ tunnel when other reviewers are involved, but do not open one by default; a
 shared server needs the user's request and follows that reference's access
 rules.
 
-Read the feedback store when the user asks for feedback to be read or
-incorporated, and when resuming or revising the spec, reporting how many items
-arrived since the last read. Watching the store live is opt-in. Never revise
-while a review round is open unless the user asks.
+When the user reviews alone on localhost, act on each comment as it arrives:
+an attached watcher wakes you, you revise, rebuild, reply on the note and
+re-arm, as that reference describes. With several reviewers or a shared round,
+read the store when the user asks and when resuming or revising the spec,
+reporting how many items arrived since the last read. Watching live is opt-in
+there, and you do not revise while the round is open unless the user asks.
 
 Reviewers annotate passages or discuss a screen where the issue occurs.
 Question answers use their own option or discussion UI, not manufactured

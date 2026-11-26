@@ -28,15 +28,25 @@ quote, selector context, thread and resolution state.
 
 ## Ingest feedback on a defined trigger
 
-Default to reading the store when the user asks ("read the feedback",
-"incorporate comments", "what did people say") and at the start of any resumed
-session or revision of the spec. On resume, report how many items arrived since
-the last watermark before doing other spec work. Do not revise while a review
-round is open unless the user asks: reviewers are still responding and early
-picks are not consensus.
+The trigger depends on who is reviewing.
 
-Watching the store live during a review window is opt-in. When the user enables
-it, report new items as they arrive and still revise only on request.
+**Single reviewer on localhost (the default local review).** Act on each comment
+as it arrives. Run a finite watcher in the spec's workspace that waits on the
+store with the platform's file-change notification (no polling or sleep loop),
+debounces briefly, prints each changed record and exits. Run it as an attached
+async shell so its exit wakes the agent. On wake, read the full record and its
+passage, revise the source within scope, rebuild, reply on the note with the
+disposition through the annotations API, then re-arm the watcher. Your own reply
+also changes the store, so skip records you authored and IDs already handled.
+Stop the watcher when the user ends the review.
+
+**Several reviewers, or any shared round.** Read the store when the user asks
+("read the feedback", "incorporate comments", "what did people say") and at the
+start of any resumed session or revision of the spec. On resume, report how many
+items arrived since the last watermark before doing other spec work. Do not
+revise while the round is open unless the user asks: reviewers are still
+responding and early picks are not consensus. Watching live is opt-in; when
+enabled, report new items as they arrive and still revise only on request.
 
 Each ingestion produces a digest grouped by page and question. It keeps each
 reviewer's latest pick per option group while preserving the history, quotes
@@ -60,6 +70,24 @@ adapter. Do not invent exports, assume browser-local storage is shared, or copy
 a task-specific server into Promptlings. Question answers and screen
 discussions may use purpose-built components that write to the same store.
 
+A verified local setup (starlight-annotations 0.5.1, Starlight 0.43): one
+`node:http` server passes requests to `createAnnotationsHandler` with
+`fsStorage` pointed at the recorded store (through `toNodeMiddleware`), and
+everything it does not handle falls through to a static server for the build
+output. A single local reviewer uses `staticAuth` with the owner's name, so
+there is no sign-in. Notes are one JSON file per page, keyed by the URL path
+without its trailing slash (the home page is `index`). The API lives under
+`/_annotations`; threads are flat, so a reply targets the root note ID. Writes
+must come from the served origin, so bind and browse on `127.0.0.1`
+consistently rather than mixing in `localhost`. Serve only through this
+server: a leftover `astro preview` on the same port answers instead and looks
+like a broken site. Stop it by its owned process ID.
+
+Snapshot each distinct build's pages, keyed by a hash of their contents, beside
+the store (not in the build output), so every note can be read against the
+version it was written on. Acting on comments as they arrive produces many
+versions, and this keeps each disposition traceable.
+
 If a required integration is missing, preserve the readable spec and name the
 blocked capability. Do not substitute a static mock that looks commentable.
 
@@ -68,8 +96,12 @@ blocked capability. Do not substitute a static mock that looks commentable.
 Teach commenting on first view with a short, dismissible "How to comment"
 panel: hovering a paragraph offers Comment, selecting text offers Annotate,
 captions take comments on images and questions have their own answer cards.
-The new-note box takes focus. Preserve keyboard and touch access, not only a
-hover trigger. Ask for the reviewer's name before the first comment. Threads
+The new-note box takes focus; the plugin focuses it while its drawer is still
+hidden, so move focus once the drawer's opening transition ends. A hover
+Comment button can select the block's text and hand it to the plugin's own
+Annotate control. Preserve keyboard and touch access, not only a hover trigger.
+Render images as figures with captions so they take comments. In shared review,
+ask for the reviewer's name before the first comment. Threads
 support reply, resolve and reopen, and only the author deletes a note. Notes
 retain their passage, surrounding selector context, author, time, stable ID and
 complete thread, including reply-to relationships and resolution state.

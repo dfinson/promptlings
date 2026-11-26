@@ -260,8 +260,10 @@ establishes reviewer attribution and records a durable feedback store outside
 temporary builds before the first build, so it always knows where to read.
 Sharing through an access-controlled dev tunnel is an option, not the default.
 Reviewers annotate passages, discuss screens, answer questions beside their
-consequences, or raise something missing. Spec Master reads the store when asked
-or when resuming the spec; live watching is opt-in. "Read all feedback" retrieves
+consequences, or raise something missing. When you review alone on localhost,
+Spec Master acts on each comment as it arrives and replies on the note. With
+several reviewers it reads the store when asked or when resuming the spec, and
+live watching is opt-in. "Read all feedback" retrieves
 complete threads and their document context, reconciles them with the intended
 scope, and accounts for each item in the revised spec. Picks and resolved
 threads do not confer approval.
